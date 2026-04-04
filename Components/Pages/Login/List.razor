@@ -1,0 +1,64 @@
+@page "/login"
+@rendermode InteractiveServer
+@using mechsystem.Models
+@inject NavigationManager NavigationManager
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title text-center mb-4">Acesso ao Sistema</h3>
+
+                    <EditForm Model="@loginModel" OnValidSubmit="RealizarLogin">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Usuário</label>
+                            <InputText id="username" class="form-control" @bind-Value="loginModel.Username" placeholder="Digite seu usuário" />
+                            <ValidationMessage For="@(() => loginModel.Username)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Senha</label>
+                            <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" placeholder="Digite sua senha" />
+                            <ValidationMessage For="@(() => loginModel.Password)" class="text-danger" />
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(mensagemErro))
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                @mensagemErro
+                            </div>
+                        }
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">Entrar</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // Instância do modelo que será ligada ao formulário
+    private Login loginModel = new();
+    private string? mensagemErro;
+
+    private void RealizarLogin()
+    {
+        // Aqui você implementaria a lógica real de validação no banco de dados.
+        // Exemplo simulado:
+        if (loginModel.Username == "admin" && loginModel.Password == "123456")
+        {
+            mensagemErro = null;
+            // Redireciona para a página inicial (Home) após o login com sucesso
+            NavigationManager.NavigateTo("/home");
+        }
+        else
+        {
+            mensagemErro = "Usuário ou senha inválidos.";
+        }
+    }
+}
