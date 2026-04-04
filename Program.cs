@@ -1,10 +1,26 @@
+using System.Diagnostics.CodeAnalysis;
 using mechsystem.Components;
+using Microsoft.EntityFrameworkCore;
+using mechsystem.Data;
+using mechsystem.Interfaces;
+using mechsystem.Repositories;
+
+
+
 
 var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlite(connectionString));
+
+
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
+
 
 var app = builder.Build();
 

@@ -1,0 +1,82 @@
+@page "/clientes/cadastro"
+@rendermode InteractiveServer
+
+@using mechsystem.Models
+@using mechsystem.Interfaces
+
+@* Aqui estamos a pedir ao Blazor para injetar as nossas ferramentas *@
+@inject IClienteRepository ClienteRepository
+@inject NavigationManager NavigationManager
+
+<div class="container mt-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Registar Novo Cliente</h4>
+        </div>
+        <div class="card-body">
+            
+            @* O EditForm liga o HTML ao nosso objeto C# e ativa as validações *@
+            <EditForm Model="@cliente" OnValidSubmit="GuardarCliente">
+                <DataAnnotationsValidator />
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nome Completo</label>
+                        <InputText @bind-Value="cliente.Nome" class="form-control" placeholder="Nome" />
+                        <ValidationMessage For="@(() => cliente.Nome)" class="text-danger" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">CPF</label>
+                        <InputText @bind-Value="cliente.Cpf" class="form-control" placeholder="Apenas números" />
+                        <ValidationMessage For="@(() => cliente.Cpf)" class="text-danger" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">E-mail</label>
+                        <InputText @bind-Value="cliente.Email" class="form-control" placeholder="joao@email.com" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Telefone</label>
+                        <InputText @bind-Value="cliente.Telefone" class="form-control" placeholder="(00) 00000-0000" />
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Endereço</label>
+                    <InputText @bind-Value="cliente.Endereco" class="form-control" placeholder="Rua, Número, Bairro" />
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-save"></i> Guardar Cliente
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="Cancelar">
+                        Cancelar
+                    </button>
+                </div>
+            </EditForm>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    // Criamos um cliente vazio para preencher no formulário
+    private Cliente cliente = new Cliente();
+
+    // Este método é chamado quando clicamos no botão verde e não há erros nas regras
+    private async Task GuardarCliente()
+    {
+        await ClienteRepository.Salvar(cliente); // Vai à base de dados e guarda
+        NavigationManager.NavigateTo("/");       // Volta para a página inicial
+    }
+
+    private void Cancelar()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+}
