@@ -20,6 +20,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
+builder.Services.AddScoped<IVeiculoRepository, VeiculoRepository>();
 
 
 var app = builder.Build();

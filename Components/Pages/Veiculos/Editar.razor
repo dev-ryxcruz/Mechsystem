@@ -1,0 +1,121 @@
+@page "/veiculos/editar/{Id:int}"
+@rendermode InteractiveServer
+
+@using mechsystem.Models
+@using mechsystem.Interfaces
+
+@* Precisamos dos dois repositórios novamente *@
+@inject IVeiculoRepository VeiculoRepository
+@inject IClienteRepository ClienteRepository
+@inject NavigationManager NavigationManager
+
+<div class="container mt-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Editar Veículo</h4>
+        </div>
+        <div class="card-body">
+            
+            <EditForm Model="@veiculo" OnValidSubmit="GuardarEdicao">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label text-success fw-bold">Cliente (Dono do Veículo)</label>
+                    <InputSelect @bind-Value="veiculo.ClienteId" class="form-select">
+                        <option value="0">-- Selecione um Cliente --</option>
+                        @if (clientes != null)
+                        {
+                            @foreach (var c in clientes)
+                            {
+                                <option value="@c.Id">@c.Nome (CPF: @c.Cpf)</option>
+                            }
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => veiculo.ClienteId)" class="text-danger" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Placa</label>
+                        <InputText @bind-Value="veiculo.Placa" class="form-control text-uppercase" />
+                        <ValidationMessage For="@(() => veiculo.Placa)" class="text-danger" />
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Marca</label>
+                        <InputText @bind-Value="veiculo.Marca" class="form-control" />
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Modelo</label>
+                        <InputText @bind-Value="veiculo.Modelo" class="form-control" />
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Cor</label>
+                        <InputText @bind-Value="veiculo.Cor" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Ano</label>
+                        <InputNumber @bind-Value="veiculo.Ano" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Quilometragem (Km)</label>
+                        <InputNumber @bind-Value="veiculo.Quilometragem" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-save"></i> Guardar Alterações
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="Cancelar">
+                        Cancelar
+                    </button>
+                </div>
+            </EditForm>
+
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Veiculo veiculo = new Veiculo();
+    private List<Cliente>? clientes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // 1. Carrega a lista de donos disponíveis
+        clientes = await ClienteRepository.Listar();
+
+        // 2. Procura os dados antigos do veículo para preencher o formulário
+        var veiculoEncontrado = await VeiculoRepository.BuscarPorId(Id);
+        if (veiculoEncontrado != null)
+        {
+            veiculo = veiculoEncontrado;
+        }
+    }
+
+    private async Task GuardarEdicao()
+    {
+        if (veiculo.ClienteId == 0)
+        {
+            return;
+        }
+
+        await VeiculoRepository.Atualizar(veiculo);
+        NavigationManager.NavigateTo("/veiculos");
+    }
+
+    private void Cancelar()
+    {
+        NavigationManager.NavigateTo("/veiculos");
+    }
+}

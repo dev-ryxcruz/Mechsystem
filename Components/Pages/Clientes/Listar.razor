@@ -1,0 +1,107 @@
+@page "/clientes"
+@rendermode InteractiveServer
+
+@using mechsystem.Models
+@using mechsystem.Interfaces
+
+@inject IClienteRepository ClienteRepository
+@inject NavigationManager NavigationManager
+
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="bi bi-people"></i> Clientes Registados</h3>
+        <button class="btn btn-primary" @onclick="NovoCliente">
+            <i class="bi bi-plus-lg"></i> Novo Cliente
+        </button>
+    </div>
+
+    @* Se a lista ainda estiver nula, mostramos que está a carregar *@
+    @if (clientes == null)
+    {
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2">A carregar clientes...</p>
+        </div>
+    }
+    @* Se a lista estiver vazia, damos um aviso amigável *@
+    else if (!clientes.Any())
+    {
+        <div class="alert alert-info" role="alert">
+            Nenhum cliente registado no sistema ainda.
+        </div>
+    }
+    @* Se existirem clientes, montamos a tabela *@
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>CPF</th>
+                            <th>Telefone</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var cliente in clientes)
+                        {
+                            <tr>
+                                <td>@cliente.Id</td>
+                                <td><strong>@cliente.Nome</strong></td>
+                                <td>@cliente.Cpf</td>
+                                <td>@cliente.Telefone</td>
+
+                            <td class="text-end">
+                                @* O botão Editar vai enviar o Id do cliente pela barra de endereço *@
+                                <button class="btn btn-sm btn-outline-warning me-1" title="Editar" @onclick="() => IrParaEdicao(cliente.Id)">
+                                    Editar
+                                </button>
+                                @* O botão Eliminar chama a função de apagar diretamente *@
+                                <button class="btn btn-sm btn-outline-danger" title="Eliminar" @onclick="() => ApagarCliente(cliente.Id)">
+                                    Eliminar
+                                </button>
+                            </td>                                
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Cliente>? clientes;
+    private Cliente _cliente = new Cliente();
+
+
+    // Este método nativo do Blazor corre sozinho assim que o ecrã é aberto
+    protected override async Task OnInitializedAsync()
+    {
+        // Pede ao repositório para ir à base de dados e trazer todos os clientes
+        clientes = await ClienteRepository.Listar();
+    }
+
+    private void NovoCliente()
+    {
+        NavigationManager.NavigateTo("/clientes/cadastro");
+    }
+
+private void IrParaEdicao(int id)
+    {
+        // Redireciona para o ecrã de edição passando o ID do cliente
+        NavigationManager.NavigateTo($"/clientes/editar/{id}");
+    }
+
+    private async Task ApagarCliente(int id)
+    {
+        // 1. Vai à base de dados e apaga o cliente
+        await ClienteRepository.Deletar(id);
+        
+        // 2. Consulta a base de dados novamente para atualizar a tabela no ecrã
+        clientes = await ClienteRepository.Listar();
+    }
+}

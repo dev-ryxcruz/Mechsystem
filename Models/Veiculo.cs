@@ -9,9 +9,9 @@ namespace mechsystem.Models
         [Required(ErrorMessage = "A placa é obrigatória.")]
         [MaxLength(10)]
         public string? Placa { get; set; }
-
         public string? Marca { get; set;}
         public string? Modelo { get; set; }
+        public string? Cor { get; set; }
         public int Ano { get; set; }
         public int Quilometragem { get; set; }
 

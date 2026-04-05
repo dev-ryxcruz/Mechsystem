@@ -1,0 +1,120 @@
+@page "/veiculos/cadastro"
+@rendermode InteractiveServer
+
+@using mechsystem.Models
+@using mechsystem.Interfaces
+@inject IVeiculoRepository VeiculoRepository
+@inject IClienteRepository ClienteRepository
+@inject NavigationManager NavigationManager
+
+<div class="container mt-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0"><i class="bi bi-car-front"></i> Registar Novo Veículo</h4>
+        </div>
+
+        <div class="card-body">
+
+            <EditForm Model="@veiculo" OnValidSubmit="GuardarVeiculo">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <label class="form-label text-sucess fw-bold"> Cliente (Dono do Veículo)</label>
+                    <InputSelect @bind-Value="veiculo.ClienteId" class="form-select">
+                        <option value="0"> - Selecione um Cliente - </option>
+                        @if (clientes != null)
+                        {
+                            @foreach (var cli in clientes)
+                            {
+                                <option value="@cli.Id">@cli.Nome (CPF: @cli.Cpf)</option>
+                            }
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => veiculo.ClienteId)" class="text-danger" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Placa</label>
+                        <InputText @bind-Value="veiculo.Placa" class="form-control" placeholder="ABC-1234" />
+                        <ValidationMessage For="@(() => veiculo.Placa)" class="text-danger" />
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Marca</label>
+                        <InputText @bind-Value="veiculo.Marca" class="form-control" placeholder="Toyota, Honda..." />
+                        <ValidationMessage For="@(() => veiculo.Marca)" class="text-danger" />
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Modelo</label>
+                        <InputText @bind-Value="veiculo.Modelo" class="form-control" placeholder="Corolla, Civic..." />
+                        <ValidationMessage For="@(() => veiculo.Modelo)" class="text-danger" />
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Cor</label>
+                        <InputText @bind-Value="veiculo.Cor" class="form-control" placeholder="Preto, Branco..." />
+                        <ValidationMessage For="@(() => veiculo.Cor)" class="text-danger" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Ano</label>
+                        <InputNumber @bind-Value="veiculo.Ano" class="form-control" placeholder="2020" />
+                        <ValidationMessage For="@(() => veiculo.Ano)" class="text-danger" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Quilometragem</label>
+                        <InputNumber @bind-Value="veiculo.Quilometragem" class="form-control" placeholder="0" />
+                        <ValidationMessage For="@(() => veiculo.Quilometragem)" class="text-danger" />
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-save"></i> Guardar Veículo
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="Cancelar">
+                        Cancelar
+                    </button>
+                </div>
+
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+
+@code
+{
+    private Veiculo veiculo = new Veiculo();
+
+    // Lista para guardar clientes
+    private List<Cliente>? clientes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Pegar clientes do repositório
+        clientes = await ClienteRepository.Listar();
+    }
+
+    private async Task GuardarVeiculo()
+    {
+        if (veiculo.ClienteId == 0)
+        {
+            return;
+        }
+
+        await VeiculoRepository.Salvar(veiculo);
+        NavigationManager.NavigateTo("/veiculos"); // Redireciona para lista de veiculos
+    }
+
+    private void Cancelar()
+    {
+        NavigationManager.NavigateTo("/");
+    }
+
+}
