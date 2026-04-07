@@ -1,0 +1,159 @@
+@page "/ordens-servico/nova"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Models
+@inject AppDbContext DbContext
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nova Ordem de Serviço</PageTitle>
+
+<div class="row align-items-center mb-4">
+    <div class="col">
+        <h2>Nova Ordem de Serviço (Orçamento)</h2>
+    </div>
+    <div class="col-auto">
+        <a href="/ordens-servico" class="btn btn-outline-secondary shadow-sm">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        @if (isLoading)
+        {
+            <p>Carregando dados...</p>
+        }
+        else if (veiculos == null || !veiculos.Any())
+        {
+            <div class="alert alert-warning">
+                Não há veículos cadastrados. Você precisa cadastrar um cliente e um veículo antes de abrir uma OS.
+            </div>
+        }
+        else
+        {
+            <EditForm Model="os" OnValidSubmit="HandleValidSubmit" FormName="NovaOS">
+                <DataAnnotationsValidator />
+                
+                <h5 class="mb-3 border-bottom pb-2">Identificação do Bem (CDC)</h5>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="veiculoId" class="form-label">Veículo (Cliente)</label>
+                        <InputSelect id="veiculoId" @bind-Value="os.VeiculoId" class="form-select">
+                            <option value="0">-- Selecione um Veículo --</option>
+                            @foreach (var v in veiculos)
+                            {
+                                <option value="@v.Id">@v.Placa - @v.Modelo (@v.Cliente?.Nome)</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => os.VeiculoId)" class="text-danger" />
+                    </div>
+                </div>
+
+                <h5 class="mb-3 border-bottom pb-2 mt-4">Diagnóstico e Serviço</h5>
+                <div class="row mb-3">
+                    <div class="col-md-12 mb-3">
+                        <label for="descricao" class="form-label">Problema Relatado / Diagnóstico <span class="text-danger">*</span></label>
+                        <InputTextArea id="descricao" @bind-Value="os.DescricaoProblemaRelatado" class="form-control" rows="3"></InputTextArea>
+                        <ValidationMessage For="@(() => os.DescricaoProblemaRelatado)" class="text-danger" />
+                    </div>
+                    <div class="col-md-12">
+                        <label for="servicos" class="form-label">Serviços a Executar</label>
+                        <InputTextArea id="servicos" @bind-Value="os.ServicoAExecutar" class="form-control" rows="3"></InputTextArea>
+                        <ValidationMessage For="@(() => os.ServicoAExecutar)" class="text-danger" />
+                    </div>
+                </div>
+
+                <h5 class="mb-3 border-bottom pb-2 mt-4">Datas Precisas (CDC)</h5>
+                <div class="row mb-3">
+                    <div class="col-md-4 mb-3">
+                        <label for="dataEmissao" class="form-label">Data de Emissão <span class="text-danger">*</span></label>
+                        <InputDate id="dataEmissao" @bind-Value="os.DataEmissao" class="form-control" disabled />
+                        <ValidationMessage For="@(() => os.DataEmissao)" class="text-danger" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="previsaoInicio" class="form-label">Previsão de Início</label>
+                        <InputDate id="previsaoInicio" @bind-Value="os.DataPrevisaoInicio" class="form-control" />
+                        <ValidationMessage For="@(() => os.DataPrevisaoInicio)" class="text-danger" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="previsaoEntrega" class="form-label">Previsão de Entrega <span class="text-danger">*</span></label>
+                        <InputDate id="previsaoEntrega" @bind-Value="os.DataPrevisaoEntrega" class="form-control" />
+                        <ValidationMessage For="@(() => os.DataPrevisaoEntrega)" class="text-danger" />
+                    </div>
+                </div>
+
+                <h5 class="mb-3 border-bottom pb-2 mt-4">Discriminação de Valores (CDC)</h5>
+                <div class="row mb-3">
+                    <div class="col-md-4 mb-3">
+                        <label for="valorMaoDeObra" class="form-label">Valor Mão de Obra</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <InputNumber id="valorMaoDeObra" @bind-Value="os.ValorMaoDeObra" class="form-control" step="0.01" />
+                        </div>
+                        <ValidationMessage For="@(() => os.ValorMaoDeObra)" class="text-danger" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="valorPecas" class="form-label">Valor das Peças</label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <InputNumber id="valorPecas" @bind-Value="os.ValorPecas" class="form-control" step="0.01" />
+                        </div>
+                        <ValidationMessage For="@(() => os.ValorPecas)" class="text-danger" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Valor Total (Previsto/Orçado)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light">R$</span>
+                            <input type="text" class="form-control bg-light fw-bold text-success" value="@os.ValorTotal.ToString("N2")" readonly />
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-end mt-4">
+                    <button type="submit" class="btn btn-success shadow-sm">
+                        <i class="bi bi-save me-1"></i> Gerar Orçamento
+                    </button>
+                </div>
+            </EditForm>
+        }
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromForm]
+    private OrdemServico os { get; set; } = new();
+
+    private List<Veiculo>? veiculos;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        os.DataEmissao = DateTime.Today;
+        os.DataPrevisaoEntrega = DateTime.Today.AddDays(5); // Default 5 days delivery
+        
+        veiculos = await DbContext.Veiculos
+            .Include(v => v.Cliente)
+            .OrderBy(v => v.Cliente!.Nome)
+            .ToListAsync();
+            
+        isLoading = false;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (os.VeiculoId == 0)
+        {
+            // Simple validation feedback if veiculo not selected
+            return;
+        }
+
+        os.Status = OrdemServicoStatus.Orcamento;
+
+        DbContext.OrdensServico.Add(os);
+        await DbContext.SaveChangesAsync();
+
+        NavigationManager.NavigateTo($"/ordens-servico/{os.Id}");
+    }
+}

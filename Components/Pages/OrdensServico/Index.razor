@@ -1,0 +1,92 @@
+@page "/ordens-servico"
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Models
+@inject AppDbContext DbContext
+@inject NavigationManager NavigationManager
+
+<PageTitle>Ordens de Serviço</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Ordens de Serviço</h2>
+    <a href="/ordens-servico/nova" class="btn btn-primary shadow-sm">
+        <i class="bi bi-plus-circle me-1"></i> Nova O.S.
+    </a>
+</div>
+
+@if (ordensServico == null)
+{
+    <p><em>Carregando...</em></p>
+}
+else if (!ordensServico.Any())
+{
+    <div class="alert alert-info">Nenhuma Ordem de Serviço cadastrada.</div>
+}
+else
+{
+    <div class="card shadow-sm">
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nº OS</th>
+                        <th>Emissão</th>
+                        <th>Veículo (Placa)</th>
+                        <th>Cliente</th>
+                        <th>Status</th>
+                        <th>Total</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var os in ordensServico)
+                    {
+                        <tr>
+                            <td>@os.Id.ToString("D4")</td>
+                            <td>@os.DataEmissao.ToString("dd/MM/yyyy")</td>
+                            <td>@os.Veiculo?.Modelo - @os.Veiculo?.Placa</td>
+                            <td>@os.Veiculo?.Cliente?.Nome</td>
+                            <td>
+                                @if(os.Status == OrdemServicoStatus.Orcamento)
+                                {
+                                    <span class="badge bg-warning text-dark">Orçamento</span>
+                                }
+                                else if(os.Status == OrdemServicoStatus.EmAndamento)
+                                {
+                                    <span class="badge bg-primary">Em Andamento</span>
+                                }
+                                else if(os.Status == OrdemServicoStatus.Concluida)
+                                {
+                                    <span class="badge bg-success">Concluída</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@os.Status</span>
+                                }
+                            </td>
+                            <td>@os.ValorTotal.ToString("C")</td>
+                            <td class="text-end">
+                                <a href="/ordens-servico/@os.Id" class="btn btn-sm btn-outline-primary" title="Visualizar / Editar">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private List<OrdemServico>? ordensServico;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ordensServico = await DbContext.OrdensServico
+            .Include(o => o.Veiculo)
+                .ThenInclude(v => v.Cliente)
+            .OrderByDescending(o => o.Id)
+            .ToListAsync();
+    }
+}

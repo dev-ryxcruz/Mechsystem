@@ -1,0 +1,304 @@
+@page "/ordens-servico/{id:int}"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Models
+@inject AppDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Ordem de Serviço Nº @Id.ToString("D4")</PageTitle>
+
+@if (os == null)
+{
+    <p><em>Carregando...</em></p>
+}
+else
+{
+    <!-- Toolbar (Hidden on Print) -->
+    <div class="d-print-none mb-4 d-flex justify-content-between align-items-center">
+        <div>
+            <a href="/ordens-servico" class="btn btn-outline-secondary me-2">Voltar</a>
+            <button class="btn btn-secondary" @onclick="PrintOS">
+                <i class="bi bi-printer me-1"></i> Imprimir OS
+            </button>
+        </div>
+        <div>
+            @if (os.Status == OrdemServicoStatus.Orcamento)
+            {
+                <button class="btn btn-success" @onclick="AbrirModalAprovacao">
+                    <i class="bi bi-check-circle me-1"></i> Aprovar Orçamento
+                </button>
+            }
+            else if (os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.AguardandoPecas)
+            {
+                <button class="btn btn-primary" @onclick="ConcluirOS">
+                    <i class="bi bi-flag me-1"></i> Concluir Serviço
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- OS Document View -->
+    <div class="card shadow-sm os-document">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">ORDEM DE SERVIÇO Nº @os.Id.ToString("D4")</h4>
+            <div class="text-end">
+                <small class="d-block">Status: <strong>@os.Status</strong></small>
+                <small class="d-block">Emissão: @os.DataEmissao.ToString("dd/MM/yyyy")</small>
+            </div>
+        </div>
+        <div class="card-body p-4">
+            
+            <div class="row border-bottom pb-3 mb-3">
+                <div class="col-md-6">
+                    <h5 class="fw-bold">Oficina Mecânica Mechsystem</h5>
+                    <p class="mb-0">CNPJ: 00.000.000/0001-00</p>
+                    <p class="mb-0">Telefone: (11) 99999-9999</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <h5 class="fw-bold">Dados do Cliente</h5>
+                    <p class="mb-0">Nome: @os.Veiculo?.Cliente?.Nome</p>
+                    <p class="mb-0">CPF: @os.Veiculo?.Cliente?.Cpf</p>
+                    <p class="mb-0">Telefone: @os.Veiculo?.Cliente?.Telefone</p>
+                </div>
+            </div>
+
+            <h5 class="fw-bold border-bottom pb-2">Identificação do Veículo</h5>
+            <div class="row mb-4">
+                <div class="col-sm-3"><small class="text-muted d-block">Placa</small><strong>@os.Veiculo?.Placa</strong></div>
+                <div class="col-sm-3"><small class="text-muted d-block">Marca/Modelo</small><strong>@os.Veiculo?.Marca - @os.Veiculo?.Modelo</strong></div>
+                <div class="col-sm-3"><small class="text-muted d-block">Cor</small><strong>@os.Veiculo?.Cor</strong></div>
+                <div class="col-sm-3"><small class="text-muted d-block">Ano/Km</small><strong>@os.Veiculo?.Ano / @os.Veiculo?.Quilometragem km</strong></div>
+            </div>
+
+            <h5 class="fw-bold border-bottom pb-2">Diagnóstico e Serviços</h5>
+            <div class="row mb-4">
+                <div class="col-12 mb-3">
+                    <small class="text-muted d-block fw-bold">Problema Relatado / Diagnóstico:</small>
+                    <p class="mb-0 p-2 bg-light rounded" style="white-space: pre-wrap;">@os.DescricaoProblemaRelatado</p>
+                </div>
+                <div class="col-12">
+                    <small class="text-muted d-block fw-bold">Serviços a Executar:</small>
+                    <p class="mb-0 p-2 bg-light rounded" style="white-space: pre-wrap;">@(string.IsNullOrWhiteSpace(os.ServicoAExecutar) ? "A definir" : os.ServicoAExecutar)</p>
+                </div>
+            </div>
+
+            <h5 class="fw-bold border-bottom pb-2">Prazos e Valores</h5>
+            <div class="row mb-4">
+                <div class="col-sm-4"><small class="text-muted d-block">Previsão de Início</small><strong>@(os.DataPrevisaoInicio?.ToString("dd/MM/yyyy") ?? "N/A")</strong></div>
+                <div class="col-sm-4"><small class="text-muted d-block">Previsão de Entrega (CDC)</small><strong>@os.DataPrevisaoEntrega.ToString("dd/MM/yyyy")</strong></div>
+                <div class="col-sm-4"><small class="text-muted d-block">Validade Orçamento</small><strong>@os.ValidadeOrcamento.ToString("dd/MM/yyyy")</strong></div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 offset-md-6">
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                            <tr>
+                                <td>Mão de Obra</td>
+                                <td class="text-end">@os.ValorMaoDeObra.ToString("C")</td>
+                            </tr>
+                            <tr>
+                                <td>Peças</td>
+                                <td class="text-end">@os.ValorPecas.ToString("C")</td>
+                            </tr>
+                            <tr class="table-active fw-bold">
+                                <td>Valor Total</td>
+                                <td class="text-end text-success fs-5">@os.ValorTotal.ToString("C")</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Termo de Autorização (Contrato) -->
+            <div class="mt-5 p-4 border rounded bg-light term-box">
+                <h6 class="fw-bold text-center mb-3">TERMO DE AUTORIZAÇÃO / APROVAÇÃO (LEI Nº 8.078/1990 - CDC)</h6>
+                <p class="small text-justify mb-4">
+                    Conforme o art. 40 do Código de Defesa do Consumidor, autorizo expressamente a execução dos serviços descritos acima 
+                    pelo valor total acordado, bem como a aplicação das peças listadas. Compreendo que após o aceite, este orçamento passa a ter força de contrato e que serviços adicionais somente poderão ser incluídos mediante nova aprovação prévia.
+                </p>
+                
+                @if (os.Status == OrdemServicoStatus.Orcamento)
+                {
+                    <div class="row text-center mt-5">
+                        <div class="col-6 offset-3 border-top pt-2 mt-4">
+                            <strong>Assinatura do Cliente</strong><br />
+                            <small>@os.Veiculo?.Cliente?.Nome</small><br />
+                            <small>Data: ___/___/_______</small>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-success mt-3 mb-0 text-center">
+                        <i class="bi bi-shield-check me-2"></i><strong>Orçamento Aprovado</strong><br />
+                        <span class="small">Autorizado por: @(os.AutorizadoPor ?? os.Veiculo?.Cliente?.Nome) no dia @(os.DataAutorizacao?.ToString("dd/MM/yyyy HH:mm")) via @(os.MeioAutorizacao)</span>
+                    </div>
+                }
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal Aprovação (Controlado 100% pelo Blazor) -->
+    @if (mostrarModalAprovacao)
+    {
+        <div class="blazor-modal-backdrop" @onclick="FecharModalAprovacao"></div>
+        <div class="blazor-modal d-print-none">
+            <div class="blazor-modal-content">
+                <div class="blazor-modal-header bg-success text-white">
+                    <h5><i class="bi bi-check-circle me-2"></i>Aprovar Orçamento</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="FecharModalAprovacao"></button>
+                </div>
+                <div class="blazor-modal-body">
+                    @if (!string.IsNullOrEmpty(erroMensagem))
+                    {
+                        <div class="alert alert-danger">@erroMensagem</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label">Autorizado Por (Nome):</label>
+                        <input type="text" class="form-control" @bind="autorizadoPor" placeholder="Ex: Próprio Cliente ou Representante" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Meio de Aprovação/Aceite:</label>
+                        <select class="form-select" @bind="meioAutorizacao">
+                            <option value="Assinatura Presencial">Assinatura Presencial</option>
+                            <option value="WhatsApp">Mensagem via WhatsApp</option>
+                            <option value="Telefone">Ligação Telefônica</option>
+                            <option value="E-mail">E-mail</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="blazor-modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="FecharModalAprovacao">Cancelar</button>
+                    <button type="button" class="btn btn-success" @onclick="AprovarOS">
+                        <i class="bi bi-check-lg me-1"></i> Confirmar Aprovação
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+<style>
+    /* Blazor-controlled Modal */
+    .blazor-modal-backdrop {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); z-index: 1040;
+    }
+    .blazor-modal {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1050;
+    }
+    .blazor-modal-content {
+        background: white; border-radius: 0.5rem; width: 500px; max-width: 90%;
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.3);
+    }
+    .blazor-modal-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 1rem 1.25rem; border-radius: 0.5rem 0.5rem 0 0;
+    }
+    .blazor-modal-header h5 { margin: 0; }
+    .blazor-modal-body { padding: 1.25rem; }
+    .blazor-modal-footer {
+        display: flex; justify-content: flex-end; gap: 0.5rem;
+        padding: 1rem 1.25rem; border-top: 1px solid #dee2e6;
+    }
+
+    /* Print Formatting */
+    @@media print {
+        body { background: white; font-size: 12pt; }
+        .d-print-none { display: none !important; }
+        .sidebar { display: none !important; }
+        .navbar-toggler { display: none !important; }
+        main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+        .os-document { border: none !important; box-shadow: none !important; }
+        .card-header { background: transparent !important; color: black !important; border-bottom: 2px solid black !important; }
+        .term-box { page-break-inside: avoid; border: 1px solid #ccc !important; }
+        .blazor-modal-backdrop, .blazor-modal { display: none !important; }
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private OrdemServico? os;
+    private bool mostrarModalAprovacao = false;
+    private string? erroMensagem;
+    private string autorizadoPor = "";
+    private string meioAutorizacao = "Assinatura Presencial";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        os = await DbContext.OrdensServico
+            .Include(o => o.Veiculo)
+                .ThenInclude(v => v!.Cliente)
+            .FirstOrDefaultAsync(o => o.Id == Id);
+            
+        if (os != null)
+        {
+            autorizadoPor = os.Veiculo?.Cliente?.Nome ?? "";
+        }
+    }
+
+    private void AbrirModalAprovacao()
+    {
+        erroMensagem = null;
+        mostrarModalAprovacao = true;
+    }
+
+    private void FecharModalAprovacao()
+    {
+        mostrarModalAprovacao = false;
+    }
+
+    private async Task AprovarOS()
+    {
+        if (os != null)
+        {
+            try 
+            {
+                erroMensagem = null;
+                os.Status = OrdemServicoStatus.EmAndamento;
+                os.DataAutorizacao = DateTime.Now;
+                os.AutorizadoPor = autorizadoPor;
+                os.MeioAutorizacao = meioAutorizacao;
+                
+                if (!os.DataPrevisaoInicio.HasValue)
+                {
+                    os.DataPrevisaoInicio = DateTime.Today;
+                }
+
+                await DbContext.SaveChangesAsync();
+                mostrarModalAprovacao = false;
+            }
+            catch(Exception ex)
+            {
+                erroMensagem = $"Erro ao salvar: {ex.Message} — {ex.InnerException?.Message}";
+            }
+        }
+    }
+
+    private async Task ConcluirOS()
+    {
+        if(os != null)
+        {
+            os.Status = OrdemServicoStatus.Concluida;
+            await DbContext.SaveChangesAsync();
+        }
+    }
+
+    private async Task PrintOS()
+    {
+        await JSRuntime.InvokeVoidAsync("window.print");
+    }
+}
