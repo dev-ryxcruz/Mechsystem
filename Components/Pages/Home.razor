@@ -1,7 +1,389 @@
-﻿@page "/home"
+@page "/"
+@page "/home"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Models
+@inject AppDbContext DbContext
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Dashboard — Mechsystem</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="dashboard">
 
-Welcome to your new app.
+    <!-- Header -->
+    <div class="dash-header mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Dashboard</h2>
+            <p class="text-muted mb-0">Visão geral da oficina — @DateTime.Now.ToString("dddd, dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("pt-BR"))</p>
+        </div>
+        <a href="/ordens-servico/nova" class="btn btn-accent shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i> Nova O.S.
+        </a>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card kpi-warning">
+                <div class="kpi-icon"><i class="bi bi-file-earmark-text"></i></div>
+                <div class="kpi-body">
+                    <span class="kpi-value">@totalOrcamentos</span>
+                    <span class="kpi-label">Orçamentos</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card kpi-primary">
+                <div class="kpi-icon"><i class="bi bi-wrench-adjustable"></i></div>
+                <div class="kpi-body">
+                    <span class="kpi-value">@totalEmAndamento</span>
+                    <span class="kpi-label">Em Andamento</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card kpi-success">
+                <div class="kpi-icon"><i class="bi bi-check-circle"></i></div>
+                <div class="kpi-body">
+                    <span class="kpi-value">@totalConcluidas</span>
+                    <span class="kpi-label">Concluídas (mês)</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card kpi-accent">
+                <div class="kpi-icon"><i class="bi bi-currency-dollar"></i></div>
+                <div class="kpi-body">
+                    <span class="kpi-value">@faturamentoMes.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</span>
+                    <span class="kpi-label">Faturamento (mês)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Second Row: Counts -->
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-xl-4">
+            <div class="kpi-card kpi-dark">
+                <div class="kpi-icon"><i class="bi bi-people-fill"></i></div>
+                <div class="kpi-body">
+                    <span class="kpi-value">@totalClientes</span>
+                    <span class="kpi-label">Clientes Cadastrados</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-6 col-xl-4">
+            <div class="kpi-card kpi-dark">
+                <div class="kpi-icon"><i class="bi bi-car-front-fill"></i></div>
+                <div class="kpi-body">
+                    <span class="kpi-value">@totalVeiculos</span>
+                    <span class="kpi-label">Veículos Cadastrados</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-sm-12 col-xl-4">
+            <div class="kpi-card kpi-dark">
+                <div class="kpi-icon"><i class="bi bi-file-earmark-ruled"></i></div>
+                <div class="kpi-body">
+                    <span class="kpi-value">@totalOS</span>
+                    <span class="kpi-label">Total de O.S. (geral)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Row -->
+    <div class="row g-3">
+        <!-- Últimas O.S. -->
+        <div class="col-lg-7">
+            <div class="card shadow-sm dash-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2"></i>Últimas Ordens de Serviço</h6>
+                    <a href="/ordens-servico" class="btn btn-sm btn-outline-secondary">Ver Tudo</a>
+                </div>
+                <div class="card-body p-0">
+                    @if (ultimasOS != null && ultimasOS.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Nº</th>
+                                        <th>Cliente</th>
+                                        <th>Veículo</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var os in ultimasOS)
+                                    {
+                                        <tr class="cursor-pointer" @onclick="() => NavigateTo(os.Id)">
+                                            <td class="fw-bold">@os.Id.ToString("D4")</td>
+                                            <td>@os.Veiculo?.Cliente?.Nome</td>
+                                            <td><span class="text-muted">@os.Veiculo?.Placa</span> @os.Veiculo?.Modelo</td>
+                                            <td>
+                                                @if(os.Status == OrdemServicoStatus.Orcamento)
+                                                {
+                                                    <span class="badge bg-warning text-dark">Orçamento</span>
+                                                }
+                                                else if(os.Status == OrdemServicoStatus.EmAndamento)
+                                                {
+                                                    <span class="badge bg-primary">Em Andamento</span>
+                                                }
+                                                else if(os.Status == OrdemServicoStatus.Concluida)
+                                                {
+                                                    <span class="badge bg-success">Concluída</span>
+                                                }
+                                                else if(os.Status == OrdemServicoStatus.AguardandoPecas)
+                                                {
+                                                    <span class="badge bg-info text-dark">Aguard. Peças</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">@os.Status</span>
+                                                }
+                                            </td>
+                                            <td class="text-end fw-bold">@os.ValorTotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-4 text-center text-muted">
+                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                            <p class="mt-2 mb-0">Nenhuma O.S. cadastrada ainda.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Próximas Entregas -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm dash-card">
+                <div class="card-header">
+                    <h6 class="mb-0 fw-bold"><i class="bi bi-calendar-event me-2"></i>Próximas Entregas Previstas</h6>
+                </div>
+                <div class="card-body p-0">
+                    @if (proximasEntregas != null && proximasEntregas.Any())
+                    {
+                        <ul class="list-group list-group-flush">
+                            @foreach (var os in proximasEntregas)
+                            {
+                                var diasRestantes = (os.DataPrevisaoEntrega - DateTime.Today).Days;
+                                var corDias = diasRestantes <= 0 ? "text-danger" : diasRestantes <= 2 ? "text-warning" : "text-success";
+
+                                <li class="list-group-item d-flex justify-content-between align-items-center entrega-item">
+                                    <div>
+                                        <strong class="d-block">OS #@os.Id.ToString("D4") — @os.Veiculo?.Placa</strong>
+                                        <small class="text-muted">@os.Veiculo?.Cliente?.Nome</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="d-block fw-bold @corDias">
+                                            @os.DataPrevisaoEntrega.ToString("dd/MM")
+                                        </span>
+                                        <small class="@corDias">
+                                            @if (diasRestantes < 0)
+                                            {
+                                                <span>@Math.Abs(diasRestantes)d atrasado</span>
+                                            }
+                                            else if (diasRestantes == 0)
+                                            {
+                                                <span>Hoje!</span>
+                                            }
+                                            else
+                                            {
+                                                <span>em @diasRestantes dias</span>
+                                            }
+                                        </small>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <div class="p-4 text-center text-muted">
+                            <i class="bi bi-calendar-check" style="font-size: 2rem;"></i>
+                            <p class="mt-2 mb-0">Nenhuma entrega pendente.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Dashboard Header */
+    .dash-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .btn-accent {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+        font-weight: 600;
+    }
+    .btn-accent:hover {
+        background: var(--accent-hover);
+        border-color: var(--accent-hover);
+        color: #fff;
+        box-shadow: 0 4px 15px var(--accent-glow);
+    }
+
+    /* KPI Cards */
+    .kpi-card {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        border-radius: 0.75rem;
+        background: #fff;
+        border: 1px solid #e9ecef;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+    .kpi-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 0.625rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        flex-shrink: 0;
+    }
+    .kpi-body {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+    .kpi-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1.2;
+        color: #1e2227;
+    }
+    .kpi-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    /* KPI Colors */
+    .kpi-warning .kpi-icon  { background: #fff3cd; color: #856404; }
+    .kpi-primary .kpi-icon  { background: #cfe2ff; color: #084298; }
+    .kpi-success .kpi-icon  { background: #d1e7dd; color: #0f5132; }
+    .kpi-accent .kpi-icon   { background: var(--accent-subtle); color: var(--accent-hover); }
+    .kpi-dark .kpi-icon     { background: #e9ecef; color: #495057; }
+
+    /* Dash Cards */
+    .dash-card {
+        border: 1px solid #e9ecef;
+        border-radius: 0.75rem;
+        overflow: hidden;
+    }
+    .dash-card .card-header {
+        background: #fafbfc;
+        border-bottom: 1px solid #e9ecef;
+        padding: 0.875rem 1.25rem;
+    }
+    .dash-card .table th {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        color: #6c757d;
+        letter-spacing: 0.03em;
+        font-weight: 600;
+        border-bottom-width: 1px;
+    }
+    .dash-card .table td {
+        font-size: 0.9rem;
+        vertical-align: middle;
+        padding: 0.75rem 0.75rem;
+    }
+
+    .cursor-pointer { cursor: pointer; }
+    .cursor-pointer:hover { background: #f8f9fa !important; }
+
+    /* Entregas */
+    .entrega-item {
+        transition: background 0.15s ease;
+        padding: 0.875rem 1.25rem;
+    }
+    .entrega-item:hover {
+        background: #f8f9fa;
+    }
+</style>
+
+@code {
+    private int totalClientes;
+    private int totalVeiculos;
+    private int totalOS;
+    private int totalOrcamentos;
+    private int totalEmAndamento;
+    private int totalConcluidas;
+    private decimal faturamentoMes;
+
+    private List<OrdemServico>? ultimasOS;
+    private List<OrdemServico>? proximasEntregas;
+
+    [Inject] NavigationManager Nav { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+
+        totalClientes = await DbContext.Clientes.CountAsync();
+        totalVeiculos = await DbContext.Veiculos.CountAsync();
+        totalOS = await DbContext.OrdensServico.CountAsync();
+
+        totalOrcamentos = await DbContext.OrdensServico
+            .CountAsync(o => o.Status == OrdemServicoStatus.Orcamento);
+
+        totalEmAndamento = await DbContext.OrdensServico
+            .CountAsync(o => o.Status == OrdemServicoStatus.EmAndamento || o.Status == OrdemServicoStatus.AguardandoPecas);
+
+        totalConcluidas = await DbContext.OrdensServico
+            .CountAsync(o => o.Status == OrdemServicoStatus.Concluida && o.DataAutorizacao >= inicioMes);
+
+        faturamentoMes = await DbContext.OrdensServico
+            .Where(o => o.Status == OrdemServicoStatus.Concluida && o.DataAutorizacao >= inicioMes)
+            .SumAsync(o => o.ValorMaoDeObra + o.ValorPecas);
+
+        ultimasOS = await DbContext.OrdensServico
+            .Include(o => o.Veiculo)
+                .ThenInclude(v => v!.Cliente)
+            .OrderByDescending(o => o.Id)
+            .Take(5)
+            .ToListAsync();
+
+        proximasEntregas = await DbContext.OrdensServico
+            .Include(o => o.Veiculo)
+                .ThenInclude(v => v!.Cliente)
+            .Where(o => o.Status == OrdemServicoStatus.EmAndamento || o.Status == OrdemServicoStatus.AguardandoPecas)
+            .OrderBy(o => o.DataPrevisaoEntrega)
+            .Take(5)
+            .ToListAsync();
+    }
+
+    private void NavigateTo(int id)
+    {
+        Nav.NavigateTo($"/ordens-servico/{id}");
+    }
+}
