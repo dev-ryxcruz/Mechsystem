@@ -1,20 +1,39 @@
+/* ==============================================
+   PAGE LAYOUT
+   ============================================== */
 .page {
     position: relative;
     display: flex;
     flex-direction: column;
+    min-height: 100vh;
 }
 
 main {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Prevent flex blowout */
 }
 
+/* ==============================================
+   SIDEBAR
+   ============================================== */
 .sidebar {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+    background: linear-gradient(180deg, #1e2227 0%, #181b1f 100%);
+    width: 250px;
+    transition: width var(--transition-smooth);
+    overflow: hidden;
+    will-change: width;
+    border-right: 1px solid var(--border-dark);
 }
 
+/* ==============================================
+   TOP BAR (Conteúdo Principal)
+   ============================================== */
 .top-row {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    border-bottom: 1px solid var(--border-light);
     justify-content: flex-end;
     height: 3.5rem;
     display: flex;
@@ -25,10 +44,15 @@ main {
         white-space: nowrap;
         margin-left: 1.5rem;
         text-decoration: none;
+        color: var(--text-primary);
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: color var(--transition-fast);
     }
 
     .top-row ::deep a:hover, .top-row ::deep .btn-link:hover {
-        text-decoration: underline;
+        color: var(--accent);
+        text-decoration: none;
     }
 
     .top-row ::deep a:first-child {
@@ -36,9 +60,20 @@ main {
         text-overflow: ellipsis;
     }
 
+    .top-row ::deep span {
+        color: var(--text-primary);
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+/* ==============================================
+   MOBILE
+   ============================================== */
 @media (max-width: 640.98px) {
     .top-row {
         justify-content: space-between;
+        background: #ffffff;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     }
 
     .top-row ::deep a, .top-row ::deep .btn-link {
@@ -46,22 +81,28 @@ main {
     }
 }
 
+/* ==============================================
+   DESKTOP
+   ============================================== */
 @media (min-width: 641px) {
     .page {
         flex-direction: row;
     }
 
     .sidebar {
-        width: 250px;
         height: 100vh;
         position: sticky;
         top: 0;
+        flex-shrink: 0;
     }
 
     .top-row {
         position: sticky;
         top: 0;
         z-index: 1;
+        background: var(--bg-body);
+        border-bottom: 1px solid var(--border-light);
+        box-shadow: none;
     }
 
     .top-row.auth ::deep a:first-child {
@@ -76,6 +117,9 @@ main {
     }
 }
 
+/* ==============================================
+   BLAZOR ERROR UI
+   ============================================== */
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;
@@ -88,6 +132,7 @@ main {
     position: fixed;
     width: 100%;
     z-index: 1000;
+    border-top: 3px solid var(--accent);
 }
 
     #blazor-error-ui .dismiss {

@@ -1,55 +1,121 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Mechsystem</a>
+@rendermode InteractiveServer
+
+@* Controle da largura da sidebar — usa <style> porque NavMenu não tem acesso direto
+   ao elemento .sidebar do MainLayout. A transição funciona porque .sidebar 
+   já possui 'transition: width' definida no MainLayout.razor.css *@
+@if (collapseSidebar)
+{
+    <style>
+        @@media (min-width: 641px) {
+            .sidebar { width: 4.5rem !important; }
+        }
+    </style>
+}
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid align-items-center">
+        @if (!collapseSidebar)
+        {
+            <a class="navbar-brand" href="">Mechsystem</a>
+        }
+        <button title="Alternar Menu" class="btn btn-link text-white @(collapseSidebar ? "mx-auto" : "ms-auto") p-0 sidebar-toggle" @onclick="ToggleSidebar">
+            <i class="bi @(collapseSidebar ? "bi-arrow-bar-right" : "bi-arrow-bar-left")" style="font-size: 1.3rem; filter: none; color: var(--accent);"></i>
+        </button>
     </div>
 </div>
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
+<div class="nav-scrollable" style="@(collapseSidebar ? "overflow-x: hidden;" : "")">
+    <nav class="nav flex-column @(collapseSidebar ? "nav-collapsed" : "")">
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All" title="Home">
+                <i class="bi bi-house-door-fill" aria-hidden="true"></i>
+                @if (!collapseSidebar) { <span class="nav-text">Home</span> }
             </NavLink>
         </div>
 
+        <div class="nav-divider"></div>
+        @if (!collapseSidebar) { <div class="nav-section-title px-3">Cadastros</div> }
+
+        <!-- Menu Clientes -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
+            <div class="nav-link" @onclick="ToggleClientes" style="cursor: pointer;" title="Clientes">
+                <i class="bi bi-people-fill" aria-hidden="true"></i>
+                @if (!collapseSidebar)
+                {
+                    <span class="nav-text">Clientes</span>
+                    <i class="bi bi-chevron-@(expandClientes ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
+                }
+            </div>
+            @if (expandClientes && !collapseSidebar)
+            {
+                <div class="nav-submenu">
+                    <NavLink class="nav-link" href="/clientes/cadastro">
+                        <i class="bi bi-person-plus-fill" aria-hidden="true"></i>
+                        <span class="nav-text">Novo Cliente</span>
+                    </NavLink>
+                    <NavLink class="nav-link" href="/clientes" Match="NavLinkMatch.All">
+                        <i class="bi bi-list-ul" aria-hidden="true"></i>
+                        <span class="nav-text">Listar Clientes</span>
+                    </NavLink>
+                </div>
+            }
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
+        <div class="nav-divider"></div>
 
+        <!-- Menu Veículos -->
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/clientes/cadastro">
-                <span class="bi bi-person-plus-fill-nav-menu" aria-hidden="true"></span> Novo Cliente
-            </NavLink>
+            <div class="nav-link" @onclick="ToggleVeiculos" style="cursor: pointer;" title="Veículos">
+                <i class="bi bi-car-front-fill" aria-hidden="true"></i>
+                @if (!collapseSidebar)
+                {
+                    <span class="nav-text">Veículos</span>
+                    <i class="bi bi-chevron-@(expandVeiculos ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
+                }
+            </div>
+            @if (expandVeiculos && !collapseSidebar)
+            {
+                <div class="nav-submenu">
+                    <NavLink class="nav-link" href="/veiculos/cadastro">
+                        <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
+                        <span class="nav-text">Novo Veículo</span>
+                    </NavLink>
+                    <NavLink class="nav-link" href="/veiculos" Match="NavLinkMatch.All">
+                        <i class="bi bi-list-ul" aria-hidden="true"></i>
+                        <span class="nav-text">Listar Veículos</span>
+                    </NavLink>
+                </div>
+            }
         </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/clientes">
-                <span class="bi bi-people-fill-nav-menu" aria-hidden="true"></span> Clientes
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/veiculos/cadastro">
-                <span class="bi bi-car-front-fill-nav-menu" aria-hidden="true"></span> Novo Veículo
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/veiculos">
-                <span class="bi bi-car-front-fill-nav-menu" aria-hidden="true"></span> Veículos
-            </NavLink>
-        </div>
-
     </nav>
 </div>
 
+@code {
+    private bool collapseSidebar = false;
+    private bool expandClientes = false;
+    private bool expandVeiculos = false;
+
+    private void ToggleSidebar()
+    {
+        collapseSidebar = !collapseSidebar;
+        if (collapseSidebar)
+        {
+            expandClientes = false;
+            expandVeiculos = false;
+        }
+    }
+
+    private void ToggleClientes()
+    {
+        if (collapseSidebar) collapseSidebar = false;
+        expandClientes = !expandClientes;
+    }
+
+    private void ToggleVeiculos()
+    {
+        if (collapseSidebar) collapseSidebar = false;
+        expandVeiculos = !expandVeiculos;
+    }
+}
