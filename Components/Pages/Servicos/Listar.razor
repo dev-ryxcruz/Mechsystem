@@ -1,0 +1,194 @@
+@page "/servicos"
+@using mechsystem.Interfaces
+@using mechsystem.Models
+@inject IServicoRepository ServicoRepository
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Catálogo de Serviços — Mechsystem</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Catálogo de Serviços</h2>
+        <p class="text-muted mb-0">Gerencie os serviços oferecidos e seus valores padrão</p>
+    </div>
+    <a href="/servicos/cadastro" class="btn btn-accent shadow-sm">
+        <i class="bi bi-plus-circle me-2"></i>Novo Serviço
+    </a>
+</div>
+
+<div class="card shadow-sm dash-card">
+    <div class="card-header d-flex justify-content-between align-items-center bg-white p-3 border-bottom">
+        <div class="search-box">
+            <i class="bi bi-search text-muted"></i>
+            <input type="text" class="form-control form-control-sm border-0 shadow-none" 
+                   placeholder="Buscar serviço..." @bind="termoBusca" @bind:event="oninput" />
+        </div>
+    </div>
+
+    <div class="card-body p-0">
+        @if (servicos == null)
+        {
+            <div class="text-center p-5">
+                <div class="spinner-border text-accent" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+            </div>
+        }
+        else if (!servicosFiltrados.Any())
+        {
+            <div class="text-center p-5 text-muted">
+                <i class="bi bi-tools fs-1 mb-3"></i>
+                <h5>Nenhum serviço encontrado.</h5>
+                <p>Nenhum serviço corresponde à sua busca ou o catálogo está vazio.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Cód</th>
+                            <th>Nome do Serviço</th>
+                            <th>Tempo Est.</th>
+                            <th class="text-end">Valor Padrão</th>
+                            <th class="text-center" style="width: 120px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var servico in servicosFiltrados)
+                        {
+                            <tr>
+                                <td class="fw-bold text-muted">#@servico.Id.ToString("D3")</td>
+                                <td>
+                                    <div class="fw-bold text-dark">@servico.Nome</div>
+                                    @if (!string.IsNullOrEmpty(servico.Descricao))
+                                    {
+                                        <small class="text-muted text-truncate d-inline-block" style="max-width: 300px;">
+                                            @servico.Descricao
+                                        </small>
+                                    }
+                                </td>
+                                <td>
+                                    @if (servico.TempoEstimadoMinutos.HasValue)
+                                    {
+                                        <span class="badge bg-light text-dark border">
+                                            <i class="bi bi-clock me-1"></i> @servico.TempoEstimadoMinutos min
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted"><small>N/A</small></span>
+                                    }
+                                </td>
+                                <td class="text-end fw-bold text-success">
+                                    @servico.ValorPadrao.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/servicos/editar/@servico.Id" class="btn btn-outline-primary" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button class="btn btn-outline-danger" @onclick="() => ConfirmarExclusao(servico.Id)" title="Excluir">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@* Modal de Confirmação de Exclusão Simples *@
+@if (mostrarModalExclusao)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-bottom-0 bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CancelarExclusao"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="mb-0 fs-5">Atenção!</p>
+                    <p class="text-muted">Tem certeza que deseja excluir este serviço? Esta ação não pode ser desfeita.</p>
+                </div>
+                <div class="modal-footer border-top-0 bg-light">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelarExclusao">Cancelar</button>
+                    <button type="button" class="btn btn-danger" @onclick="ExcluirServico">Excluir Serviço</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    .search-box {
+        display: flex;
+        align-items: center;
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 0.25rem 0.75rem;
+        width: 300px;
+        border: 1px solid #e9ecef;
+    }
+    .search-box input {
+        background: transparent;
+    }
+    .search-box input:focus {
+        background: transparent;
+    }
+</style>
+
+@code {
+    private IEnumerable<Servico>? servicos;
+    private string termoBusca = "";
+    
+    private bool mostrarModalExclusao = false;
+    private int servicoIdParaExcluir = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarServicos();
+    }
+
+    private async Task CarregarServicos()
+    {
+        servicos = await ServicoRepository.GetAllAsync();
+    }
+
+    private IEnumerable<Servico> servicosFiltrados =>
+        string.IsNullOrWhiteSpace(termoBusca)
+            ? servicos ?? Array.Empty<Servico>()
+            : servicos?.Where(s => 
+                s.Nome.Contains(termoBusca, StringComparison.OrdinalIgnoreCase) || 
+                (s.Descricao != null && s.Descricao.Contains(termoBusca, StringComparison.OrdinalIgnoreCase))) 
+              ?? Array.Empty<Servico>();
+
+    private void ConfirmarExclusao(int id)
+    {
+        servicoIdParaExcluir = id;
+        mostrarModalExclusao = true;
+    }
+
+    private void CancelarExclusao()
+    {
+        mostrarModalExclusao = false;
+        servicoIdParaExcluir = 0;
+    }
+
+    private async Task ExcluirServico()
+    {
+        if (servicoIdParaExcluir > 0)
+        {
+            await ServicoRepository.DeleteAsync(servicoIdParaExcluir);
+            await CarregarServicos();
+            CancelarExclusao();
+        }
+    }
+}

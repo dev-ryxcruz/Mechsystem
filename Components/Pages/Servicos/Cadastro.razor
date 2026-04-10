@@ -1,0 +1,96 @@
+@page "/servicos/cadastro"
+@using mechsystem.Interfaces
+@using mechsystem.Models
+@inject IServicoRepository ServicoRepository
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Novo Serviço — Mechsystem</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Novo Serviço</h2>
+        <p class="text-muted mb-0">Adicione um novo serviço ao catálogo da oficina</p>
+    </div>
+    <a href="/servicos" class="btn btn-outline-secondary shadow-sm">
+        <i class="bi bi-arrow-left me-2"></i>Voltar
+    </a>
+</div>
+
+<div class="card shadow-sm dash-card">
+    <div class="card-body p-4">
+        <EditForm Model="servico" OnValidSubmit="SalvarServico">
+            <DataAnnotationsValidator />
+            
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger shadow-sm border-0 border-start border-danger border-4">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+                </div>
+            }
+
+            <div class="row g-4">
+                <div class="col-md-8">
+                    <div class="form-group mb-3">
+                        <label for="nome" class="form-label fw-bold">Nome do Serviço <span class="text-danger">*</span></label>
+                        <InputText id="nome" class="form-control" @bind-Value="servico.Nome" placeholder="Ex: Troca de Óleo Motor" />
+                        <ValidationMessage For="() => servico.Nome" class="text-danger mt-1 small" />
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <div class="form-group mb-3">
+                        <label for="valorPadrao" class="form-label fw-bold">Valor (R$) <span class="text-danger">*</span></label>
+                        <InputNumber id="valorPadrao" class="form-control" @bind-Value="servico.ValorPadrao" step="0.01" />
+                        <ValidationMessage For="() => servico.ValorPadrao" class="text-danger mt-1 small" />
+                    </div>
+                </div>
+
+                <div class="col-md-2">
+                    <div class="form-group mb-3">
+                        <label for="tempoEstimado" class="form-label fw-bold text-truncate" title="Tempo Estimado (Minutos)">Tempo Est. (Min)</label>
+                        <InputNumber id="tempoEstimado" class="form-control" @bind-Value="servico.TempoEstimadoMinutos" placeholder="Ex: 60" />
+                        <ValidationMessage For="() => servico.TempoEstimadoMinutos" class="text-danger mt-1 small" />
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div class="form-group mb-4">
+                        <label for="descricao" class="form-label fw-bold">Inclusos no Serviço / Descrição</label>
+                        <InputTextArea id="descricao" class="form-control" @bind-Value="servico.Descricao" rows="4" 
+                                     placeholder="Descreva o que o serviço inclui, exceções ou notas internas..." />
+                        <ValidationMessage For="() => servico.Descricao" class="text-danger mt-1 small" />
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4 text-muted" />
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="/servicos" class="btn btn-light px-4 border">Cancelar</a>
+                <button type="submit" class="btn btn-accent px-4 shadow-sm">
+                    <i class="bi bi-check2-circle me-1"></i> Salvar Serviço
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private Servico servico = new Servico();
+    private string errorMessage = "";
+
+    private async Task SalvarServico()
+    {
+        try
+        {
+            errorMessage = "";
+            await ServicoRepository.AddAsync(servico);
+            NavigationManager.NavigateTo("/servicos");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Erro ao salvar o serviço: {ex.Message}";
+        }
+    }
+}

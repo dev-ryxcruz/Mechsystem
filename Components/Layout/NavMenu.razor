@@ -92,6 +92,33 @@
 
         <div class="nav-divider"></div>
 
+        <!-- Menu Serviços -->
+        <div class="nav-item px-3">
+            <div class="nav-link" @onclick="ToggleServicos" style="cursor: pointer;" title="Serviços">
+                <i class="bi bi-tools" aria-hidden="true"></i>
+                @if (!collapseSidebar)
+                {
+                    <span class="nav-text">Serviços</span>
+                    <i class="bi bi-chevron-@(expandServicos ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
+                }
+            </div>
+            @if (expandServicos && !collapseSidebar)
+            {
+                <div class="nav-submenu">
+                    <NavLink class="nav-link" href="/servicos/cadastro">
+                        <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
+                        <span class="nav-text">Novo Serviço</span>
+                    </NavLink>
+                    <NavLink class="nav-link" href="/servicos" Match="NavLinkMatch.All">
+                        <i class="bi bi-list-ul" aria-hidden="true"></i>
+                        <span class="nav-text">Listar Serviços</span>
+                    </NavLink>
+                </div>
+            }
+        </div>
+
+        <div class="nav-divider"></div>
+
         <!-- Menu OS -->
         <div class="nav-item px-3">
             <div class="nav-link" @onclick="ToggleOS" style="cursor: pointer;" title="Ordens de Serviço">
@@ -123,6 +150,7 @@
     private bool collapseSidebar = false;
     private bool expandClientes = false;
     private bool expandVeiculos = false;
+    private bool expandServicos = false;
     private bool expandOS = false;
 
     private void ToggleSidebar()
@@ -132,6 +160,7 @@
         {
             expandClientes = false;
             expandVeiculos = false;
+            expandServicos = false;
             expandOS = false;
         }
     }
@@ -146,6 +175,12 @@
     {
         if (collapseSidebar) collapseSidebar = false;
         expandVeiculos = !expandVeiculos;
+    }
+
+    private void ToggleServicos()
+    {
+        if (collapseSidebar) collapseSidebar = false;
+        expandServicos = !expandServicos;
     }
 
     private void ToggleOS()

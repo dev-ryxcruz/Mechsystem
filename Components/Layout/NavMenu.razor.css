@@ -29,11 +29,14 @@
 .sidebar-toggle {
     border: none !important;
     box-shadow: none !important;
+    text-decoration: none !important;
     transition: transform var(--transition-fast);
 }
 
-.sidebar-toggle:hover {
+.sidebar-toggle:hover,
+.sidebar-toggle:focus {
     transform: scale(1.15);
+    text-decoration: none !important;
 }
 
 /* ==============================================
