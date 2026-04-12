@@ -8,59 +8,74 @@
 @inject IClienteRepository ClienteRepository
 @inject NavigationManager NavigationManager
 
-<div class="container mt-5">
-    <div class="card shadow-sm">
-        <div class="card-header bg-primary text-white">
-            <h4 class="mb-0">Registar Novo Cliente</h4>
-        </div>
-        <div class="card-body">
-            
-            @* O EditForm liga o HTML ao nosso objeto C# e ativa as validações *@
-            <EditForm Model="@cliente" OnValidSubmit="GuardarCliente">
-                <DataAnnotationsValidator />
+<PageTitle>Novo Cliente — Mechsystem</PageTitle>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Nome Completo</label>
-                        <InputText @bind-Value="cliente.Nome" class="form-control" placeholder="Nome" />
-                        <ValidationMessage For="@(() => cliente.Nome)" class="text-danger" />
-                    </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold mb-1">Novo Cliente</h2>
+        <p class="text-muted mb-0">Cadastre um novo cliente no sistema</p>
+    </div>
+    <a href="/clientes" class="btn btn-outline-secondary shadow-sm">
+        <i class="bi bi-arrow-left me-2"></i>Voltar
+    </a>
+</div>
 
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">CPF</label>
-                        <InputText @bind-Value="cliente.Cpf" class="form-control" placeholder="Apenas números" />
-                        <ValidationMessage For="@(() => cliente.Cpf)" class="text-danger" />
+<div class="card shadow-sm dash-card">
+    <div class="card-body p-4">
+        
+        @* O EditForm liga o HTML ao nosso objeto C# e ativa as validações *@
+        <EditForm Model="@cliente" OnValidSubmit="GuardarCliente">
+            <DataAnnotationsValidator />
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label class="form-label fw-bold">Nome Completo <span class="text-danger">*</span></label>
+                        <InputText @bind-Value="cliente.Nome" class="form-control" placeholder="Ex: João da Silva" />
+                        <ValidationMessage For="@(() => cliente.Nome)" class="text-danger mt-1 small" />
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">E-mail</label>
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label class="form-label fw-bold">CPF <span class="text-danger">*</span></label>
+                        <InputText @bind-Value="cliente.Cpf" class="form-control" placeholder="Apenas números" />
+                        <ValidationMessage For="@(() => cliente.Cpf)" class="text-danger mt-1 small" />
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label class="form-label fw-bold">E-mail</label>
                         <InputText @bind-Value="cliente.Email" class="form-control" placeholder="joao@email.com" />
                     </div>
+                </div>
 
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">Telefone</label>
+                <div class="col-md-6">
+                    <div class="form-group mb-3">
+                        <label class="form-label fw-bold">Telefone</label>
                         <InputText @bind-Value="cliente.Telefone" class="form-control" placeholder="(00) 00000-0000" />
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Endereço</label>
-                    <InputText @bind-Value="cliente.Endereco" class="form-control" placeholder="Rua, Número, Bairro" />
+                <div class="col-md-12">
+                    <div class="form-group mb-3">
+                        <label class="form-label fw-bold">Endereço</label>
+                        <InputText @bind-Value="cliente.Endereco" class="form-control" placeholder="Rua, Número, Bairro, Cidade" />
+                    </div>
                 </div>
+            </div>
 
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-success">
-                        <i class="bi bi-save"></i> Guardar Cliente
-                    </button>
-                    <button type="button" class="btn btn-secondary" @onclick="Cancelar">
-                        Cancelar
-                    </button>
-                </div>
-            </EditForm>
+            <hr class="my-4 text-muted" />
 
-        </div>
+            <div class="d-flex justify-content-end gap-2">
+                <a href="/clientes" class="btn btn-light px-4 border">Cancelar</a>
+                <button type="submit" class="btn btn-success px-4 shadow-sm">
+                    <i class="bi bi-save me-1"></i> Guardar Cliente
+                </button>
+            </div>
+        </EditForm>
+
     </div>
 </div>
 
@@ -73,10 +88,5 @@
     {
         await ClienteRepository.Salvar(cliente); // Vai à base de dados e guarda
         NavigationManager.NavigateTo("/clientes");       // Volta para a página inicial
-    }
-
-    private void Cancelar()
-    {
-        NavigationManager.NavigateTo("/");
     }
 }

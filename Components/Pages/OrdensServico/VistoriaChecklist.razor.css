@@ -1,0 +1,191 @@
+/* Styling for Vistoria */
+.fuel-selector {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.fuel-btn {
+    flex: 1;
+    min-width: 60px;
+    background: transparent;
+    border: 2px solid #444;
+    border-radius: 8px;
+    padding: 10px;
+    transition: all 0.2s;
+    color: #333;
+    font-weight: 600;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.fuel-btn:hover {
+    background: rgba(0,0,0,0.05);
+}
+.fuel-btn.active {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+.fuel-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 5px;
+    font-size: 1.5rem;
+}
+.fuel-label {
+    font-size: 0.75rem;
+}
+
+.fuel-bar {
+    width: 6px;
+    border-radius: 2px;
+    transition: all 0.2s;
+}
+.fuel-bar-red { background-color: #dc3545; }
+.fuel-bar-green { background-color: #198754; }
+.fuel-bar-blue { background-color: #0d6efd; }
+.fuel-bar-empty { background-color: #555; }
+
+/* Inverter contraste quando selecionado (botão azul) */
+.fuel-btn.active .fuel-bar-blue,
+.fuel-btn.active .fuel-bar-red,
+.fuel-btn.active .fuel-bar-green {
+    background-color: white !important;
+}
+.fuel-btn.active .fuel-bar-empty {
+    background-color: rgba(255,255,255, 0.3) !important;
+}
+
+.avarias-list-container {
+    max-height: 150px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+.avarias-list-container::-webkit-scrollbar {
+    width: 6px;
+}
+.avarias-list-container::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.1);
+    border-radius: 4px;
+}
+.avarias-list-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+.avarias-list-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Custom Switch for Checklist */
+::deep .custom-switch .form-check-input {
+    width: 3em;
+    height: 1.5em;
+    background-color: #444;
+    border-color: #555;
+    cursor: pointer;
+}
+::deep .custom-switch .form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+::deep .custom-switch .form-check-label {
+    padding-top: 0.25rem;
+    padding-left: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* Car Map */
+.car-map-container {
+    position: relative;
+    width: 280px;
+    height: 400px;
+    background: repeating-linear-gradient(45deg, #1f2a35, #1f2a35 10px, #1a242d 10px, #1a242d 20px);
+    border: 1px solid #444;
+    border-radius: 12px;
+    padding: 0;
+    cursor: crosshair;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+    overflow: hidden;
+    margin: 0 auto;
+}
+.car-svg {
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 10px 10px rgba(0,0,0,0.5));
+    pointer-events: none;
+}
+
+.click-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+    cursor: crosshair;
+}
+
+.avaria-marker {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+}
+
+.marker-dot {
+    width: 14px;
+    height: 14px;
+    background-color: #dc3545;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 5px rgba(220, 53, 69, 0.8);
+}
+
+.pulse {
+    animation: pulse-animation 2s infinite;
+}
+
+@keyframes pulse-animation {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+.marker-tooltip {
+    position: absolute;
+    top: -30px;
+    left: 15px;
+    background: #dc3545;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.avaria-marker:hover .marker-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+.marker-dialog {
+    background: rgba(30,30,30,0.95);
+    backdrop-filter: blur(5px);
+    animation: fadeInDown 0.3s;
+}
+
+@keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

@@ -1,0 +1,468 @@
+@page "/ordensdeservico/{OrdemServicoId:int}/vistoria"
+@rendermode InteractiveServer
+@using mechsystem.Models
+@using mechsystem.Data
+@using Microsoft.EntityFrameworkCore
+@using System.Text.Json
+@inject AppDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Checklist de Vistoria</PageTitle>
+
+<div class="vistoria-header">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h2>Vistoria de Entrada <span class="badge bg-primary">OS #@OrdemServicoId</span></h2>
+            <p class="text-secondary mb-0">Registre as condições do veículo antes de iniciar o serviço.</p>
+        </div>
+        <a href="/ordens-servico/@OrdemServicoId" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar para O.S.
+        </a>
+    </div>
+</div>
+
+@if (IsLoading)
+{
+    <div class="d-flex justify-content-center mt-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+    </div>
+}
+else if (OrdemServico == null)
+{
+    <div class="alert alert-danger">Ordem de Serviço não encontrada.</div>
+}
+else
+{
+    @if (ShowSuccessMessage)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill me-2"></i> Vistoria salva com sucesso!
+            <button type="button" class="btn-close" @onclick="() => ShowSuccessMessage = false" aria-label="Close"></button>
+        </div>
+    }
+
+    <EditForm Model="Vistoria" OnValidSubmit="SalvarVistoria" class="vistoria-form fade-in">
+        <DataAnnotationsValidator />
+
+        <div class="row g-4">
+            <!-- Coluna da Esquerda: Dados Básicos e Checklist -->
+            <div class="col-lg-5">
+                
+                <!-- Card Nível de Combustível -->
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <i class="bi bi-fuel-pump me-2"></i> Nível de Combustível
+                    </div>
+                    <div class="card-body bg-dark-subtle">
+                        <div class="fuel-selector">
+                            @foreach (var nivel in Enum.GetValues<NivelCombustivel>())
+                            {
+                                <button type="button" 
+                                        class="fuel-btn @(Vistoria.NivelCombustivel == nivel ? "active" : "")"
+                                        @onclick="() => SetNivelCombustivel(nivel)">
+                                    <div class="fuel-icon">
+                                        @GetFuelIcon(nivel)
+                                    </div>
+                                    <span class="fuel-label">@nivel.ToString().Replace("TresQuartos", "3/4").Replace("UmQuarto", "1/4")</span>
+                                </button>
+                            }
+                        </div>
+                        <ValidationMessage For="@(() => Vistoria.NivelCombustivel)" class="text-danger mt-2" />
+                    </div>
+                </div>
+
+                <!-- Card Quilometragem e Observações -->
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <i class="bi bi-speedometer2 me-2"></i> Dados de Entrada
+                    </div>
+                    <div class="card-body bg-dark-subtle">
+                        <div class="mb-3">
+                            <label class="form-label text-dark fw-bold">Quilometragem Exata (Entrada)</label>
+                            <div class="input-group">
+                                <InputNumber @bind-Value="Vistoria.QuilometragemEntrada" class="form-control bg-dark text-light border-secondary" placeholder="Ex: 54000" />
+                                <span class="input-group-text bg-secondary text-white border-secondary">KM</span>
+                            </div>
+                            <ValidationMessage For="@(() => Vistoria.QuilometragemEntrada)" class="text-danger" />
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-dark fw-bold">Observações Adicionais</label>
+                            <InputTextArea @bind-Value="Vistoria.Observacoes" class="form-control bg-dark text-light border-secondary" rows="3" placeholder="Algo que não está no mapa de avarias..."></InputTextArea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card Checklist Rápido -->
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <i class="bi bi-check2-square me-2"></i> Itens Verificados
+                    </div>
+                    <div class="card-body bg-dark-subtle">
+                        <div class="row">
+                            <div class="col-6 mb-2">
+                                <div class="form-check form-switch custom-switch">
+                                    <InputCheckbox @bind-Value="Vistoria.TemEstepe" class="form-check-input" id="chkEstepe" />
+                                    <label class="form-check-label text-dark fw-bold" for="chkEstepe">Estepe</label>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <div class="form-check form-switch custom-switch">
+                                    <InputCheckbox @bind-Value="Vistoria.TemMacaco" class="form-check-input" id="chkMacaco" />
+                                    <label class="form-check-label text-dark fw-bold" for="chkMacaco">Macaco</label>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <div class="form-check form-switch custom-switch">
+                                    <InputCheckbox @bind-Value="Vistoria.TemChaveRoda" class="form-check-input" id="chkChaveRoda" />
+                                    <label class="form-check-label text-dark fw-bold" for="chkChaveRoda">Chave de Roda</label>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <div class="form-check form-switch custom-switch">
+                                    <InputCheckbox @bind-Value="Vistoria.TemTriangulo" class="form-check-input" id="chkTriangulo" />
+                                    <label class="form-check-label text-dark fw-bold" for="chkTriangulo">Triângulo</label>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <div class="form-check form-switch custom-switch">
+                                    <InputCheckbox @bind-Value="Vistoria.TemRadio" class="form-check-input" id="chkRadio" />
+                                    <label class="form-check-label text-dark fw-bold" for="chkRadio">Rádio/Multimídia</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Coluna da Direita: Mapa do Carro -->
+            <div class="col-lg-7">
+                <div class="card h-100">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-car-front me-2"></i> Mapa de Avarias</span>
+                        <span class="badge bg-secondary">@Avarias.Count marcadores</span>
+                    </div>
+                    <div class="card-body bg-dark-subtle d-flex flex-column">
+                        <div class="alert alert-info py-2 small mb-3">
+                            <i class="bi bi-info-circle me-1"></i> Clique sobre a imagem do veículo para registrar a avaria. O ponto será gravado lá.
+                        </div>
+
+                        <div class="car-map-container mx-auto" id="carMapContainer">
+                            <!-- Overlay invisível que isola o click perfeitamente -->
+                            <div class="click-overlay" onclick="handleMapClick(event)"></div>
+
+                            <!-- Imagem SVG de um Carro Top-Down -->
+                            <svg class="car-svg" viewBox="0 0 200 400" width="100%" height="400">
+                                <!-- Chassi base -->
+                                <rect x="40" y="20" width="120" height="360" rx="30" fill="#2c3e50" stroke="#1a252f" stroke-width="3" />
+                                <!-- Para-brisas frontal -->
+                                <path d="M 50 100 Q 100 80 150 100 L 140 140 L 60 140 Z" fill="#34495e" />
+                                <!-- Para-brisas traseiro -->
+                                <path d="M 55 290 Q 100 310 145 290 L 135 250 L 65 250 Z" fill="#34495e" />
+                                <!-- Teto -->
+                                <rect x="60" y="140" width="80" height="110" rx="10" fill="#3b5368" />
+                                <!-- Rodas Esquerda -->
+                                <rect x="30" y="60" width="15" height="40" rx="4" fill="#111" />
+                                <rect x="30" y="280" width="15" height="40" rx="4" fill="#111" />
+                                <!-- Rodas Direita -->
+                                <rect x="155" y="60" width="15" height="40" rx="4" fill="#111" />
+                                <rect x="155" y="280" width="15" height="40" rx="4" fill="#111" />
+                                <!-- Farois Frontais -->
+                                <path d="M 50 25 Q 60 20 70 25 L 65 40 L 55 40 Z" fill="#f1c40f" />
+                                <path d="M 150 25 Q 140 20 130 25 L 135 40 L 145 40 Z" fill="#f1c40f" />
+                                <!-- Lanternas Traseiras -->
+                                <rect x="50" y="370" width="25" height="8" rx="2" fill="#e74c3c" />
+                                <rect x="125" y="370" width="25" height="8" rx="2" fill="#e74c3c" />
+                            </svg>
+
+                            <!-- Marcadores -->
+                            @for(int i = 0; i < Avarias.Count; i++)
+                            {
+                                var avaria = Avarias[i];
+                                var index = i;
+                                <div class="avaria-marker" 
+                                     style="left: @(avaria.X.ToString(System.Globalization.CultureInfo.InvariantCulture))%; top: @(avaria.Y.ToString(System.Globalization.CultureInfo.InvariantCulture))%;" 
+                                     title="@avaria.Descricao"
+                                     @onclick:stopPropagation="true">
+                                    <div class="marker-dot pulse"></div>
+                                    <div class="marker-tooltip">
+                                        @avaria.Descricao
+                                        <button type="button" class="btn btn-sm btn-danger p-0 px-1 ms-2" @onclick:stopPropagation="true" @onclick="() => RemoverAvaria(index)">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Add marker dialog -->
+                        @if (IsAddingMarker)
+                        {
+                            <div class="marker-dialog card mt-3 border-danger">
+                                <div class="card-body p-2">
+                                    <label class="form-label text-white small mb-1">Descreva a avaria nestas coordenadas:</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" @bind="NewMarkerDescription" @bind:event="oninput" @onkeyup="HandleDescriptionKeyUp" placeholder="Ex: Risco profundo" id="txtNewMarker" />
+                                        <button class="btn btn-sm btn-danger" type="button" @onclick="ConfirmarMarcador">Gravar</button>
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="CancelarMarcador">X</button>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        <div class="mt-auto pt-3">
+                            <h6 class="text-dark fw-bold border-bottom border-secondary pb-1">Lista de Avarias</h6>
+                            @if(Avarias.Count == 0)
+                            {
+                                <p class="text-secondary small mb-0 fst-italic">Nenhuma avaria marcada no veículo.</p>
+                            }
+                            else
+                            {
+                                <div class="avarias-list-container">
+                                    <ul class="list-group list-group-flush small bg-transparent">
+                                        @for(int i = 0; i < Avarias.Count; i++)
+                                        {
+                                            var avaria = Avarias[i];
+                                            var idx = i;
+                                            <li class="list-group-item bg-transparent text-dark fw-bold border-secondary d-flex justify-content-between align-items-center px-0 py-1">
+                                                <span><i class="bi bi-exclamation-circle text-danger me-2"></i> @avaria.Descricao</span>
+                                                <button type="button" class="btn btn-link text-danger p-0" @onclick="() => RemoverAvaria(idx)"><i class="bi bi-trash"></i></button>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4 mb-5 border-primary shadow-lg">
+            <div class="card-body bg-dark text-end d-flex justify-content-between align-items-center">
+                <div class="text-start">
+                    <h5 class="text-primary mb-0">Status da Vistoria</h5>
+                    <p class="text-secondary small mb-0">
+                        @if (Vistoria.Id == 0) { <span>Nova vistoria a ser salva.</span> } 
+                        else { <span>Vistoria registrada em @Vistoria.DataVistoria.ToString("dd/MM/yyyy HH:mm")</span> }
+                    </p>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary px-4 me-2" @onclick="@(() => NavigationManager.NavigateTo($"/ordens-servico/{OrdemServicoId}"))">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-5 fw-bold">
+                        <i class="bi bi-save me-2"></i> Salvar Vistoria
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </EditForm>
+    
+    <script>
+        function handleMapClick(e) {
+            var container = document.getElementById('carMapContainer');
+            var rect = container.getBoundingClientRect();
+            
+            // Extract the offset from the container's physical size
+            var x = e.clientX - rect.left;
+            var y = e.clientY - rect.top;
+            
+            // Calculate strictly accurate percentages
+            var pX = (x / rect.width) * 100;
+            var pY = (y / rect.height) * 100;
+            
+            DotNet.invokeMethodAsync('mechsystem', 'RegisterVistoriaClick', pX, pY);
+        }
+    </script>
+}
+@code {
+    [Parameter]
+    public int OrdemServicoId { get; set; }
+
+    private Vistoria Vistoria { get; set; } = new();
+    private OrdemServico? OrdemServico { get; set; }
+    private bool IsLoading { get; set; } = true;
+    private bool ShowSuccessMessage { get; set; } = false;
+
+    // Avarias map
+    private List<AvariaMarker> Avarias { get; set; } = new();
+    
+    // Adding marker state
+    private bool IsAddingMarker { get; set; } = false;
+    private double TempX { get; set; }
+    private double TempY { get; set; }
+    private string NewMarkerDescription { get; set; } = "";
+
+    [JSInvokable]
+    public static void RegisterVistoriaClick(double x, double y)
+    {
+        OnMapClickedStatic?.Invoke(x, y);
+    }
+
+    private static Action<double, double>? OnMapClickedStatic;
+
+    protected override void OnInitialized()
+    {
+        OnMapClickedStatic = (x, y) => {
+            InvokeAsync(() => {
+                OnCarMapClickExact(x, y);
+            });
+        };
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        IsLoading = true;
+        
+        OrdemServico = await DbContext.OrdensServico
+            .Include(o => o.Veiculo)
+            .Include(o => o.Vistoria)
+            .FirstOrDefaultAsync(o => o.Id == OrdemServicoId);
+
+        if (OrdemServico != null)
+        {
+            if (OrdemServico.Vistoria != null)
+            {
+                Vistoria = OrdemServico.Vistoria;
+                
+                // Parse existing markers
+                if (!string.IsNullOrEmpty(Vistoria.AvariasJson))
+                {
+                    try
+                    {
+                        Avarias = JsonSerializer.Deserialize<List<AvariaMarker>>(Vistoria.AvariasJson) ?? new();
+                    }
+                    catch
+                    {
+                        Avarias = new();
+                    }
+                }
+            }
+            else
+            {
+                // New vistoria, but initialize with the vehicle's current mileage might be nice!
+                Vistoria = new Vistoria
+                {
+                    OrdemServicoId = OrdemServicoId,
+                    QuilometragemEntrada = OrdemServico.Veiculo?.Quilometragem ?? 0
+                };
+            }
+        }
+
+        IsLoading = false;
+    }
+
+    private void SetNivelCombustivel(NivelCombustivel nivel)
+    {
+        Vistoria.NivelCombustivel = nivel;
+    }
+
+    private RenderFragment GetFuelIcon(NivelCombustivel nivel) => @<div style="display: flex; justify-content: center; align-items: flex-end; height: 20px; gap: 2px;">
+        @{
+            int level = (int)nivel;
+            for (int i = 1; i <= 5; i++)
+            {
+                string height = (i * 4) + "px";
+                string colorClass = i <= level ? 
+                               (level == 1 ? "fuel-bar-red" : (level == 5 ? "fuel-bar-green" : "fuel-bar-blue"))
+                               : "fuel-bar-empty";
+                <div class="fuel-bar @colorClass" style="height: @height;"></div>
+            }
+        }
+    </div>;
+
+    private void OnCarMapClickExact(double pX, double pY)
+    {
+        if (IsAddingMarker) return;
+        
+        TempX = Math.Max(0, Math.Min(100, pX));
+        TempY = Math.Max(0, Math.Min(100, pY));
+        
+        NewMarkerDescription = "";
+        IsAddingMarker = true;
+        StateHasChanged();
+    }
+
+    private void ConfirmarMarcador()
+    {
+        if (string.IsNullOrWhiteSpace(NewMarkerDescription))
+        {
+            NewMarkerDescription = "Avaria geral"; // Default
+        }
+
+        Avarias.Add(new AvariaMarker
+        {
+            X = TempX,
+            Y = TempY,
+            Descricao = NewMarkerDescription
+        });
+
+        IsAddingMarker = false;
+        NewMarkerDescription = "";
+    }
+
+    private void CancelarMarcador()
+    {
+        IsAddingMarker = false;
+        NewMarkerDescription = "";
+    }
+
+    private void HandleDescriptionKeyUp(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            ConfirmarMarcador();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelarMarcador();
+        }
+    }
+
+    private void RemoverAvaria(int index)
+    {
+        if (index >= 0 && index < Avarias.Count)
+        {
+            Avarias.RemoveAt(index);
+        }
+    }
+
+    private async Task SalvarVistoria()
+    {
+        // Serialize Avarias
+        Vistoria.AvariasJson = JsonSerializer.Serialize(Avarias);
+
+        if (Vistoria.Id == 0)
+        {
+            DbContext.Vistorias.Add(Vistoria);
+        }
+        else
+        {
+            DbContext.Vistorias.Update(Vistoria);
+        }
+
+        // Se a KM for maior, atualizamos no veículo.
+        if (OrdemServico?.Veiculo != null && Vistoria.QuilometragemEntrada > OrdemServico.Veiculo.Quilometragem)
+        {
+            OrdemServico.Veiculo.Quilometragem = Vistoria.QuilometragemEntrada;
+            DbContext.Veiculos.Update(OrdemServico.Veiculo);
+        }
+
+        await DbContext.SaveChangesAsync();
+        ShowSuccessMessage = true;
+        
+        // Esconde a mensagem de sucesso depois de 3 segundos
+        _ = Task.Delay(3000).ContinueWith(_ => { ShowSuccessMessage = false; InvokeAsync(StateHasChanged); });
+    }
+
+    public class AvariaMarker
+    {
+        public double X { get; set; }
+        public double Y { get; set; }
+        public string Descricao { get; set; } = "";
+    }
+}

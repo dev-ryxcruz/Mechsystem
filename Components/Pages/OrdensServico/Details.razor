@@ -19,6 +19,10 @@ else
     <div class="d-print-none mb-4 d-flex justify-content-between align-items-center">
         <div>
             <a href="/ordens-servico" class="btn btn-outline-secondary me-2">Voltar</a>
+            <a href="/ordensdeservico/@os.Id/vistoria" class="btn btn-warning me-2 fw-bold text-dark">
+                <i class="bi bi-clipboard-check me-1"></i> 
+                @(os.Vistoria == null ? "Realizar Vistoria" : "Ver Checklist de Vistoria")
+            </a>
             <button class="btn btn-secondary" @onclick="PrintOS">
                 <i class="bi bi-printer me-1"></i> Imprimir OS
             </button>
@@ -240,6 +244,7 @@ else
     private async Task LoadData()
     {
         os = await DbContext.OrdensServico
+            .Include(o => o.Vistoria)
             .Include(o => o.Veiculo)
                 .ThenInclude(v => v!.Cliente)
             .FirstOrDefaultAsync(o => o.Id == Id);
