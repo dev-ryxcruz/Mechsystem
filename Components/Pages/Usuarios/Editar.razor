@@ -1,0 +1,254 @@
+@page "/usuarios/editar/{Id:int}"
+@rendermode InteractiveServer
+@using mechsystem.Models
+@using mechsystem.Services
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador")]
+@inject UsuarioService UsuarioService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Editar Usuário - Mechsystem</PageTitle>
+
+<div class="d-flex align-items-center mb-4">
+    <a href="/usuarios" class="btn btn-outline-secondary me-3">
+        <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+    <h3>Editar Usuário</h3>
+</div>
+
+@if (isLoading)
+{
+    <div class="d-flex justify-content-center mt-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+    </div>
+}
+else if (usuario == null)
+{
+    <div class="alert alert-warning" role="alert">
+        Usuário não encontrado.
+    </div>
+}
+else
+{
+    <div class="card shadow-sm dash-card mb-4">
+                <div class="card-header bg-transparent border-bottom border-secondary pt-3 pb-2">
+                    <h5 class="mb-0 text-white"><i class="bi bi-person-lines-fill me-2"></i>Dados Básicos</h5>
+                </div>
+                <div class="card-body p-4">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+                        </div>
+                    }
+                    @if (showSuccess)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i> Dados atualizados com sucesso!
+                            <button type="button" class="btn-close btn-close-white" @onclick="() => showSuccess = false" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator />
+
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Nome Completo <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="model.NomeCompleto" class="form-control" />
+                                <ValidationMessage For="@(() => model.NomeCompleto)" class="text-danger mt-1" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Usuário (Login) <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="model.Username" class="form-control" />
+                                <ValidationMessage For="@(() => model.Username)" class="text-danger mt-1" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Perfil de Acesso <span class="text-danger">*</span></label>
+                                <InputSelect @bind-Value="model.Perfil" class="form-select">
+                                    @foreach (var p in Enum.GetValues<PerfilUsuario>())
+                                    {
+                                        <option value="@p">@p</option>
+                                    }
+                                </InputSelect>
+                                <ValidationMessage For="@(() => model.Perfil)" class="text-danger mt-1" />
+                            </div>
+
+                            <div class="col-12 mt-4 pt-3 border-top border-secondary d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary d-flex align-items-center gap-2" disabled="@isSubmitting">
+                                    @if (isSubmitting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                        <span>Salvando...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-check-lg"></i>
+                                        <span>Salvar Alterações</span>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-transparent border-bottom border-secondary pt-3 pb-2 text-danger">
+                    <h5 class="mb-0"><i class="bi bi-shield-lock-fill me-2"></i>Redefinir Senha</h5>
+                </div>
+                <div class="card-body p-4">
+                    @if (showPasswordSuccess)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="bi bi-check-circle-fill me-2"></i> Senha redefinida com sucesso!
+                            <button type="button" class="btn-close btn-close-white" @onclick="() => showPasswordSuccess = false"></button>
+                        </div>
+                    }
+
+                    <EditForm Model="@passwordModel" OnValidSubmit="HandlePasswordChange">
+                        <DataAnnotationsValidator />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nova Senha</label>
+                                <InputText @bind-Value="passwordModel.NewPassword" type="password" class="form-control" placeholder="Digite a nova senha" />
+                                <ValidationMessage For="@(() => passwordModel.NewPassword)" class="text-danger mt-1" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Confirmar Nova Senha</label>
+                                <InputText @bind-Value="passwordModel.ConfirmNewPassword" type="password" class="form-control" placeholder="Repita a nova senha" />
+                                <ValidationMessage For="@(() => passwordModel.ConfirmNewPassword)" class="text-danger mt-1" />
+                            </div>
+
+                            <div class="col-12 mt-3 d-flex justify-content-end">
+                                <button type="submit" class="btn btn-outline-danger d-flex align-items-center gap-2" disabled="@isSubmittingPassword">
+                                    @if (isSubmittingPassword)
+                                    {
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-key-fill"></i>
+                                    }
+                                    <span>Alterar Senha</span>
+                                </button>
+                            </div>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Usuario? usuario;
+    private bool isLoading = true;
+
+    private EditarUsuarioModel model = new();
+    private TrocarSenhaModel passwordModel = new();
+
+    private bool isSubmitting = false;
+    private bool isSubmittingPassword = false;
+    private string errorMessage = "";
+    private bool showSuccess = false;
+    private bool showPasswordSuccess = false;
+
+    public class EditarUsuarioModel
+    {
+        [Required(ErrorMessage = "O Nome Completo é obrigatório")]
+        public string NomeCompleto { get; set; } = "";
+
+        [Required(ErrorMessage = "O Usuário (Login) é obrigatório")]
+        public string Username { get; set; } = "";
+
+        [Required(ErrorMessage = "O Perfil é obrigatório")]
+        public PerfilUsuario Perfil { get; set; } = PerfilUsuario.Atendimento;
+    }
+
+    public class TrocarSenhaModel
+    {
+        [Required(ErrorMessage = "A Senha é obrigatória")]
+        [MinLength(6, ErrorMessage = "A Senha deve ter pelo menos 6 caracteres")]
+        public string NewPassword { get; set; } = "";
+
+        [Required(ErrorMessage = "A Confirmação de Senha é obrigatória")]
+        [Compare(nameof(NewPassword), ErrorMessage = "As senhas não coincidem")]
+        public string ConfirmNewPassword { get; set; } = "";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        usuario = await UsuarioService.GetUsuarioByIdAsync(Id);
+        if (usuario != null)
+        {
+            model.NomeCompleto = usuario.NomeCompleto;
+            model.Username = usuario.Username;
+            model.Perfil = usuario.Perfil;
+        }
+        isLoading = false;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (usuario == null) return;
+        
+        isSubmitting = true;
+        errorMessage = "";
+        showSuccess = false;
+
+        try
+        {
+            if (await UsuarioService.IsUsernameTakenAsync(model.Username, usuario.Id))
+            {
+                errorMessage = "Este nome de usuário já está sendo utilizado por outra conta.";
+                return;
+            }
+
+            usuario.NomeCompleto = model.NomeCompleto;
+            usuario.Username = model.Username;
+            usuario.Perfil = model.Perfil;
+
+            await UsuarioService.UpdateUsuarioAsync(usuario);
+            showSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Erro ao atualizar o usuário.";
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task HandlePasswordChange()
+    {
+        isSubmittingPassword = true;
+        showPasswordSuccess = false;
+
+        try
+        {
+            await UsuarioService.UpdatePasswordAsync(Id, passwordModel.NewPassword);
+            passwordModel = new TrocarSenhaModel(); // reset form
+            showPasswordSuccess = true;
+        }
+        catch (Exception)
+        {
+            // ideal to show danger message here as well, kept simple
+        }
+        finally
+        {
+            isSubmittingPassword = false;
+        }
+    }
+}

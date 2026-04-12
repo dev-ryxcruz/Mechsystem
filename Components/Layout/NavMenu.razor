@@ -35,60 +35,64 @@
             </NavLink>
         </div>
 
-        <div class="nav-divider"></div>
-        @if (!collapseSidebar) { <div class="nav-section-title px-3">Cadastros</div> }
+        <AuthorizeView Roles="Administrador, Atendimento">
+            <Authorized>
+                <div class="nav-divider"></div>
+                @if (!collapseSidebar) { <div class="nav-section-title px-3">Cadastros</div> }
 
-        <!-- Menu Clientes -->
-        <div class="nav-item px-3">
-            <div class="nav-link" @onclick="ToggleClientes" style="cursor: pointer;" title="Clientes">
-                <i class="bi bi-people-fill" aria-hidden="true"></i>
-                @if (!collapseSidebar)
-                {
-                    <span class="nav-text">Clientes</span>
-                    <i class="bi bi-chevron-@(expandClientes ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
-                }
-            </div>
-            @if (expandClientes && !collapseSidebar)
-            {
-                <div class="nav-submenu">
-                    <NavLink class="nav-link" href="/clientes/cadastro">
-                        <i class="bi bi-person-plus-fill" aria-hidden="true"></i>
-                        <span class="nav-text">Novo Cliente</span>
-                    </NavLink>
-                    <NavLink class="nav-link" href="/clientes" Match="NavLinkMatch.All">
-                        <i class="bi bi-list-ul" aria-hidden="true"></i>
-                        <span class="nav-text">Listar Clientes</span>
-                    </NavLink>
+                <!-- Menu Clientes -->
+                <div class="nav-item px-3">
+                    <div class="nav-link" @onclick="ToggleClientes" style="cursor: pointer;" title="Clientes">
+                        <i class="bi bi-people-fill" aria-hidden="true"></i>
+                        @if (!collapseSidebar)
+                        {
+                            <span class="nav-text">Clientes</span>
+                            <i class="bi bi-chevron-@(expandClientes ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
+                        }
+                    </div>
+                    @if (expandClientes && !collapseSidebar)
+                    {
+                        <div class="nav-submenu">
+                            <NavLink class="nav-link" href="/clientes/cadastro">
+                                <i class="bi bi-person-plus-fill" aria-hidden="true"></i>
+                                <span class="nav-text">Novo Cliente</span>
+                            </NavLink>
+                            <NavLink class="nav-link" href="/clientes" Match="NavLinkMatch.All">
+                                <i class="bi bi-list-ul" aria-hidden="true"></i>
+                                <span class="nav-text">Listar Clientes</span>
+                            </NavLink>
+                        </div>
+                    }
                 </div>
-            }
-        </div>
 
-        <div class="nav-divider"></div>
+                <div class="nav-divider"></div>
 
-        <!-- Menu Veículos -->
-        <div class="nav-item px-3">
-            <div class="nav-link" @onclick="ToggleVeiculos" style="cursor: pointer;" title="Veículos">
-                <i class="bi bi-car-front-fill" aria-hidden="true"></i>
-                @if (!collapseSidebar)
-                {
-                    <span class="nav-text">Veículos</span>
-                    <i class="bi bi-chevron-@(expandVeiculos ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
-                }
-            </div>
-            @if (expandVeiculos && !collapseSidebar)
-            {
-                <div class="nav-submenu">
-                    <NavLink class="nav-link" href="/veiculos/cadastro">
-                        <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
-                        <span class="nav-text">Novo Veículo</span>
-                    </NavLink>
-                    <NavLink class="nav-link" href="/veiculos" Match="NavLinkMatch.All">
-                        <i class="bi bi-list-ul" aria-hidden="true"></i>
-                        <span class="nav-text">Listar Veículos</span>
-                    </NavLink>
+                <!-- Menu Veículos -->
+                <div class="nav-item px-3">
+                    <div class="nav-link" @onclick="ToggleVeiculos" style="cursor: pointer;" title="Veículos">
+                        <i class="bi bi-car-front-fill" aria-hidden="true"></i>
+                        @if (!collapseSidebar)
+                        {
+                            <span class="nav-text">Veículos</span>
+                            <i class="bi bi-chevron-@(expandVeiculos ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
+                        }
+                    </div>
+                    @if (expandVeiculos && !collapseSidebar)
+                    {
+                        <div class="nav-submenu">
+                            <NavLink class="nav-link" href="/veiculos/cadastro">
+                                <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
+                                <span class="nav-text">Novo Veículo</span>
+                            </NavLink>
+                            <NavLink class="nav-link" href="/veiculos" Match="NavLinkMatch.All">
+                                <i class="bi bi-list-ul" aria-hidden="true"></i>
+                                <span class="nav-text">Listar Veículos</span>
+                            </NavLink>
+                        </div>
+                    }
                 </div>
-            }
-        </div>
+            </Authorized>
+        </AuthorizeView>
 
         <div class="nav-divider"></div>
 
@@ -105,10 +109,12 @@
             @if (expandServicos && !collapseSidebar)
             {
                 <div class="nav-submenu">
-                    <NavLink class="nav-link" href="/servicos/cadastro">
-                        <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
-                        <span class="nav-text">Novo Serviço</span>
-                    </NavLink>
+                    <AuthorizeView Roles="Administrador, Atendimento">
+                        <NavLink class="nav-link" href="/servicos/cadastro">
+                            <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
+                            <span class="nav-text">Novo Serviço</span>
+                        </NavLink>
+                    </AuthorizeView>
                     <NavLink class="nav-link" href="/servicos" Match="NavLinkMatch.All">
                         <i class="bi bi-list-ul" aria-hidden="true"></i>
                         <span class="nav-text">Listar Serviços</span>
@@ -132,10 +138,12 @@
             @if (expandOS && !collapseSidebar)
             {
                 <div class="nav-submenu">
-                    <NavLink class="nav-link" href="/ordens-servico/nova">
-                        <i class="bi bi-file-earmark-plus-fill" aria-hidden="true"></i>
-                        <span class="nav-text">Nova O.S.</span>
-                    </NavLink>
+                    <AuthorizeView Roles="Administrador, Atendimento">
+                        <NavLink class="nav-link" href="/ordens-servico/nova">
+                            <i class="bi bi-file-earmark-plus-fill" aria-hidden="true"></i>
+                            <span class="nav-text">Nova O.S.</span>
+                        </NavLink>
+                    </AuthorizeView>
                     <NavLink class="nav-link" href="/ordens-servico" Match="NavLinkMatch.All">
                         <i class="bi bi-list-ul" aria-hidden="true"></i>
                         <span class="nav-text">Listar O.S.</span>
@@ -143,6 +151,39 @@
                 </div>
             }
         </div>
+
+        <AuthorizeView Roles="Administrador">
+            <Authorized>
+                <div class="nav-divider"></div>
+
+                @if (!collapseSidebar) { <div class="nav-section-title px-3">Administrativo</div> }
+                
+                <!-- Menu Usuários -->
+                <div class="nav-item px-3">
+                    <div class="nav-link" @onclick="ToggleUsuarios" style="cursor: pointer;" title="Usuários">
+                        <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
+                        @if (!collapseSidebar)
+                        {
+                            <span class="nav-text">Usuários</span>
+                            <i class="bi bi-chevron-@(expandUsuarios ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
+                        }
+                    </div>
+                    @if (expandUsuarios && !collapseSidebar)
+                    {
+                        <div class="nav-submenu">
+                            <NavLink class="nav-link" href="/usuarios/cadastro">
+                                <i class="bi bi-person-plus-fill" aria-hidden="true"></i>
+                                <span class="nav-text">Novo Usuário</span>
+                            </NavLink>
+                            <NavLink class="nav-link" href="/usuarios" Match="NavLinkMatch.All">
+                                <i class="bi bi-people-fill" aria-hidden="true"></i>
+                                <span class="nav-text">Listar Usuários</span>
+                            </NavLink>
+                        </div>
+                    }
+                </div>
+            </Authorized>
+        </AuthorizeView>
     </nav>
 </div>
 
@@ -152,6 +193,7 @@
     private bool expandVeiculos = false;
     private bool expandServicos = false;
     private bool expandOS = false;
+    private bool expandUsuarios = false;
 
     private void ToggleSidebar()
     {
@@ -162,6 +204,7 @@
             expandVeiculos = false;
             expandServicos = false;
             expandOS = false;
+            expandUsuarios = false;
         }
     }
 
@@ -187,5 +230,11 @@
     {
         if (collapseSidebar) collapseSidebar = false;
         expandOS = !expandOS;
+    }
+
+    private void ToggleUsuarios()
+    {
+        if (collapseSidebar) collapseSidebar = false;
+        expandUsuarios = !expandUsuarios;
     }
 }

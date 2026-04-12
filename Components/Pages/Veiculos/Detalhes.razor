@@ -5,6 +5,8 @@
 @using mechsystem.Data
 @using mechsystem.Models
 @using mechsystem.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 
 @inject AppDbContext DbContext
 @inject NavigationManager NavigationManager
@@ -56,12 +58,20 @@
                         </div>
                     </div>
                     <div class="col-md-4 text-md-end mt-4 mt-md-0 border-md-start border-secondary ps-md-4">
-                        <p class="mb-1 text-secondary small">Proprietário</p>
-                        <h5 class="mb-1 fw-bold">@(veiculo.Cliente != null ? veiculo.Cliente.Nome : "Não vinculado")</h5>
-                        @if(veiculo.Cliente != null)
-                        {
-                            <p class="mb-0 text-white-50"><i class="bi bi-telephone text-success me-1"></i> @veiculo.Cliente.Telefone</p>
-                        }
+                        <AuthorizeView Roles="Administrador, Atendimento">
+                            <Authorized>
+                                <p class="mb-1 text-secondary small">Proprietário</p>
+                                <h5 class="mb-1 fw-bold">@(veiculo.Cliente != null ? veiculo.Cliente.Nome : "Não vinculado")</h5>
+                                @if(veiculo.Cliente != null)
+                                {
+                                    <p class="mb-0 text-white-50"><i class="bi bi-telephone text-success me-1"></i> @veiculo.Cliente.Telefone</p>
+                                }
+                            </Authorized>
+                            <NotAuthorized>
+                                <p class="mb-1 text-secondary small">Proprietário</p>
+                                <h5 class="mb-1 fw-bold text-muted">Confidencial (LGPD)</h5>
+                            </NotAuthorized>
+                        </AuthorizeView>
                     </div>
                 </div>
             </div>
@@ -99,7 +109,9 @@
                                         <span class="text-secondary small fw-bold d-block">
                                             <i class="bi bi-calendar3 me-1"></i> @os.DataEmissao.ToString("dd/MM/yyyy")
                                         </span>
-                                        <span class="text-success fw-bold fs-5 d-block mt-1">@os.ValorTotal.ToString("C")</span>
+                                        <AuthorizeView Roles="Administrador, Atendimento">
+                                            <span class="text-success fw-bold fs-5 d-block mt-1">@os.ValorTotal.ToString("C")</span>
+                                        </AuthorizeView>
                                     </div>
                                 </div>
                                 

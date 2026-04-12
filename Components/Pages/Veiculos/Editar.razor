@@ -3,6 +3,8 @@
 
 @using mechsystem.Models
 @using mechsystem.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador, Atendimento")]
 
 @* Precisamos dos dois repositórios novamente *@
 @inject IVeiculoRepository VeiculoRepository

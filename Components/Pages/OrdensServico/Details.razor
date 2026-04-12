@@ -3,9 +3,12 @@
 @using Microsoft.EntityFrameworkCore
 @using mechsystem.Data
 @using mechsystem.Models
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject AppDbContext DbContext
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Ordem de Serviço Nº @Id.ToString("D4")</PageTitle>
 
@@ -23,18 +26,25 @@ else
                 <i class="bi bi-clipboard-check me-1"></i> 
                 @(os.Vistoria == null ? "Realizar Vistoria" : "Ver Checklist de Vistoria")
             </a>
-            <button class="btn btn-secondary" @onclick="PrintOS">
-                <i class="bi bi-printer me-1"></i> Imprimir OS
-            </button>
+            <AuthorizeView Roles="Administrador, Atendimento">
+                <button class="btn btn-secondary" @onclick="PrintOS">
+                    <i class="bi bi-printer me-1"></i> Imprimir OS
+                </button>
+            </AuthorizeView>
         </div>
         <div>
-            @if (os.Status == OrdemServicoStatus.Orcamento)
-            {
-                <button class="btn btn-success" @onclick="AbrirModalAprovacao">
-                    <i class="bi bi-check-circle me-1"></i> Aprovar Orçamento
-                </button>
-            }
-            else if (os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.AguardandoPecas)
+            <AuthorizeView Roles="Administrador, Atendimento">
+                <Authorized>
+                    @if (os.Status == OrdemServicoStatus.Orcamento)
+                    {
+                        <button class="btn btn-success" @onclick="AbrirModalAprovacao">
+                            <i class="bi bi-check-circle me-1"></i> Aprovar Orçamento
+                        </button>
+                    }
+                </Authorized>
+            </AuthorizeView>
+
+            @if (os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.AguardandoPecas)
             {
                 <button class="btn btn-primary" @onclick="ConcluirOS">
                     <i class="bi bi-flag me-1"></i> Concluir Serviço
@@ -95,26 +105,28 @@ else
                 <div class="col-sm-4"><small class="text-muted d-block">Validade Orçamento</small><strong>@os.ValidadeOrcamento.ToString("dd/MM/yyyy")</strong></div>
             </div>
 
-            <div class="row">
-                <div class="col-md-6 offset-md-6">
-                    <table class="table table-sm table-bordered">
-                        <tbody>
-                            <tr>
-                                <td>Mão de Obra</td>
-                                <td class="text-end">@os.ValorMaoDeObra.ToString("C")</td>
-                            </tr>
-                            <tr>
-                                <td>Peças</td>
-                                <td class="text-end">@os.ValorPecas.ToString("C")</td>
-                            </tr>
-                            <tr class="table-active fw-bold">
-                                <td>Valor Total</td>
-                                <td class="text-end text-success fs-5">@os.ValorTotal.ToString("C")</td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <AuthorizeView Roles="Administrador, Atendimento">
+                <div class="row">
+                    <div class="col-md-6 offset-md-6">
+                        <table class="table table-sm table-bordered">
+                            <tbody>
+                                <tr>
+                                    <td>Mão de Obra</td>
+                                    <td class="text-end">@os.ValorMaoDeObra.ToString("C")</td>
+                                </tr>
+                                <tr>
+                                    <td>Peças</td>
+                                    <td class="text-end">@os.ValorPecas.ToString("C")</td>
+                                </tr>
+                                <tr class="table-active fw-bold">
+                                    <td>Valor Total</td>
+                                    <td class="text-end text-success fs-5">@os.ValorTotal.ToString("C")</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
+            </AuthorizeView>
 
             <!-- Termo de Autorização (Contrato) -->
             <div class="mt-5 p-4 border rounded bg-light term-box">
@@ -146,7 +158,7 @@ else
         </div>
     </div>
 
-    <!-- Modal Aprovação (Controlado 100% pelo Blazor) -->
+    <!-- Modal Aprovação -->
     @if (mostrarModalAprovacao)
     {
         <div class="blazor-modal-backdrop" @onclick="FecharModalAprovacao"></div>
@@ -156,7 +168,7 @@ else
                     <h5><i class="bi bi-check-circle me-2"></i>Aprovar Orçamento</h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="FecharModalAprovacao"></button>
                 </div>
-                <div class="blazor-modal-body">
+                <div class="blazor-modal-body text-dark">
                     @if (!string.IsNullOrEmpty(erroMensagem))
                     {
                         <div class="alert alert-danger">@erroMensagem</div>
@@ -268,6 +280,12 @@ else
 
     private async Task AprovarOS()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (!authState.User.IsInRole("Administrador") && !authState.User.IsInRole("Atendimento"))
+        {
+            return;
+        }
+
         if (os != null)
         {
             try 
@@ -288,7 +306,7 @@ else
             }
             catch(Exception ex)
             {
-                erroMensagem = $"Erro ao salvar: {ex.Message} — {ex.InnerException?.Message}";
+                erroMensagem = $"Erro ao salvar: {ex.Message}";
             }
         }
     }

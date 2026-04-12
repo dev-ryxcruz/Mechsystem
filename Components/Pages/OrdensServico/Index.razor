@@ -2,6 +2,8 @@
 @using Microsoft.EntityFrameworkCore
 @using mechsystem.Data
 @using mechsystem.Models
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @inject AppDbContext DbContext
 @inject NavigationManager NavigationManager
 
@@ -9,9 +11,11 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Ordens de Serviço</h2>
-    <a href="/ordens-servico/nova" class="btn btn-primary shadow-sm">
-        <i class="bi bi-plus-circle me-1"></i> Nova O.S.
-    </a>
+    <AuthorizeView Roles="Administrador, Atendimento">
+        <a href="/ordens-servico/nova" class="btn btn-primary shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i> Nova O.S.
+        </a>
+    </AuthorizeView>
 </div>
 
 @if (ordensServico == null)
@@ -34,7 +38,9 @@ else
                         <th>Veículo (Placa)</th>
                         <th>Cliente</th>
                         <th>Status</th>
-                        <th>Total</th>
+                        <AuthorizeView Roles="Administrador, Atendimento">
+                            <th>Total</th>
+                        </AuthorizeView>
                         <th class="text-end">Ações</th>
                     </tr>
                 </thead>
@@ -64,7 +70,9 @@ else
                                     <span class="badge bg-secondary">@os.Status</span>
                                 }
                             </td>
-                            <td>@os.ValorTotal.ToString("C")</td>
+                            <AuthorizeView Roles="Administrador, Atendimento">
+                                <td>@os.ValorTotal.ToString("C")</td>
+                            </AuthorizeView>
                             <td class="text-end">
                                 <a href="/ordens-servico/@os.Id" class="btn btn-sm btn-outline-primary" title="Visualizar / Editar">
                                     <i class="bi bi-eye"></i>

@@ -18,6 +18,9 @@ namespace mechsystem.Models
 
         public bool Ativo { get; set; } = true;
 
+        [Required(ErrorMessage = "O perfil de acesso é obrigatório.")]
+        public PerfilUsuario Perfil { get; set; } = PerfilUsuario.Atendimento;
+
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
     }
 }

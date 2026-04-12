@@ -3,6 +3,8 @@
 @using Microsoft.EntityFrameworkCore
 @using mechsystem.Data
 @using mechsystem.Models
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador, Atendimento")]
 @inject AppDbContext DbContext
 @inject NavigationManager NavigationManager
 

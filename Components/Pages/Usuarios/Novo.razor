@@ -1,0 +1,158 @@
+@page "/usuarios/cadastro"
+@rendermode InteractiveServer
+@using mechsystem.Models
+@using mechsystem.Services
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador")]
+@inject UsuarioService UsuarioService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Novo Usuário - Mechsystem</PageTitle>
+
+<div class="d-flex align-items-center mb-4">
+    <a href="/usuarios" class="btn btn-outline-secondary me-3">
+        <i class="bi bi-arrow-left"></i> Voltar
+    </a>
+    <h3>Novo Usuário</h3>
+</div>
+
+<div class="card shadow-sm dash-card">
+    <div class="card-body p-4">
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> @errorMessage
+            </div>
+        }
+
+        <EditForm Model="@model" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Nome Completo <span class="text-danger">*</span></label>
+                    <InputText @bind-Value="model.NomeCompleto" class="form-control" placeholder="Ex: João da Silva" />
+                    <ValidationMessage For="@(() => model.NomeCompleto)" class="text-danger mt-1 small" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Usuário (Login) <span class="text-danger">*</span></label>
+                    <InputText @bind-Value="model.Username" class="form-control" placeholder="Ex: joao.silva" />
+                    <ValidationMessage For="@(() => model.Username)" class="text-danger mt-1 small" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Senha <span class="text-danger">*</span></label>
+                    <InputText @bind-Value="model.Password" type="password" class="form-control" placeholder="Digite a senha" />
+                    <ValidationMessage For="@(() => model.Password)" class="text-danger mt-1 small" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Confirmar Senha <span class="text-danger">*</span></label>
+                    <InputText @bind-Value="model.ConfirmPassword" type="password" class="form-control" placeholder="Repita a senha" />
+                    <ValidationMessage For="@(() => model.ConfirmPassword)" class="text-danger mt-1 small" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Perfil de Acesso <span class="text-danger">*</span></label>
+                    <InputSelect @bind-Value="model.Perfil" class="form-select">
+                        @foreach (var p in Enum.GetValues<PerfilUsuario>())
+                        {
+                            <option value="@p">@p</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => model.Perfil)" class="text-danger mt-1 small" />
+                </div>
+
+                <div class="col-12 mt-4">
+                    <div class="form-check form-switch">
+                        <InputCheckbox @bind-Value="model.Ativo" class="form-check-input" id="flexSwitchCheckChecked" />
+                        <label class="form-check-label fw-bold" for="flexSwitchCheckChecked">Usuário Ativo (Pode acessar o sistema)</label>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4 text-muted" />
+
+            <div class="d-flex justify-content-end gap-2">
+                <a href="/usuarios" class="btn btn-light px-4 border">Cancelar</a>
+                <button type="submit" class="btn btn-success px-4 shadow-sm" disabled="@isSubmitting">
+                    @if (isSubmitting)
+                    {
+                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        <span class="ms-1">Salvando...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-save me-1"></i>
+                        <span>Salvar</span>
+                    }
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private NovoUsuarioModel model = new();
+    private bool isSubmitting = false;
+    private string errorMessage = "";
+
+    public class NovoUsuarioModel
+    {
+        [Required(ErrorMessage = "O Nome Completo é obrigatório")]
+        public string NomeCompleto { get; set; } = "";
+
+        [Required(ErrorMessage = "O Usuário (Login) é obrigatório")]
+        public string Username { get; set; } = "";
+
+        [Required(ErrorMessage = "A Senha é obrigatória")]
+        [MinLength(6, ErrorMessage = "A Senha deve ter pelo menos 6 caracteres")]
+        public string Password { get; set; } = "";
+
+        [Required(ErrorMessage = "A Confirmação de Senha é obrigatória")]
+        [Compare(nameof(Password), ErrorMessage = "As senhas não coincidem")]
+        public string ConfirmPassword { get; set; } = "";
+
+        [Required(ErrorMessage = "O Perfil é obrigatório")]
+        public PerfilUsuario Perfil { get; set; } = PerfilUsuario.Atendimento;
+
+        public bool Ativo { get; set; } = true;
+    }
+
+    private async Task HandleSubmit()
+    {
+        isSubmitting = true;
+        errorMessage = "";
+
+        try
+        {
+            if (await UsuarioService.IsUsernameTakenAsync(model.Username))
+            {
+                errorMessage = "Este nome de usuário já está em uso. Por favor, escolha outro.";
+                return;
+            }
+
+            var novoUsuario = new Usuario
+            {
+                NomeCompleto = model.NomeCompleto,
+                Username = model.Username,
+                Ativo = model.Ativo,
+                Perfil = model.Perfil
+            };
+
+            await UsuarioService.CreateUsuarioAsync(novoUsuario, model.Password);
+            NavigationManager.NavigateTo("/usuarios");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = "Ocorreu um erro ao salvar o usuário. Tente novamente.";
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

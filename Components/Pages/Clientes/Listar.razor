@@ -3,9 +3,12 @@
 
 @using mechsystem.Models
 @using mechsystem.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador, Atendimento")]
 
 @inject IClienteRepository ClienteRepository
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <div class="container mt-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -59,10 +62,15 @@
                                 <button class="btn btn-sm btn-outline-warning me-1" title="Editar" @onclick="() => IrParaEdicao(cliente.Id)">
                                     Editar
                                 </button>
-                                @* O botão Eliminar chama a função de apagar diretamente *@
-                                <button class="btn btn-sm btn-outline-danger" title="Eliminar" @onclick="() => ApagarCliente(cliente.Id)">
-                                    Eliminar
-                                </button>
+                                
+                                <AuthorizeView Roles="Administrador">
+                                    <Authorized>
+                                        @* O botão Eliminar chama a função de apagar diretamente *@
+                                        <button class="btn btn-sm btn-outline-danger" title="Eliminar" @onclick="() => ApagarCliente(cliente.Id)">
+                                            Eliminar
+                                        </button>
+                                    </Authorized>
+                                </AuthorizeView>
                             </td>                                
                             </tr>
                         }
@@ -98,6 +106,12 @@ private void IrParaEdicao(int id)
 
     private async Task ApagarCliente(int id)
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (!authState.User.IsInRole("Administrador"))
+        {
+            return;
+        }
+
         // 1. Vai à base de dados e apaga o cliente
         await ClienteRepository.Deletar(id);
         

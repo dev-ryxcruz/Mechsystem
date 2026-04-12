@@ -3,6 +3,8 @@
 
 @using mechsystem.Models
 @using mechsystem.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador, Atendimento")]
 
 @* Aqui estamos a pedir ao Blazor para injetar as nossas ferramentas *@
 @inject IClienteRepository ClienteRepository

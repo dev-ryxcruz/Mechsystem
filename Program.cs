@@ -26,6 +26,7 @@ builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
 builder.Services.AddScoped<IVeiculoRepository, VeiculoRepository>();
 builder.Services.AddScoped<IServicoRepository, ServicoRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<UsuarioService>();
 
 // Authentication via Cookies
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -90,18 +91,34 @@ using (var scope = app.Services.CreateScope())
             Username = "admin",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
             NomeCompleto = "Administrador",
-            Ativo = true
+            Ativo = true,
+            Perfil = mechsystem.Models.PerfilUsuario.Administrador
         });
         await db.SaveChangesAsync();
         Console.WriteLine(">>> Usuário admin criado. Senha: admin123");
     }
-    else if (resetAdmin)
+    else
     {
-        // Reset admin password
-        admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123");
-        admin.Ativo = true;
-        await db.SaveChangesAsync();
-        Console.WriteLine(">>> Senha do admin resetada para: admin123");
+        // Força que o admin original sempre tenha Perfil Administrador pós-migração
+        var mudou = false;
+        if (admin.Perfil != mechsystem.Models.PerfilUsuario.Administrador)
+        {
+            admin.Perfil = mechsystem.Models.PerfilUsuario.Administrador;
+            mudou = true;
+        }
+
+        if (resetAdmin)
+        {
+            admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123");
+            admin.Ativo = true;
+            mudou = true;
+            Console.WriteLine(">>> Senha do admin resetada para: admin123");
+        }
+
+        if (mudou)
+        {
+            await db.SaveChangesAsync();
+        }
     }
 }
 

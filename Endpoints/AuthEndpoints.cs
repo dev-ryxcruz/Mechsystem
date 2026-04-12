@@ -31,7 +31,8 @@ namespace mechsystem.Endpoints
                 {
                     new Claim(ClaimTypes.Name, usuario.Username),
                     new Claim(ClaimTypes.GivenName, usuario.NomeCompleto),
-                    new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString())
+                    new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+                    new Claim(ClaimTypes.Role, usuario.Perfil.ToString())
                 };
 
                 var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

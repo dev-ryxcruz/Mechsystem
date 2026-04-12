@@ -3,16 +3,21 @@
 
 @using mechsystem.Models
 @using mechsystem.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador, Atendimento, Mecanico")]
 
 @inject IVeiculoRepository VeiculoRepository
 @inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <div class="container mt-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h3><i class="bi bi-car-front"></i> Veículos Cadastrados</h3>
-        <button class="btn btn-success" @onclick="NovoVeiculo">
-            <i class="bi bi-plus-lg"></i> Novo Veículo
-        </button>
+        <AuthorizeView Roles="Administrador, Atendimento">
+            <button class="btn btn-success" @onclick="NovoVeiculo">
+                <i class="bi bi-plus-lg"></i> Novo Veículo
+            </button>
+        </AuthorizeView>
     </div>
 
     @if (veiculos == null)
@@ -36,7 +41,9 @@
                     <thead class="table-dark">
                         <tr>
                             <th>ID</th>
-                            <th>Dono (Cliente)</th>
+                            <AuthorizeView Roles="Administrador, Atendimento">
+                                <th>Dono (Cliente)</th>
+                            </AuthorizeView>
                             <th>Placa</th>
                             <th>Marca/Modelo</th>
                             <th>Ano</th>
@@ -49,8 +56,9 @@
                         {
                             <tr>
                                 <td>@veiculo.Id</td>
-                                @* A mágica do .Include() que fizemos no repositório permite ler o Nome do Cliente aqui! *@
-                                <td><strong>@(veiculo.Cliente != null ? veiculo.Cliente.Nome : "Sem dono")</strong></td>
+                                <AuthorizeView Roles="Administrador, Atendimento">
+                                    <td><strong>@(veiculo.Cliente != null ? veiculo.Cliente.Nome : "Sem dono")</strong></td>
+                                </AuthorizeView>
                                 <td><span class="text-uppercase border px-2 py-1 rounded bg-light">@veiculo.Placa</span></td>
                                 <td>@veiculo.Marca @veiculo.Modelo</td>
                                 <td>@veiculo.Ano</td>
@@ -59,12 +67,16 @@
                                     <button class="btn btn-sm btn-outline-info me-1" title="Prontuário / Linha do Tempo" @onclick="() => IrParaDetalhes(veiculo.Id)">
                                         <i class="bi bi-journal-medical"></i> Prontuário
                                     </button>
-                                    <button class="btn btn-sm btn-outline-warning me-1" title="Editar" @onclick="() => IrParaEdicao(veiculo.Id)">
-                                        Editar
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" title="Excluir" @onclick="() => ApagarVeiculo(veiculo.Id)">
-                                        Excluir
-                                    </button>
+                                    <AuthorizeView Roles="Administrador, Atendimento">
+                                        <button class="btn btn-sm btn-outline-warning me-1" title="Editar" @onclick="() => IrParaEdicao(veiculo.Id)">
+                                            Editar
+                                        </button>
+                                    </AuthorizeView>
+                                    <AuthorizeView Roles="Administrador">
+                                        <button class="btn btn-sm btn-outline-danger" title="Excluir" @onclick="() => ApagarVeiculo(veiculo.Id)">
+                                            Excluir
+                                        </button>
+                                    </AuthorizeView>
                                 </td>
                             </tr>
                         }
@@ -100,6 +112,12 @@
 
     private async Task ApagarVeiculo(int id)
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (!authState.User.IsInRole("Administrador"))
+        {
+            return;
+        }
+
         await VeiculoRepository.Deletar(id);
         veiculos = await VeiculoRepository.Listar();
     }

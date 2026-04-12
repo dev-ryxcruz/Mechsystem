@@ -3,6 +3,8 @@
 
 @using mechsystem.Models
 @using mechsystem.Interfaces
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador, Atendimento")]
 
 @inject IClienteRepository ClienteRepository
 @inject NavigationManager NavigationManager
