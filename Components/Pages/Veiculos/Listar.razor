@@ -56,6 +56,9 @@
                                 <td>@veiculo.Ano</td>
                                 <td>@veiculo.Cor</td>
                                 <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-info me-1" title="Prontuário / Linha do Tempo" @onclick="() => IrParaDetalhes(veiculo.Id)">
+                                        <i class="bi bi-journal-medical"></i> Prontuário
+                                    </button>
                                     <button class="btn btn-sm btn-outline-warning me-1" title="Editar" @onclick="() => IrParaEdicao(veiculo.Id)">
                                         Editar
                                     </button>
@@ -88,6 +91,11 @@
     private void IrParaEdicao(int id)
     {
         NavigationManager.NavigateTo($"/veiculos/editar/{id}");
+    }
+
+    private void IrParaDetalhes(int id)
+    {
+        NavigationManager.NavigateTo($"/veiculos/detalhes/{id}");
     }
 
     private async Task ApagarVeiculo(int id)
