@@ -15,6 +15,7 @@ namespace mechsystem.Data
         public DbSet<Usuario> Usuarios { get; set; }
         public DbSet<Servico> Servicos { get; set; }
         public DbSet<Vistoria> Vistorias { get; set; }
+        public DbSet<Configuracao> Configuracoes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

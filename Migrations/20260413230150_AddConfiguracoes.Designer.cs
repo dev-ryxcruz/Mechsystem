@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using mechsystem.Data;
 
@@ -10,9 +11,11 @@ using mechsystem.Data;
 namespace mechsystem.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260413230150_AddConfiguracoes")]
+    partial class AddConfiguracoes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
@@ -54,50 +57,26 @@ namespace mechsystem.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Cnpj")
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("EnderecoCompleto")
-                        .HasMaxLength(300)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("GarantiaPadraoDias")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("MensagemRodape")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("NomeFantasia")
                         .IsRequired()
-                        .HasMaxLength(150)
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("ObrigarVistoriaParaOS")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("SimboloMoeda")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("TaxaMaoDeObra")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Telefone")
-                        .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
                     b.Property<int>("ValidadeOrcamentoDias")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("WhatsApp")
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
