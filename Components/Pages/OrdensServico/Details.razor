@@ -20,16 +20,25 @@ else
 {
     <!-- Toolbar (Hidden on Print) -->
     <div class="d-print-none mb-4 d-flex justify-content-between align-items-center">
-        <div>
-            <a href="/ordens-servico" class="btn btn-outline-secondary me-2">Voltar</a>
-            <a href="/ordensdeservico/@os.Id/vistoria" class="btn btn-warning me-2 fw-bold text-dark">
-                <i class="bi bi-clipboard-check me-1"></i> 
+        <div class="d-flex flex-wrap gap-2">
+            <a href="/ordens-servico" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+            <a href="/ordensdeservico/@os.Id/vistoria" class="btn btn-warning fw-bold text-dark">
+                <i class="bi bi-clipboard-check me-1"></i>
                 @(os.Vistoria == null ? "Realizar Vistoria" : "Ver Checklist de Vistoria")
             </a>
             <AuthorizeView Roles="Administrador, Atendimento">
-                <button class="btn btn-secondary" @onclick="PrintOS">
-                    <i class="bi bi-printer me-1"></i> Imprimir OS
-                </button>
+                <a href="/imprimir/os/@os.Id" target="_blank" class="btn btn-secondary">
+                    <i class="bi bi-printer me-1"></i>
+                    @(os.Status == OrdemServicoStatus.Orcamento ? "Imprimir Orçamento" : "Imprimir O.S.")
+                </a>
+                @if (os.Vistoria != null)
+                {
+                    <a href="/imprimir/vistoria/@os.Id" target="_blank" class="btn btn-outline-secondary">
+                        <i class="bi bi-file-earmark-check me-1"></i> Imprimir Vistoria
+                    </a>
+                }
             </AuthorizeView>
         </div>
         <div>

@@ -688,3 +688,45 @@ h1:focus {
         justify-content: center;
     }
 }
+
+/* ==============================================
+   IMPRESSÃO GLOBAL — Ocultar layout na impressão
+   (CSS scoped não alcança elementos fora do
+   componente, por isso fica aqui no global)
+   ============================================== */
+@media print {
+    /* Esconde toda a estrutura do layout */
+    .sidebar,
+    .top-row,
+    #blazor-error-ui,
+    .print-toolbar,
+    .d-print-none {
+        display: none !important;
+    }
+
+    /* Remove margens e paddings do wrapper principal */
+    .page {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    main {
+        margin-left: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        overflow: visible !important;
+    }
+
+    article.content {
+        padding: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+    }
+
+    /* Fundo branco forçado */
+    body, html {
+        background: white !important;
+        color: black !important;
+    }
+}

@@ -1,0 +1,283 @@
+@page "/imprimir/os/{id:int}"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Models
+@inject AppDbContext DbContext
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Nav
+
+<PageTitle>OS Nº @Id.ToString("D4") — Imprimir</PageTitle>
+
+@if (os == null)
+{
+    <div class="loading-screen">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2">Preparando documento...</p>
+    </div>
+}
+else
+{
+    <!-- Toolbar — oculta na impressão -->
+    <div class="print-toolbar d-print-none">
+        <button class="btn-print" @onclick="Imprimir">
+            <i class="bi bi-printer-fill"></i> Imprimir / Salvar PDF
+        </button>
+        <button class="btn-close-print" @onclick='() => Nav.NavigateTo($"/ordens-servico/{Id}")'>
+            <i class="bi bi-x-lg"></i> Fechar
+        </button>
+    </div>
+
+    <!-- Documento A4 -->
+    <div class="doc-a4">
+
+        <!-- Cabeçalho -->
+        <div class="doc-header">
+            <div class="doc-oficina">
+                <div class="doc-oficina-nome">@(config?.NomeFantasia ?? "Oficina Mecânica")</div>
+                @if (!string.IsNullOrEmpty(config?.Cnpj))
+                {
+                    <div class="doc-oficina-info">CNPJ: @config.Cnpj</div>
+                }
+                @if (!string.IsNullOrEmpty(config?.Telefone))
+                {
+                    <div class="doc-oficina-info">Tel: @config.Telefone
+                        @if (!string.IsNullOrEmpty(config?.WhatsApp)) { <span> · WhatsApp: @config.WhatsApp</span> }
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(config?.EnderecoCompleto))
+                {
+                    <div class="doc-oficina-info">@config.EnderecoCompleto</div>
+                }
+            </div>
+            <div class="doc-os-info">
+                <div class="doc-os-titulo">
+                    @(os.Status == OrdemServicoStatus.Orcamento ? "ORÇAMENTO" : "ORDEM DE SERVIÇO")
+                </div>
+                <div class="doc-os-numero">Nº @os.Id.ToString("D4")</div>
+                <div class="doc-os-status">@GetStatusTexto(os.Status)</div>
+                <div class="doc-os-data">Emissão: @os.DataEmissao.ToString("dd/MM/yyyy")</div>
+            </div>
+        </div>
+
+        <div class="doc-divider"></div>
+
+        <!-- Dados do Cliente -->
+        <div class="doc-section">
+            <div class="doc-section-title">DADOS DO CLIENTE</div>
+            <div class="doc-grid-2">
+                <div class="doc-field">
+                    <span class="doc-label">Nome</span>
+                    <span class="doc-value">@os.Veiculo?.Cliente?.Nome</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">CPF</span>
+                    <span class="doc-value">@os.Veiculo?.Cliente?.Cpf</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Telefone</span>
+                    <span class="doc-value">@(os.Veiculo?.Cliente?.Telefone ?? "—")</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">E-mail</span>
+                    <span class="doc-value">@(os.Veiculo?.Cliente?.Email ?? "—")</span>
+                </div>
+                @if (!string.IsNullOrEmpty(os.Veiculo?.Cliente?.Endereco))
+                {
+                    <div class="doc-field doc-field-full">
+                        <span class="doc-label">Endereço</span>
+                        <span class="doc-value">@os.Veiculo.Cliente.Endereco</span>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="doc-divider"></div>
+
+        <!-- Identificação do Veículo -->
+        <div class="doc-section">
+            <div class="doc-section-title">IDENTIFICAÇÃO DO VEÍCULO</div>
+            <div class="doc-grid-4">
+                <div class="doc-field">
+                    <span class="doc-label">Placa</span>
+                    <span class="doc-value fw-bold">@os.Veiculo?.Placa</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Marca / Modelo</span>
+                    <span class="doc-value">@os.Veiculo?.Marca / @os.Veiculo?.Modelo</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Ano</span>
+                    <span class="doc-value">@os.Veiculo?.Ano</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Cor</span>
+                    <span class="doc-value">@os.Veiculo?.Cor</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Quilometragem</span>
+                    <span class="doc-value">@os.Veiculo?.Quilometragem.ToString("N0") km</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="doc-divider"></div>
+
+        <!-- Diagnóstico e Serviços -->
+        <div class="doc-section">
+            <div class="doc-section-title">DIAGNÓSTICO E SERVIÇOS</div>
+            <div class="doc-field doc-field-full mb-3">
+                <span class="doc-label">Problema Relatado / Diagnóstico</span>
+                <div class="doc-text-box">@os.DescricaoProblemaRelatado</div>
+            </div>
+            <div class="doc-field doc-field-full">
+                <span class="doc-label">Serviços a Executar</span>
+                <div class="doc-text-box">@(string.IsNullOrWhiteSpace(os.ServicoAExecutar) ? "A definir" : os.ServicoAExecutar)</div>
+            </div>
+        </div>
+
+        <div class="doc-divider"></div>
+
+        <!-- Prazos -->
+        <div class="doc-section">
+            <div class="doc-section-title">PRAZOS</div>
+            <div class="doc-grid-3">
+                <div class="doc-field">
+                    <span class="doc-label">Previsão de Início</span>
+                    <span class="doc-value">@(os.DataPrevisaoInicio?.ToString("dd/MM/yyyy") ?? "A definir")</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Previsão de Entrega (CDC)</span>
+                    <span class="doc-value fw-bold">@os.DataPrevisaoEntrega.ToString("dd/MM/yyyy")</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Validade do Orçamento</span>
+                    <span class="doc-value">@os.ValidadeOrcamento.ToString("dd/MM/yyyy")</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="doc-divider"></div>
+
+        <!-- Valores -->
+        <div class="doc-section">
+            <div class="doc-section-title">VALORES</div>
+            <div class="doc-valores-wrapper">
+                <table class="doc-valores-table">
+                    <tbody>
+                        <tr>
+                            <td>Mão de Obra</td>
+                            <td class="text-end">@os.ValorMaoDeObra.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
+                        </tr>
+                        <tr>
+                            <td>Peças e Materiais</td>
+                            <td class="text-end">@os.ValorPecas.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
+                        </tr>
+                        <tr class="doc-total-row">
+                            <td>VALOR TOTAL</td>
+                            <td class="text-end">@os.ValorTotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="doc-divider"></div>
+
+        <!-- Termo de Autorização -->
+        <div class="doc-section doc-termo">
+            <div class="doc-section-title">TERMO DE AUTORIZAÇÃO — LEI Nº 8.078/1990 (CDC)</div>
+            <p class="doc-termo-texto">
+                Conforme o art. 40 do Código de Defesa do Consumidor, autorizo expressamente a execução dos serviços
+                descritos acima pelo valor total acordado, bem como a aplicação das peças listadas. Compreendo que
+                após o aceite este orçamento passa a ter força de contrato e que serviços adicionais somente poderão
+                ser incluídos mediante nova aprovação prévia. A garantia dos serviços é de
+                <strong>@(config?.GarantiaPadraoDias ?? 90) dias</strong> conforme o CDC.
+            </p>
+
+            @if (os.Status == OrdemServicoStatus.Orcamento)
+            {
+                <div class="doc-assinaturas">
+                    <div class="doc-assinatura-box">
+                        <div class="doc-assinatura-linha"></div>
+                        <div class="doc-assinatura-nome">@os.Veiculo?.Cliente?.Nome</div>
+                        <div class="doc-assinatura-label">Assinatura do Cliente</div>
+                        <div class="doc-assinatura-data">Data: _____ / _____ / __________</div>
+                    </div>
+                    <div class="doc-assinatura-box">
+                        <div class="doc-assinatura-linha"></div>
+                        <div class="doc-assinatura-nome">@(config?.NomeFantasia ?? "Oficina")</div>
+                        <div class="doc-assinatura-label">Responsável Técnico</div>
+                        <div class="doc-assinatura-data">Data: _____ / _____ / __________</div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="doc-aprovado-box">
+                    <i class="bi bi-shield-check"></i>
+                    <div>
+                        <strong>ORÇAMENTO APROVADO</strong><br />
+                        <span>Autorizado por: <strong>@(os.AutorizadoPor ?? os.Veiculo?.Cliente?.Nome)</strong></span><br />
+                        <span>Meio: @os.MeioAutorizacao · Data: @(os.DataAutorizacao?.ToString("dd/MM/yyyy HH:mm"))</span>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Rodapé -->
+        @if (!string.IsNullOrEmpty(config?.MensagemRodape))
+        {
+            <div class="doc-rodape">@config.MensagemRodape</div>
+        }
+        else
+        {
+            <div class="doc-rodape">
+                @(config?.NomeFantasia ?? "Mechsystem") · @(config?.Telefone ?? "") · Documento gerado em @DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+            </div>
+        }
+
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private OrdemServico? os;
+    private Configuracao? config;
+
+    protected override async Task OnInitializedAsync()
+    {
+        os = await DbContext.OrdensServico
+            .Include(o => o.Veiculo)
+                .ThenInclude(v => v!.Cliente)
+            .FirstOrDefaultAsync(o => o.Id == Id);
+
+        config = await DbContext.Configuracoes.FirstOrDefaultAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && os != null)
+        {
+            // Pequeno delay para garantir que o DOM está totalmente renderizado
+            await Task.Delay(300);
+            await JSRuntime.InvokeVoidAsync("window.print");
+        }
+    }
+
+    private async Task Imprimir()
+    {
+        await JSRuntime.InvokeVoidAsync("window.print");
+    }
+
+    private string GetStatusTexto(OrdemServicoStatus status) => status switch
+    {
+        OrdemServicoStatus.Orcamento => "ORÇAMENTO",
+        OrdemServicoStatus.EmAndamento => "EM ANDAMENTO",
+        OrdemServicoStatus.AguardandoPecas => "AGUARDANDO PEÇAS",
+        OrdemServicoStatus.Concluida => "CONCLUÍDA",
+        OrdemServicoStatus.Cancelada => "CANCELADA",
+        _ => status.ToString()
+    };
+}

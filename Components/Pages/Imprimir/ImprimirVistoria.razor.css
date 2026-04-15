@@ -1,0 +1,238 @@
+/* ─── Loading ─────────────────────────────────────────────────────────────── */
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 80vh;
+    color: #6c757d;
+    text-align: center;
+}
+
+/* ─── Toolbar ─────────────────────────────────────────────────────────────── */
+.print-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: #1e2329;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.btn-print {
+    background: #0d6efd;
+    color: #fff;
+    border: none;
+    border-radius: 0.4rem;
+    padding: 0.5rem 1.25rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: background 0.15s;
+}
+.btn-print:hover { background: #0b5ed7; }
+.btn-close-print {
+    background: transparent;
+    color: #adb5bd;
+    border: 1px solid #495057;
+    border-radius: 0.4rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: color 0.15s, border-color 0.15s;
+}
+.btn-close-print:hover { color: #fff; border-color: #adb5bd; }
+
+/* ─── Documento A4 ────────────────────────────────────────────────────────── */
+.doc-a4 {
+    background: #ffffff;
+    color: #1a1a1a;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 5rem auto 2rem;
+    padding: 12mm 18mm;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.15);
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    font-size: 10pt;
+    line-height: 1.5;
+}
+
+/* ─── Cabeçalho ───────────────────────────────────────────────────────────── */
+.doc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+.doc-oficina-nome { font-size: 15pt; font-weight: 800; }
+.doc-oficina-info { font-size: 8.5pt; color: #555; }
+.doc-os-info { text-align: right; }
+.doc-os-titulo { font-size: 8pt; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.08em; }
+.doc-os-numero { font-size: 18pt; font-weight: 900; line-height: 1; }
+.doc-os-data { font-size: 9pt; color: #555; }
+
+/* ─── Divisor ─────────────────────────────────────────────────────────────── */
+.doc-divider {
+    border: none;
+    border-top: 1.5px solid #1a1a1a;
+    margin: 0.5rem 0;
+}
+
+/* ─── Seção ───────────────────────────────────────────────────────────────── */
+.doc-section { margin: 0.4rem 0 0.5rem; }
+.doc-section-title {
+    font-size: 7.5pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #555;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.15rem;
+    margin-bottom: 0.4rem;
+}
+.mt-2 { margin-top: 0.75rem; }
+
+/* ─── Grid veículo ────────────────────────────────────────────────────────── */
+.doc-grid-veiculo {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.3rem 1rem;
+}
+.doc-field { display: flex; flex-direction: column; }
+.doc-label { font-size: 7.5pt; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+.doc-value { font-size: 10pt; color: #1a1a1a; }
+.doc-value.fw-bold { font-weight: 700; }
+
+/* ─── Corpo da Vistoria (2 colunas) ──────────────────────────────────────── */
+.doc-vistoria-corpo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin: 0.5rem 0;
+}
+.doc-vistoria-esquerda { }
+.doc-vistoria-direita { }
+
+/* ─── Dados table ─────────────────────────────────────────────────────────── */
+.doc-dados-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+    margin-bottom: 0.5rem;
+}
+.doc-dados-table td {
+    padding: 0.2rem 0.4rem;
+    border: 1px solid #dee2e6;
+}
+.doc-dados-table .doc-label {
+    background: #f8f9fa;
+    width: 40%;
+}
+
+/* ─── Combustível visual ──────────────────────────────────────────────────── */
+.fuel-visual {
+    display: inline-flex;
+    gap: 2px;
+    align-items: flex-end;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.fuel-bar {
+    width: 8px;
+    height: 12px;
+    border-radius: 2px;
+    display: inline-block;
+}
+.fuel-filled { background: #198754; }
+.fuel-empty { background: #dee2e6; }
+
+/* ─── Checklist table ─────────────────────────────────────────────────────── */
+.doc-checklist-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+}
+.doc-checklist-table td { padding: 0.2rem 0.4rem; border: 1px solid #dee2e6; }
+.check-icon { font-size: 12pt; color: #198754; text-align: center; width: 1.5rem; }
+
+/* ─── Avarias lista ───────────────────────────────────────────────────────── */
+.doc-avarias-lista {
+    font-size: 9pt;
+    margin: 0.25rem 0 0;
+    padding-left: 1.2rem;
+}
+.doc-avarias-lista li { margin-bottom: 0.15rem; }
+.doc-sem-avarias { font-size: 9pt; color: #888; font-style: italic; }
+
+/* ─── Observações ─────────────────────────────────────────────────────────── */
+.doc-obs-box {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 3px;
+    padding: 0.4rem 0.6rem;
+    font-size: 9.5pt;
+    white-space: pre-wrap;
+}
+
+/* ─── Mapa SVG ────────────────────────────────────────────────────────────── */
+.doc-mapa-wrapper {
+    border: 1.5px solid #dee2e6;
+    border-radius: 4px;
+    padding: 0.4rem;
+    background: #f8f9fa;
+}
+.doc-carro-svg { display: block; }
+
+/* ─── Assinaturas ─────────────────────────────────────────────────────────── */
+.doc-assinaturas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 0.8rem;
+}
+.doc-assinatura-box { text-align: center; }
+.doc-assinatura-linha { border-bottom: 1.5px solid #1a1a1a; height: 35px; margin-bottom: 0.25rem; }
+.doc-assinatura-nome { font-size: 9pt; font-weight: 600; }
+.doc-assinatura-label { font-size: 8pt; color: #666; }
+.doc-assinatura-data { font-size: 8pt; color: #666; }
+
+/* ─── Rodapé ──────────────────────────────────────────────────────────────── */
+.doc-rodape {
+    margin-top: 1.5rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid #ddd;
+    font-size: 7.5pt;
+    color: #888;
+    text-align: center;
+}
+
+/* ─── IMPRESSÃO ───────────────────────────────────────────────────────────── */
+@media print {
+    @page { size: A4; margin: 12mm 18mm; }
+
+    body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    .sidebar, .top-row, .navbar, .print-toolbar, .d-print-none { display: none !important; }
+
+    main, article, .page, .content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .doc-a4 { width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; min-height: auto !important; }
+    .doc-text-box, .doc-obs-box { background: #f8f9fa !important; }
+    .fuel-filled { background: #198754 !important; }
+    .fuel-empty { background: #dee2e6 !important; }
+    .doc-mapa-wrapper { background: #f8f9fa !important; }
+}

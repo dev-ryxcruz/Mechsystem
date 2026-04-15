@@ -1,0 +1,300 @@
+@page "/imprimir/vistoria/{id:int}"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Models
+@using System.Text.Json
+@inject AppDbContext DbContext
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Nav
+
+<PageTitle>Vistoria OS Nº @Id.ToString("D4") — Imprimir</PageTitle>
+
+@if (os == null)
+{
+    <div class="loading-screen">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2">Preparando documento...</p>
+    </div>
+}
+else if (os.Vistoria == null)
+{
+    <div class="loading-screen">
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Esta O.S. ainda não possui uma vistoria registrada.
+        </div>
+        <a href="/ordens-servico/@Id" class="btn btn-secondary mt-3">Voltar para a O.S.</a>
+    </div>
+}
+else
+{
+    <!-- Toolbar -->
+    <div class="print-toolbar d-print-none">
+        <button class="btn-print" @onclick="Imprimir">
+            <i class="bi bi-printer-fill"></i> Imprimir / Salvar PDF
+        </button>
+        <button class="btn-close-print" @onclick='() => Nav.NavigateTo($"/ordens-servico/{Id}")'>
+            <i class="bi bi-x-lg"></i> Fechar
+        </button>
+    </div>
+
+    <!-- Documento A4 -->
+    <div class="doc-a4">
+
+        <!-- Cabeçalho -->
+        <div class="doc-header">
+            <div class="doc-oficina">
+                <div class="doc-oficina-nome">@(config?.NomeFantasia ?? "Oficina Mecânica")</div>
+                @if (!string.IsNullOrEmpty(config?.Telefone))
+                {
+                    <div class="doc-oficina-info">Tel: @config.Telefone</div>
+                }
+                @if (!string.IsNullOrEmpty(config?.EnderecoCompleto))
+                {
+                    <div class="doc-oficina-info">@config.EnderecoCompleto</div>
+                }
+            </div>
+            <div class="doc-os-info">
+                <div class="doc-os-titulo">FICHA DE VISTORIA DE ENTRADA</div>
+                <div class="doc-os-numero">OS Nº @Id.ToString("D4")</div>
+                <div class="doc-os-data">Data: @os.Vistoria.DataVistoria.ToString("dd/MM/yyyy HH:mm")</div>
+            </div>
+        </div>
+
+        <div class="doc-divider"></div>
+
+        <!-- Dados do Veículo e Cliente -->
+        <div class="doc-section">
+            <div class="doc-section-title">Veículo e Cliente</div>
+            <div class="doc-grid-veiculo">
+                <div class="doc-field">
+                    <span class="doc-label">Cliente</span>
+                    <span class="doc-value fw-bold">@os.Veiculo?.Cliente?.Nome</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">CPF</span>
+                    <span class="doc-value">@os.Veiculo?.Cliente?.Cpf</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Placa</span>
+                    <span class="doc-value fw-bold">@os.Veiculo?.Placa</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Marca / Modelo</span>
+                    <span class="doc-value">@os.Veiculo?.Marca / @os.Veiculo?.Modelo</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Ano</span>
+                    <span class="doc-value">@os.Veiculo?.Ano</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Cor</span>
+                    <span class="doc-value">@os.Veiculo?.Cor</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="doc-divider"></div>
+
+        <!-- Dados da Vistoria + Mapa -->
+        <div class="doc-vistoria-corpo">
+
+            <!-- Coluna Esquerda: Checklist + Dados -->
+            <div class="doc-vistoria-esquerda">
+
+                <!-- KM e Combustível -->
+                <div class="doc-section-title">Dados de Entrada</div>
+                <table class="doc-dados-table">
+                    <tr>
+                        <td class="doc-label">KM Entrada</td>
+                        <td class="doc-value fw-bold">@os.Vistoria.QuilometragemEntrada.ToString("N0") km</td>
+                    </tr>
+                    <tr>
+                        <td class="doc-label">Combustível</td>
+                        <td class="doc-value">
+                            @GetCombustivelTexto(os.Vistoria.NivelCombustivel)
+                            <span class="fuel-visual">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    var filled = i <= (int)os.Vistoria.NivelCombustivel;
+                                    <span class="fuel-bar @(filled ? "fuel-filled" : "fuel-empty")"></span>
+                                }
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- Checklist -->
+                <div class="doc-section-title mt-2">Checklist de Itens</div>
+                <table class="doc-checklist-table">
+                    <tr>
+                        <td class="check-icon">@(os.Vistoria.TemEstepe ? "☑" : "☐")</td>
+                        <td>Estepe</td>
+                        <td class="check-icon">@(os.Vistoria.TemMacaco ? "☑" : "☐")</td>
+                        <td>Macaco</td>
+                    </tr>
+                    <tr>
+                        <td class="check-icon">@(os.Vistoria.TemChaveRoda ? "☑" : "☐")</td>
+                        <td>Chave de Roda</td>
+                        <td class="check-icon">@(os.Vistoria.TemTriangulo ? "☑" : "☐")</td>
+                        <td>Triângulo</td>
+                    </tr>
+                    <tr>
+                        <td class="check-icon">@(os.Vistoria.TemRadio ? "☑" : "☐")</td>
+                        <td>Rádio / Multimídia</td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </table>
+
+                <!-- Legenda de Avarias -->
+                @if (avarias.Count > 0)
+                {
+                    <div class="doc-section-title mt-2">Legenda de Avarias</div>
+                    <ol class="doc-avarias-lista">
+                        @foreach (var av in avarias)
+                        {
+                            <li>@av.Descricao</li>
+                        }
+                    </ol>
+                }
+                else
+                {
+                    <div class="doc-section-title mt-2">Avarias</div>
+                    <p class="doc-sem-avarias">Nenhuma avaria registrada.</p>
+                }
+
+                <!-- Observações -->
+                @if (!string.IsNullOrWhiteSpace(os.Vistoria.Observacoes))
+                {
+                    <div class="doc-section-title mt-2">Observações</div>
+                    <div class="doc-obs-box">@os.Vistoria.Observacoes</div>
+                }
+            </div>
+
+            <!-- Coluna Direita: Mapa SVG -->
+            <div class="doc-vistoria-direita">
+                <div class="doc-section-title">Mapa de Avarias</div>
+                <div class="doc-mapa-wrapper">
+                    <svg class="doc-carro-svg" viewBox="0 0 200 400" width="100%" height="320">
+                        <!-- Chassi base -->
+                        <rect x="40" y="20" width="120" height="360" rx="30" fill="#e9ecef" stroke="#adb5bd" stroke-width="2"/>
+                        <!-- Para-brisas frontal -->
+                        <path d="M 50 100 Q 100 80 150 100 L 140 140 L 60 140 Z" fill="#ced4da"/>
+                        <!-- Para-brisas traseiro -->
+                        <path d="M 55 290 Q 100 310 145 290 L 135 250 L 65 250 Z" fill="#ced4da"/>
+                        <!-- Teto -->
+                        <rect x="60" y="140" width="80" height="110" rx="10" fill="#dee2e6"/>
+                        <!-- Rodas Esquerda -->
+                        <rect x="30" y="60" width="15" height="40" rx="4" fill="#495057"/>
+                        <rect x="30" y="280" width="15" height="40" rx="4" fill="#495057"/>
+                        <!-- Rodas Direita -->
+                        <rect x="155" y="60" width="15" height="40" rx="4" fill="#495057"/>
+                        <rect x="155" y="280" width="15" height="40" rx="4" fill="#495057"/>
+                        <!-- Faróis Frontais -->
+                        <path d="M 50 25 Q 60 20 70 25 L 65 40 L 55 40 Z" fill="#ffc107"/>
+                        <path d="M 150 25 Q 140 20 130 25 L 135 40 L 145 40 Z" fill="#ffc107"/>
+                        <!-- Lanternas Traseiras -->
+                        <rect x="50" y="370" width="25" height="8" rx="2" fill="#e74c3c"/>
+                        <rect x="125" y="370" width="25" height="8" rx="2" fill="#e74c3c"/>
+
+                        <!-- Marcadores de Avaria numerados -->
+                        @for (int i = 0; i < avarias.Count; i++)
+                        {
+                            var av = avarias[i];
+                            var cx = (av.X * 2).ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+                            var cy = (av.Y * 4).ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+                            var cyText = ((av.Y * 4) + 4).ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+                            var num = (i + 1).ToString();
+                            <circle cx="@cx" cy="@cy" r="8" fill="#dc3545" stroke="white" stroke-width="1.5"/>
+                            @((MarkupString)$"<text x=\"{cx}\" y=\"{cyText}\" text-anchor=\"middle\" fill=\"white\" font-size=\"8\" font-weight=\"bold\" font-family=\"Arial, sans-serif\">{num}</text>")
+                        }
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="doc-divider"></div>
+
+        <!-- Assinaturas -->
+        <div class="doc-assinaturas">
+            <div class="doc-assinatura-box">
+                <div class="doc-assinatura-linha"></div>
+                <div class="doc-assinatura-nome">@os.Veiculo?.Cliente?.Nome</div>
+                <div class="doc-assinatura-label">Assinatura do Cliente</div>
+                <div class="doc-assinatura-data">Data: _____ / _____ / __________</div>
+            </div>
+            <div class="doc-assinatura-box">
+                <div class="doc-assinatura-linha"></div>
+                <div class="doc-assinatura-nome">Responsável pela Vistoria</div>
+                <div class="doc-assinatura-label">@(config?.NomeFantasia ?? "Oficina")</div>
+                <div class="doc-assinatura-data">Data: _____ / _____ / __________</div>
+            </div>
+        </div>
+
+        <!-- Rodapé -->
+        <div class="doc-rodape">
+            @(config?.NomeFantasia ?? "Mechsystem") · Ficha de Vistoria de Entrada · OS Nº @Id.ToString("D4") · Gerado em @DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private OrdemServico? os;
+    private Configuracao? config;
+    private List<AvariaMarker> avarias = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        os = await DbContext.OrdensServico
+            .Include(o => o.Vistoria)
+            .Include(o => o.Veiculo)
+                .ThenInclude(v => v!.Cliente)
+            .FirstOrDefaultAsync(o => o.Id == Id);
+
+        config = await DbContext.Configuracoes.FirstOrDefaultAsync();
+
+        if (os?.Vistoria?.AvariasJson != null)
+        {
+            try
+            {
+                avarias = JsonSerializer.Deserialize<List<AvariaMarker>>(os.Vistoria.AvariasJson) ?? new();
+            }
+            catch { avarias = new(); }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && os?.Vistoria != null)
+        {
+            await Task.Delay(300);
+            await JSRuntime.InvokeVoidAsync("window.print");
+        }
+    }
+
+    private async Task Imprimir()
+    {
+        await JSRuntime.InvokeVoidAsync("window.print");
+    }
+
+    private string GetCombustivelTexto(NivelCombustivel nivel) => nivel switch
+    {
+        NivelCombustivel.Reserva => "Reserva",
+        NivelCombustivel.UmQuarto => "1/4 Tanque",
+        NivelCombustivel.Meio => "Meio Tanque",
+        NivelCombustivel.TresQuartos => "3/4 Tanque",
+        NivelCombustivel.Cheio => "Cheio",
+        _ => nivel.ToString()
+    };
+
+    public class AvariaMarker
+    {
+        public double X { get; set; }
+        public double Y { get; set; }
+        public string Descricao { get; set; } = "";
+    }
+}
