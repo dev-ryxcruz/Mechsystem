@@ -1,0 +1,244 @@
+@page "/agenda"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Models
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject AppDbContext DbContext
+@inject NavigationManager Nav
+
+<PageTitle>Agenda — Mechsystem</PageTitle>
+
+<div class="agenda-wrapper">
+
+    <!-- Header -->
+    <div class="agenda-header mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-calendar-week-fill me-2"></i>Agenda</h2>
+            <p class="text-muted mb-0">Previsão de entregas das Ordens de Serviço</p>
+        </div>
+        <a href="/ordens-servico/nova" class="btn btn-accent shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i> Nova O.S.
+        </a>
+    </div>
+
+    <!-- Legenda -->
+    <div class="agenda-legenda mb-3">
+        <span class="legenda-chip chip-orcamento">Orçamento</span>
+        <span class="legenda-chip chip-andamento">Em Andamento</span>
+        <span class="legenda-chip chip-pecas">Aguard. Peças</span>
+        <span class="legenda-chip chip-atrasado">Atrasado</span>
+        <span class="legenda-chip chip-concluida">Concluída</span>
+    </div>
+
+    <!-- Navegação do mês -->
+    <div class="mes-nav mb-3">
+        <button class="btn btn-nav" @onclick="MesAnterior">
+            <i class="bi bi-chevron-left"></i>
+        </button>
+        <span class="mes-titulo">@mesTitulo</span>
+        <button class="btn btn-nav" @onclick="ProximoMes">
+            <i class="bi bi-chevron-right"></i>
+        </button>
+        <button class="btn btn-hoje ms-2" @onclick="IrParaHoje">Hoje</button>
+    </div>
+
+    <!-- Grade do calendário -->
+    @if (carregando)
+    {
+        <div class="text-center py-5 text-muted">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            Carregando agenda...
+        </div>
+    }
+    else
+    {
+        <div class="calendario-grid">
+            <!-- Cabeçalho dias da semana -->
+            <div class="cal-header">Dom</div>
+            <div class="cal-header">Seg</div>
+            <div class="cal-header">Ter</div>
+            <div class="cal-header">Qua</div>
+            <div class="cal-header">Qui</div>
+            <div class="cal-header">Sex</div>
+            <div class="cal-header">Sáb</div>
+
+            <!-- Células dos dias -->
+            @foreach (var cell in celulas)
+            {
+                var isHoje = cell.Data.HasValue && cell.Data.Value.Date == DateTime.Today;
+                var isOutroMes = cell.Data.HasValue && cell.Data.Value.Month != mesSelecionado;
+                var temOS = cell.Data.HasValue && osPorDia.ContainsKey(cell.Data.Value.Date);
+
+                <div class="cal-cell @(isHoje ? "cal-cell-hoje" : "") @(isOutroMes ? "cal-cell-outro-mes" : "") @(temOS ? "cal-cell-tem-os" : "")">
+                    @if (cell.Data.HasValue)
+                    {
+                        <span class="cal-dia-num @(isHoje ? "dia-hoje" : "")">@cell.Data.Value.Day</span>
+
+                        @if (temOS)
+                        {
+                            var lista = osPorDia[cell.Data.Value.Date];
+                            @foreach (var os in lista)
+                            {
+                                var chipClass = GetChipClass(os);
+                                <div class="os-chip @chipClass" @onclick="() => AbrirOS(os.Id)" title="OS #@os.Id.ToString("D4") — @os.Veiculo?.Cliente?.Nome">
+                                    <span class="chip-num">#@os.Id.ToString("D4")</span>
+                                    <span class="chip-placa">@os.Veiculo?.Placa</span>
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Resumo do mês -->
+    @if (!carregando && osPorDia.Any())
+    {
+        <div class="resumo-mes mt-4">
+            <h6 class="fw-semibold mb-3"><i class="bi bi-bar-chart-line me-2"></i>Resumo de @mesTitulo</h6>
+            <div class="row g-3">
+                @foreach (var grupo in resumoMes)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="resumo-card @grupo.CssClass">
+                            <span class="resumo-valor">@grupo.Total</span>
+                            <span class="resumo-label">@grupo.Label</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private int mesSelecionado = DateTime.Today.Month;
+    private int anoSelecionado = DateTime.Today.Year;
+    private bool carregando = true;
+
+    private Dictionary<DateTime, List<OrdemServico>> osPorDia = new();
+    private List<CelulaCalendario> celulas = new();
+    private List<ResumoItem> resumoMes = new();
+    private string mesTitulo => new DateTime(anoSelecionado, mesSelecionado, 1)
+        .ToString("MMMM 'de' yyyy", new System.Globalization.CultureInfo("pt-BR"))
+        .Substring(0, 1).ToUpper() +
+        new DateTime(anoSelecionado, mesSelecionado, 1)
+        .ToString("MMMM 'de' yyyy", new System.Globalization.CultureInfo("pt-BR"))
+        .Substring(1);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarAgenda();
+    }
+
+    private async Task CarregarAgenda()
+    {
+        carregando = true;
+        StateHasChanged();
+
+        var inicio = new DateTime(anoSelecionado, mesSelecionado, 1);
+        var fim = inicio.AddMonths(1).AddDays(-1);
+
+        // Buscar OS com previsão de entrega no mês
+        var lista = await DbContext.OrdensServico
+            .Include(o => o.Veiculo)
+                .ThenInclude(v => v!.Cliente)
+            .Where(o => o.DataPrevisaoEntrega.Date >= inicio && o.DataPrevisaoEntrega.Date <= fim)
+            .OrderBy(o => o.DataPrevisaoEntrega)
+            .ToListAsync();
+
+        osPorDia = lista
+            .GroupBy(o => o.DataPrevisaoEntrega.Date)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        GerarCelulas(inicio);
+        GerarResumo(lista);
+
+        carregando = false;
+    }
+
+    private void GerarCelulas(DateTime inicio)
+    {
+        celulas = new List<CelulaCalendario>();
+        int primeiroDiaSemana = (int)inicio.DayOfWeek; // 0=Dom
+
+        // Preencher células vazias antes do dia 1
+        for (int i = 0; i < primeiroDiaSemana; i++)
+        {
+            var dataAnterior = inicio.AddDays(i - primeiroDiaSemana);
+            celulas.Add(new CelulaCalendario { Data = dataAnterior });
+        }
+
+        // Dias do mês
+        int diasNoMes = DateTime.DaysInMonth(anoSelecionado, mesSelecionado);
+        for (int dia = 1; dia <= diasNoMes; dia++)
+            celulas.Add(new CelulaCalendario { Data = new DateTime(anoSelecionado, mesSelecionado, dia) });
+
+        // Completar última linha (até 42 células = 6 semanas)
+        while (celulas.Count < 42)
+        {
+            var ultimo = celulas.Last().Data!.Value;
+            celulas.Add(new CelulaCalendario { Data = ultimo.AddDays(1) });
+        }
+    }
+
+    private void GerarResumo(List<OrdemServico> lista)
+    {
+        var hoje = DateTime.Today;
+        resumoMes = new List<ResumoItem>
+        {
+            new() { Label = "Orçamentos", Total = lista.Count(o => o.Status == OrdemServicoStatus.Orcamento), CssClass = "resumo-orcamento" },
+            new() { Label = "Em Andamento", Total = lista.Count(o => o.Status == OrdemServicoStatus.EmAndamento || o.Status == OrdemServicoStatus.AguardandoPecas), CssClass = "resumo-andamento" },
+            new() { Label = "Atrasadas", Total = lista.Count(o => o.DataPrevisaoEntrega.Date < hoje && o.Status != OrdemServicoStatus.Concluida && o.Status != OrdemServicoStatus.Cancelada), CssClass = "resumo-atrasado" },
+            new() { Label = "Concluídas", Total = lista.Count(o => o.Status == OrdemServicoStatus.Concluida), CssClass = "resumo-concluida" },
+        };
+    }
+
+    private string GetChipClass(OrdemServico os)
+    {
+        if (os.Status == OrdemServicoStatus.Concluida) return "chip-concluida";
+        if (os.Status == OrdemServicoStatus.Cancelada) return "chip-cancelada";
+        if (os.DataPrevisaoEntrega.Date < DateTime.Today) return "chip-atrasado";
+        if (os.Status == OrdemServicoStatus.EmAndamento) return "chip-andamento";
+        if (os.Status == OrdemServicoStatus.AguardandoPecas) return "chip-pecas";
+        return "chip-orcamento";
+    }
+
+    private async Task MesAnterior()
+    {
+        if (mesSelecionado == 1) { mesSelecionado = 12; anoSelecionado--; }
+        else mesSelecionado--;
+        await CarregarAgenda();
+    }
+
+    private async Task ProximoMes()
+    {
+        if (mesSelecionado == 12) { mesSelecionado = 1; anoSelecionado++; }
+        else mesSelecionado++;
+        await CarregarAgenda();
+    }
+
+    private async Task IrParaHoje()
+    {
+        mesSelecionado = DateTime.Today.Month;
+        anoSelecionado = DateTime.Today.Year;
+        await CarregarAgenda();
+    }
+
+    private void AbrirOS(int id) => Nav.NavigateTo($"/ordens-servico/{id}");
+
+    private class CelulaCalendario
+    {
+        public DateTime? Data { get; set; }
+    }
+
+    private class ResumoItem
+    {
+        public string Label { get; set; } = "";
+        public int Total { get; set; }
+        public string CssClass { get; set; } = "";
+    }
+}
