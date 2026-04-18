@@ -3,10 +3,10 @@
    ============================================== */
 :root {
     /* Accent & Brand */
-    --accent: #f39c12;
-    --accent-hover: #e67e22;
-    --accent-glow: rgba(243, 156, 18, 0.35);
-    --accent-subtle: rgba(243, 156, 18, 0.10);
+    --accent: #ff751f;
+    --accent-hover: #e05c0d;
+    --accent-glow: rgba(255, 117, 31, 0.35);
+    --accent-subtle: rgba(255, 117, 31, 0.10);
 
     /* Superfícies */
     --bg-body: #f0f2f5;
@@ -206,8 +206,8 @@ h1:focus {
    ALERTAS
    ============================================== */
 .alert-info {
-    background-color: rgba(243, 156, 18, 0.08);
-    border-color: rgba(243, 156, 18, 0.2);
+    background-color: rgba(255, 117, 31, 0.08);
+    border-color: rgba(255, 117, 31, 0.2);
     color: var(--accent-hover);
     border-radius: var(--radius-md);
 }
@@ -554,11 +554,11 @@ h1:focus {
 }
 .cfg-toggle-card:hover {
     background: var(--accent-subtle);
-    border-color: rgba(243, 156, 18, 0.3);
+    border-color: rgba(255, 117, 31, 0.3);
 }
 .cfg-toggle-card.active {
-    background: rgba(243, 156, 18, 0.08);
-    border-color: rgba(243, 156, 18, 0.35);
+    background: rgba(255, 117, 31, 0.08);
+    border-color: rgba(255, 117, 31, 0.35);
 }
 .cfg-toggle-info {
     display: flex;

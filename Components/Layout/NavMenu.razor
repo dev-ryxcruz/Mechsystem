@@ -13,13 +13,16 @@
 }
 
 <div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid align-items-center">
+    <div class="container-fluid align-items-center d-flex p-0 pe-3">
         @if (!collapseSidebar)
         {
-            <a class="navbar-brand" href="">Mechsystem</a>
+            <a class="navbar-brand d-flex align-items-center gap-2 m-0" href="">
+                <img src="logo.png" alt="Mechsystem Logo" style="height: 25px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));" />
+                <span style="font-weight: 700; font-size: 1.25rem; letter-spacing: -0.5px;">Mechsystem</span>
+            </a>
         }
         <button title="Alternar Menu" class="btn btn-link text-white @(collapseSidebar ? "mx-auto" : "ms-auto") p-0 sidebar-toggle" @onclick="ToggleSidebar">
-            <i class="bi @(collapseSidebar ? "bi-arrow-bar-right" : "bi-arrow-bar-left")" style="font-size: 1.3rem; filter: none; color: var(--accent);"></i>
+            <i class="bi @(collapseSidebar ? "bi-arrow-bar-right" : "bi-arrow-bar-left")" style="font-size: 1.5rem; filter: none; color: var(--accent);"></i>
         </button>
     </div>
 </div>
@@ -191,8 +194,9 @@
                 </div>
                  <!-- Menu Configurações -->
                     <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="/configuracoes">
-                            <i class="bi bi-gear"></i> Configurações
+                        <NavLink class="nav-link" href="/configuracoes" title="Configurações">
+                            <i class="bi bi-gear" aria-hidden="true"></i>
+                            @if (!collapseSidebar) { <span class="nav-text">Configurações</span> }
                         </NavLink>
                     </div>
             </Authorized>
