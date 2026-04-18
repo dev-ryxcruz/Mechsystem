@@ -6,220 +6,314 @@
 @using mechsystem.Models
 @inject AppDbContext DbContext
 
-<PageTitle>Dashboard — Mechsystem</PageTitle>
+<PageTitle>Painel Estratégico (BI) — Mechsystem</PageTitle>
 
-<div class="dashboard">
+<div class="dashboard pb-5">
 
     <!-- Header -->
     <div class="dash-header mb-4">
         <div>
-            <h2 class="fw-bold mb-1">Dashboard</h2>
-            <p class="text-muted mb-0">Visão geral da oficina — @DateTime.Now.ToString("dddd, dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("pt-BR"))</p>
+            <h2 class="fw-bold mb-1"><i class="bi bi-graph-up-arrow me-2" style="color: var(--accent);"></i>Visão Executiva</h2>
+            <p class="text-muted mb-0">Painel Financeiro, Operacional e Inteligência de Mercado / @DateTime.Now.ToString("MMMM 'de' yyyy", new System.Globalization.CultureInfo("pt-BR")).ToUpper()</p>
         </div>
-        <a href="/ordens-servico/nova" class="btn btn-accent shadow-sm">
-            <i class="bi bi-plus-circle me-1"></i> Nova O.S.
-        </a>
+        <div class="d-flex gap-2 align-items-center">
+            @if (totalAtrasadas > 0)
+            {
+                <div class="pulse-alert bg-danger text-white px-3 py-2 rounded shadow-sm d-flex align-items-center me-2">
+                    <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                    <div>
+                        <span class="d-block fw-bold" style="font-size: 0.85rem; line-height: 1;">Atenção Operacional</span>
+                        <span style="font-size: 0.75rem;">@totalAtrasadas O.S. Atrasadas!</span>
+                    </div>
+                </div>
+            }
+            <a href="/ordens-servico/nova" class="btn btn-accent shadow-sm">
+                <i class="bi bi-plus-circle me-1"></i> Nova O.S.
+            </a>
+        </div>
     </div>
 
-    <!-- KPI Cards -->
+    <!-- ROW 1: KPIs Rápidos (Dono e Chefe) -->
     <div class="row g-3 mb-4">
+        
+        <!-- Previsão de Caixa (Dinheiro em Andamento) -->
         <div class="col-sm-6 col-xl-3">
-            <div class="kpi-card kpi-warning">
-                <div class="kpi-icon"><i class="bi bi-file-earmark-text"></i></div>
-                <div class="kpi-body">
-                    <span class="kpi-value">@totalOrcamentos</span>
-                    <span class="kpi-label">Orçamentos</span>
+            <div class="kpi-card shadow-sm stat-card border-top-accent">
+                <div class="stat-body flex-row align-items-center justify-content-between w-100">
+                    <div>
+                        <span class="kpi-label">Previsão de Caixa</span>
+                        <span class="kpi-value text-accent d-block">@dinheiroNaMesa.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</span>
+                        <span class="stat-subtext mt-1 text-muted">@totalEmAndamento O.S. Em Andamento</span>
+                    </div>
+                    <div class="stat-icon bg-light-accent text-accent fs-3 opacity-75">
+                        <i class="bi bi-safe"></i>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Ticket Médio -->
         <div class="col-sm-6 col-xl-3">
-            <div class="kpi-card kpi-primary">
-                <div class="kpi-icon"><i class="bi bi-wrench-adjustable"></i></div>
-                <div class="kpi-body">
-                    <span class="kpi-value">@totalEmAndamento</span>
-                    <span class="kpi-label">Em Andamento</span>
+            <div class="kpi-card shadow-sm stat-card border-top-primary">
+                <div class="stat-body flex-row align-items-center justify-content-between w-100">
+                    <div>
+                        <span class="kpi-label">Ticket Médio (OS Concluída)</span>
+                        <span class="kpi-value text-primary d-block">@ticketMedio.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</span>
+                        <span class="stat-subtext mt-1 text-muted">@totalOSConcluidasMes O.S. pagas no mês</span>
+                    </div>
+                    <div class="stat-icon bg-light-primary text-primary fs-3 opacity-75">
+                        <i class="bi bi-receipt"></i>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Faturamento Realizado do Mês Total Numerico -->
         <div class="col-sm-6 col-xl-3">
-            <div class="kpi-card kpi-success">
-                <div class="kpi-icon"><i class="bi bi-check-circle"></i></div>
-                <div class="kpi-body">
-                    <span class="kpi-value">@totalConcluidas</span>
-                    <span class="kpi-label">Concluídas (mês)</span>
+            <div class="kpi-card shadow-sm stat-card border-top-success">
+                <div class="stat-body flex-row align-items-center justify-content-between w-100">
+                    <div>
+                        <span class="kpi-label">Faturamento Total (Mês)</span>
+                        <span class="kpi-value text-success d-block">@faturamentoMes.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</span>
+                        <span class="stat-subtext mt-1 text-muted">Lucro Bruto + Peças</span>
+                    </div>
+                    <div class="stat-icon bg-light-success text-success fs-3 opacity-75">
+                        <i class="bi bi-cash-stack"></i>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Inteligência Mercado: Idade da Frota -->
         <div class="col-sm-6 col-xl-3">
-            <div class="kpi-card kpi-accent">
-                <div class="kpi-icon"><i class="bi bi-currency-dollar"></i></div>
-                <div class="kpi-body">
-                    <span class="kpi-value">@faturamentoMes.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</span>
-                    <span class="kpi-label">Faturamento (mês)</span>
+            <div class="kpi-card shadow-sm stat-card border-top-dark">
+                <div class="stat-body flex-row align-items-center justify-content-between w-100">
+                    <div>
+                        <span class="kpi-label">Idade Média da Frota</span>
+                        <span class="kpi-value text-dark d-block">@idadeMediaFrota.ToString("0.#") Anos</span>
+                        <span class="stat-subtext mt-1 text-muted">@totalVeiculos Veículos na base</span>
+                    </div>
+                    <div class="stat-icon bg-light text-dark fs-3 opacity-75">
+                        <i class="bi bi-car-front"></i>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Second Row: Counts -->
-    <div class="row g-3 mb-4">
-        <div class="col-sm-6 col-xl-4">
-            <div class="kpi-card kpi-dark">
-                <div class="kpi-icon"><i class="bi bi-people-fill"></i></div>
-                <div class="kpi-body">
-                    <span class="kpi-value">@totalClientes</span>
-                    <span class="kpi-label">Clientes Cadastrados</span>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-6 col-xl-4">
-            <div class="kpi-card kpi-dark">
-                <div class="kpi-icon"><i class="bi bi-car-front-fill"></i></div>
-                <div class="kpi-body">
-                    <span class="kpi-value">@totalVeiculos</span>
-                    <span class="kpi-label">Veículos Cadastrados</span>
-                </div>
-            </div>
-        </div>
-        <div class="col-sm-12 col-xl-4">
-            <div class="kpi-card kpi-dark">
-                <div class="kpi-icon"><i class="bi bi-file-earmark-ruled"></i></div>
-                <div class="kpi-body">
-                    <span class="kpi-value">@totalOS</span>
-                    <span class="kpi-label">Total de O.S. (geral)</span>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- ROW 2: DONUTS E GAUGES -->
+    <div class="row g-3 mb-4 d-flex align-items-stretch">
+        
+        <!-- Distribuição de Receita -->
+        <div class="col-md-4">
+            <div class="card shadow-sm dash-card h-100">
+                <div class="card-body text-center p-4">
+                    <h6 class="fw-bold mb-3 text-start text-muted"><i class="bi bi-pie-chart me-2"></i>Distribuição de Receita</h6>
+                    
+                    @{
+                        var pctMaoObra = faturamentoMes > 0 ? (faturamentoMaoDeObra / faturamentoMes) * 100 : 0;
+                        var pctPecas = faturamentoMes > 0 ? (faturamentoPecas / faturamentoMes) * 100 : 0;
+                    }
 
-    <!-- Content Row -->
-    <div class="row g-3">
-        <!-- Últimas O.S. -->
-        <div class="col-lg-7">
-            <div class="card shadow-sm dash-card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2"></i>Últimas Ordens de Serviço</h6>
-                    <a href="/ordens-servico" class="btn btn-sm btn-outline-secondary">Ver Tudo</a>
-                </div>
-                <div class="card-body p-0">
-                    @if (ultimasOS != null && ultimasOS.Any())
-                    {
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>Nº</th>
-                                        <th>Cliente</th>
-                                        <th>Veículo</th>
-                                        <th>Status</th>
-                                        <th class="text-end">Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var os in ultimasOS)
-                                    {
-                                        <tr class="cursor-pointer" @onclick="() => NavigateTo(os.Id)">
-                                            <td class="fw-bold">@os.Id.ToString("D4")</td>
-                                            <td>@os.Veiculo?.Cliente?.Nome</td>
-                                            <td><span class="text-muted">@os.Veiculo?.Placa</span> @os.Veiculo?.Modelo</td>
-                                            <td>
-                                                @if(os.Status == OrdemServicoStatus.Orcamento)
-                                                {
-                                                    <span class="badge bg-warning text-dark">Orçamento</span>
-                                                }
-                                                else if(os.Status == OrdemServicoStatus.EmAndamento)
-                                                {
-                                                    <span class="badge bg-primary">Em Andamento</span>
-                                                }
-                                                else if(os.Status == OrdemServicoStatus.Concluida)
-                                                {
-                                                    <span class="badge bg-success">Concluída</span>
-                                                }
-                                                else if(os.Status == OrdemServicoStatus.AguardandoPecas)
-                                                {
-                                                    <span class="badge bg-info text-dark">Aguard. Peças</span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="badge bg-secondary">@os.Status</span>
-                                                }
-                                            </td>
-                                            <td class="text-end fw-bold">@os.ValorTotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
+                    <div class="d-flex justify-content-center mb-4 mt-2">
+                        <div class="donut-chart" style="background: conic-gradient(#198754 0% @pctMaoObra.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%, #fd7e14 @pctMaoObra.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)% 100%);">
+                            <div class="donut-hole d-flex flex-column align-items-center justify-content-center bg-white">
+                                <span class="d-block text-muted" style="font-size: 0.75rem; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">Receita</span>
+                                <span class="fs-4 fw-bold text-dark" style="line-height: 1.1;">@faturamentoMes.ToString("C0", new System.Globalization.CultureInfo("pt-BR"))</span>
+                            </div>
                         </div>
-                    }
-                    else
-                    {
-                        <div class="p-4 text-center text-muted">
-                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-                            <p class="mt-2 mb-0">Nenhuma O.S. cadastrada ainda.</p>
+                    </div>
+
+                    <div class="d-flex justify-content-around px-2">
+                        <div class="text-start">
+                            <span class="d-flex align-items-center gap-1 mb-1" style="font-size: 0.85rem;"><span class="dot bg-success"></span>Mão de Obra</span>
+                            <strong class="d-block">@Math.Round(pctMaoObra)%</strong>
+                            <small class="text-muted">@faturamentoMaoDeObra.ToString("C0", new System.Globalization.CultureInfo("pt-BR"))</small>
                         </div>
-                    }
+                        <div class="text-start">
+                             <span class="d-flex align-items-center gap-1 mb-1" style="font-size: 0.85rem;"><span class="dot" style="background-color: #fd7e14;"></span>Peças</span>
+                            <strong class="d-block">@Math.Round(pctPecas)%</strong>
+                            <small class="text-muted">@faturamentoPecas.ToString("C0", new System.Globalization.CultureInfo("pt-BR"))</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Próximas Entregas -->
-        <div class="col-lg-5">
-            <div class="card shadow-sm dash-card">
-                <div class="card-header">
-                    <h6 class="mb-0 fw-bold"><i class="bi bi-calendar-event me-2"></i>Próximas Entregas Previstas</h6>
-                </div>
-                <div class="card-body p-0">
-                    @if (proximasEntregas != null && proximasEntregas.Any())
+        <!-- Marcas Mais Atendidas (Mercado) -->
+        <div class="col-md-4">
+            <div class="card shadow-sm dash-card h-100">
+                <div class="card-body text-center p-4">
+                    <h6 class="fw-bold mb-3 text-start text-muted"><i class="bi bi-bullseye me-2"></i>Market Share (Marcas Atendidas)</h6>
+                    
+                    @if (topMarcas != null && topMarcas.Any())
                     {
-                        <ul class="list-group list-group-flush">
-                            @foreach (var os in proximasEntregas)
+                        var totalTopMarcas = topMarcas.Sum(x => x.Quantidade);
+                        var cores = new string[] { "#4e73df", "#1cc88a", "#36b9cc", "#f6c23e", "#e74c3c" };
+                        
+                        var stops = "";
+                        double sum = 0;
+                        for(int i = 0; i < topMarcas.Count; i++)
+                        {
+                            var pct = totalTopMarcas > 0 ? (topMarcas[i].Quantidade * 100.0) / totalTopMarcas : 0;
+                            stops += $"{cores[i]} {sum.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}% {(sum + pct).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}%,";
+                            sum += pct;
+                        }
+                        stops = stops.TrimEnd(',');
+
+                        <div class="d-flex justify-content-center mb-4 mt-2">
+                            <div class="donut-chart" style="background: conic-gradient(@stops);">
+                                <div class="donut-hole bg-white d-flex flex-column align-items-center justify-content-center">
+                                    <span class="fs-4 fw-bold text-dark">Top 5</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-2 text-start justify-content-center" style="font-size: 0.85rem;">
+                            @for(int i=0; i<topMarcas.Count; i++)
                             {
-                                var diasRestantes = (os.DataPrevisaoEntrega - DateTime.Today).Days;
-                                var corDias = diasRestantes <= 0 ? "text-danger" : diasRestantes <= 2 ? "text-warning" : "text-success";
-
-                                <li class="list-group-item d-flex justify-content-between align-items-center entrega-item">
-                                    <div>
-                                        <strong class="d-block">OS #@os.Id.ToString("D4") — @os.Veiculo?.Placa</strong>
-                                        <small class="text-muted">@os.Veiculo?.Cliente?.Nome</small>
-                                    </div>
-                                    <div class="text-end">
-                                        <span class="d-block fw-bold @corDias">
-                                            @os.DataPrevisaoEntrega.ToString("dd/MM")
-                                        </span>
-                                        <small class="@corDias">
-                                            @if (diasRestantes < 0)
-                                            {
-                                                <span>@Math.Abs(diasRestantes)d atrasado</span>
-                                            }
-                                            else if (diasRestantes == 0)
-                                            {
-                                                <span>Hoje!</span>
-                                            }
-                                            else
-                                            {
-                                                <span>em @diasRestantes dias</span>
-                                            }
-                                        </small>
-                                    </div>
-                                </li>
+                                <div class="col-auto d-flex align-items-center mb-1 px-3">
+                                    <span class="dot me-2" style="background-color: @cores[i]"></span>
+                                    <span class="text-truncate" style="max-width: 100px;" title="@topMarcas[i].Nome">@topMarcas[i].Nome</span>
+                                    <strong class="ms-2 text-dark">@topMarcas[i].Quantidade</strong>
+                                </div>
                             }
-                        </ul>
+                        </div>
                     }
                     else
                     {
-                        <div class="p-4 text-center text-muted">
-                            <i class="bi bi-calendar-check" style="font-size: 2rem;"></i>
-                            <p class="mt-2 mb-0">Nenhuma entrega pendente.</p>
+                        <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted">
+                            <i class="bi bi-car-front fs-2 mb-2"></i>
+                            <p>Sem dados suficientes neste mês.</p>
                         </div>
                     }
                 </div>
             </div>
         </div>
+
+        <!-- Taxa de Conversão Funcional (Orçamentos vs Recusados/Aprovados) -->
+        <div class="col-md-4">
+            <div class="card shadow-sm dash-card h-100">
+                 <div class="card-body text-center p-4">
+                    <h6 class="fw-bold mb-3 text-start text-muted"><i class="bi bi-funnel me-2"></i>Taxa de Conversão do Mês</h6>
+                    
+                    <div class="d-flex justify-content-center mb-4 mt-2">
+                        <div class="donut-chart" style="background: conic-gradient(var(--accent) @taxaConversao.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%, #e9ecef 0);">
+                            <div class="donut-hole bg-white d-flex align-items-center justify-content-center" style="box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);">
+                                <span class="h2 fw-bold mb-0 text-dark">@Math.Round(taxaConversao)%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-start bg-light rounded p-3">
+                        <p class="text-muted small mb-0" style="font-size: 0.85rem;">
+                            Avaliando todos os Orçamentos abertos este mês:<br/>
+                            <strong class="text-success">@totalAprovadasMes aprovados</strong> contra <br/>
+                            <strong class="text-danger">@totalCanceladasMes cancelados/perdidos</strong> (Desconsiderando os que ainda aguardam resposta).
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ROW 3: BARRAS E LISTAS (Operacional) -->
+    <div class="row g-3">
+        
+        <!-- Funil Operacional Vertical -->
+        <div class="col-lg-7">
+            <div class="card shadow-sm dash-card h-100">
+                <div class="card-header bg-white border-bottom-0 pb-0 pt-3">
+                    <h6 class="mb-0 fw-bold text-muted"><i class="bi bi-bar-chart-fill me-2"></i>Funil da Oficina (Volume do Mês)</h6>
+                </div>
+                <div class="card-body px-4 pb-4 pt-2">
+                    <p class="small text-muted mb-4">Acompanha onde estão paralisados os veículos no fluxo de trabalho.</p>
+                    
+                    <div class="funnel-container d-flex justify-content-between align-items-end mt-4" style="height: 200px; padding-bottom: 30px; border-bottom: 2px solid #e9ecef;">
+                        
+                        @{
+                            var labels = new string[] { "Orçamento", "AguardPçs", "Andamento", "Concluídas", "Canceladas" };
+                            var colors = new string[] { "#f6c23e", "#36b9cc", "#4e73df", "#1cc88a", "#e74c3c" };
+                        }
+
+                        @for (int i = 0; i < 5; i++)
+                        {
+                            var hPct = maxFunil > 0 ? (funilData[i] * 100.0) / maxFunil : 0;
+                            if (hPct < 3) hPct = 3; // min height
+                            
+                            <div class="funnel-bar-wrapper d-flex flex-column align-items-center" style="width: 19%;">
+                                <div class="bg-white px-2 py-1 rounded shadow-sm fw-bold border" style="font-size: 0.85rem; z-index: 2; margin-bottom: -15px; position:relative;">@funilData[i]</div>
+                                <div class="funnel-bar" style="height: @(hPct)%; background-color: @colors[i]; width: 70%; border-radius: 4px 4px 0 0; transition: height 1s ease;">
+                                </div>
+                                <span class="funnel-label position-absolute w-100 start-0" style="bottom: -28px; font-size: 0.72rem; font-weight: 600; text-align: center; color: #555; white-space: nowrap;">@labels[i]</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top 5 Serviços Realizados -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm dash-card h-100">
+                <div class="card-header bg-white border-bottom-0 pb-0 pt-3">
+                    <h6 class="mb-0 fw-bold text-muted"><i class="bi bi-list-stars me-2"></i>Top 5 Serviços (Campeões)</h6>
+                </div>
+                <div class="card-body p-0 mt-3">
+                    @if (topServicos != null && topServicos.Any())
+                    {
+                        var maxServico = topServicos.First().Quantidade;
+                        
+                        <div class="list-group list-group-flush pb-2">
+                            @foreach(var servico in topServicos)
+                            {
+                                var pctServ = maxServico > 0 ? (servico.Quantidade * 100.0) / maxServico : 0;
+                                <div class="list-group-item border-0 py-2">
+                                    <div class="d-flex justify-content-between mb-1" style="font-size: 0.85rem;">
+                                        <span class="fw-bold text-dark text-truncate pe-2">@servico.Nome</span>
+                                        <span class="badge bg-light text-dark border">@servico.Quantidade vezes</span>
+                                    </div>
+                                    <div class="progress" style="height: 6px; border-radius: 3px;">
+                                        <div class="progress-bar" style="background-color: var(--accent); width: @pctServ.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-4 text-center text-muted h-100 d-flex flex-column justify-content-center">
+                            <i class="bi bi-tools fs-2 mb-2"></i>
+                            <p class="mb-0 small">Nenhum serviço registrado neste mês ainda.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
 <style>
-    /* Dashboard Header */
+    /* Clean Exec Dashboard Styles */
+    :root {
+        --dark-bg: #1e222d;
+        --light-primary: #e6f0ff;
+        --light-accent: #f0ecfc;
+        --light-success: #e8f5e9;
+        --light-warning: #fff8e1;
+    }
+
+    body {
+        background-color: #f8f9fc; /* Super soft background */
+    }
+
+    .border-top-accent { border-top: 4px solid var(--accent) !important; }
+    .border-top-primary { border-top: 4px solid #4e73df !important; }
+    .border-top-success { border-top: 4px solid #1cc88a !important; }
+    .border-top-dark { border-top: 4px solid #5a5c69 !important; }
+
     .dash-header {
         display: flex;
         justify-content: space-between;
@@ -233,153 +327,253 @@
         border-color: var(--accent);
         color: #fff;
         font-weight: 600;
+        padding: 0.5rem 1.2rem;
+        border-radius: 0.5rem;
     }
     .btn-accent:hover {
         background: var(--accent-hover);
-        border-color: var(--accent-hover);
         color: #fff;
         box-shadow: 0 4px 15px var(--accent-glow);
     }
 
-    /* KPI Cards */
+    .bg-light-primary { background-color: var(--light-primary); }
+    .bg-light-accent { background-color: var(--light-accent); }
+    .bg-light-success { background-color: var(--light-success); }
+    .text-accent { color: var(--accent); }
+
+    /* Standard KPI Card */
     .kpi-card {
         display: flex;
         align-items: center;
-        gap: 1rem;
-        padding: 1.25rem 1.5rem;
+        padding: 1.5rem;
         border-radius: 0.75rem;
         background: #fff;
-        border: 1px solid #e9ecef;
+        border: 1px solid rgba(0,0,0,0.05); /* Soft border instead of all white */
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         height: 100%;
     }
     .kpi-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.07) !important;
     }
-    .kpi-icon {
+    
+    .stat-card {
+        flex-direction: row;
+        align-items: center;
+        width: 100%;
+    }
+    .stat-body {
+        display: flex;
+        width: 100%;
+    }
+    .stat-icon {
         width: 50px;
         height: 50px;
-        border-radius: 0.625rem;
+        border-radius: 0.5rem;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.4rem;
         flex-shrink: 0;
     }
-    .kpi-body {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-    }
+
     .kpi-value {
-        font-size: 1.5rem;
-        font-weight: 700;
+        font-size: 1.6rem;
+        font-weight: 800;
         line-height: 1.2;
-        color: #1e2227;
+        letter-spacing: -0.5px;
     }
     .kpi-label {
-        font-size: 0.8rem;
-        color: #6c757d;
-        font-weight: 500;
+        font-size: 0.75rem;
+        color: #858796; /* Clean crisp gray */
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.03em;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+        display: block;
+    }
+    .stat-subtext {
+        font-size: 0.75rem;
+        font-weight: 500;
+        display: block;
     }
 
-    /* KPI Colors */
-    .kpi-warning .kpi-icon  { background: #fff3cd; color: #856404; }
-    .kpi-primary .kpi-icon  { background: #cfe2ff; color: #084298; }
-    .kpi-success .kpi-icon  { background: #d1e7dd; color: #0f5132; }
-    .kpi-accent .kpi-icon   { background: var(--accent-subtle); color: var(--accent-hover); }
-    .kpi-dark .kpi-icon     { background: #e9ecef; color: #495057; }
+    /* Donut Charts */
+    .donut-chart {
+        width: 160px;
+        height: 160px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    .donut-hole {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
 
     /* Dash Cards */
     .dash-card {
-        border: 1px solid #e9ecef;
-        border-radius: 0.75rem;
-        overflow: hidden;
+        border: 1px solid rgba(0,0,0,0.05);
+        border-radius: 0.5rem; /* Slightly tighter radius for formal look */
+        transition: box-shadow 0.2s;
     }
-    .dash-card .card-header {
-        background: #fafbfc;
-        border-bottom: 1px solid #e9ecef;
-        padding: 0.875rem 1.25rem;
-    }
-    .dash-card .table th {
-        font-size: 0.78rem;
-        text-transform: uppercase;
-        color: #6c757d;
-        letter-spacing: 0.03em;
-        font-weight: 600;
-        border-bottom-width: 1px;
-    }
-    .dash-card .table td {
-        font-size: 0.9rem;
-        vertical-align: middle;
-        padding: 0.75rem 0.75rem;
+    .dash-card:hover {
+        box-shadow: 0 8px 15px rgba(0,0,0,0.05) !important;
     }
 
-    .cursor-pointer { cursor: pointer; }
-    .cursor-pointer:hover { background: #f8f9fa !important; }
-
-    /* Entregas */
-    .entrega-item {
-        transition: background 0.15s ease;
-        padding: 0.875rem 1.25rem;
+    /* Funnel Layout */
+    .funnel-container {
+        position: relative;
     }
-    .entrega-item:hover {
-        background: #f8f9fa;
+    .funnel-bar-wrapper {
+        position: relative;
+        height: 100%;
+        justify-content: flex-end;
+    }
+    .funnel-bar {
+        box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    }
+
+    /* Animations */
+    .pulse-alert {
+        animation: pulse-red 2s infinite;
+    }
+    
+    @@keyframes pulse-red {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+        70% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
     }
 </style>
 
 @code {
-    private int totalClientes;
+    // Totais e Informações Base
     private int totalVeiculos;
-    private int totalOS;
-    private int totalOrcamentos;
+    private int totalAtrasadas;
+    private decimal idadeMediaFrota;
+    
+    // Status e Fluxo (Previsão de Caixa)
     private int totalEmAndamento;
-    private int totalConcluidas;
-    private decimal faturamentoMes;
+    private decimal dinheiroNaMesa;
 
-    private List<OrdemServico>? ultimasOS;
-    private List<OrdemServico>? proximasEntregas;
+    // Métricas Financeiras e Médias
+    private decimal faturamentoMes;
+    private decimal faturamentoMaoDeObra;
+    private decimal faturamentoPecas;
+    private decimal ticketMedio;
+    private int totalOSConcluidasMes;
+
+    // Inteligência e Conversão
+    private double taxaConversao;
+    private int totalAprovadasMes;
+    private int totalCanceladasMes;
+
+    // Listas e Rankings
+    private int[] funilData = new int[5]; // Orcamento, AguardPcs, Andamento, Concluida, Cancelada
+    private int maxFunil = 1;
+
+    private List<TopRankingItem> topMarcas = new();
+    private List<TopRankingItem> topServicos = new();
+
+    public class TopRankingItem
+    {
+        public string Nome { get; set; } = "N/A";
+        public int Quantidade { get; set; }
+    }
 
     [Inject] NavigationManager Nav { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        var hoje = DateTime.Today;
+        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1);
 
-        totalClientes = await DbContext.Clientes.CountAsync();
-        totalVeiculos = await DbContext.Veiculos.CountAsync();
-        totalOS = await DbContext.OrdensServico.CountAsync();
+        // 1. Idade Média da Frota
+        var veiculosComAno = await DbContext.Veiculos.Where(v => v.Ano > 1900 && v.Ano <= hoje.Year).ToListAsync();
+        totalVeiculos = veiculosComAno.Count;
+        idadeMediaFrota = veiculosComAno.Any() ? (decimal)veiculosComAno.Average(v => hoje.Year - v.Ano) : 0;
 
-        totalOrcamentos = await DbContext.OrdensServico
-            .CountAsync(o => o.Status == OrdemServicoStatus.Orcamento);
-
-        totalEmAndamento = await DbContext.OrdensServico
-            .CountAsync(o => o.Status == OrdemServicoStatus.EmAndamento || o.Status == OrdemServicoStatus.AguardandoPecas);
-
-        totalConcluidas = await DbContext.OrdensServico
-            .CountAsync(o => o.Status == OrdemServicoStatus.Concluida && o.DataAutorizacao >= inicioMes);
-
-        faturamentoMes = await DbContext.OrdensServico
+        // 2. Faturamento e Ticket Médio (OS Concluídas no Mês)
+        var osConcluidas = await DbContext.OrdensServico
             .Where(o => o.Status == OrdemServicoStatus.Concluida && o.DataAutorizacao >= inicioMes)
-            .SumAsync(o => o.ValorMaoDeObra + o.ValorPecas);
+            .ToListAsync();
+            
+        totalOSConcluidasMes = osConcluidas.Count;
+        faturamentoMaoDeObra = osConcluidas.Sum(o => o.ValorMaoDeObra);
+        faturamentoPecas = osConcluidas.Sum(o => o.ValorPecas);
+        faturamentoMes = faturamentoMaoDeObra + faturamentoPecas;
+        
+        ticketMedio = totalOSConcluidasMes > 0 ? faturamentoMes / totalOSConcluidasMes : 0;
 
-        ultimasOS = await DbContext.OrdensServico
-            .Include(o => o.Veiculo)
-                .ThenInclude(v => v!.Cliente)
-            .OrderByDescending(o => o.Id)
-            .Take(5)
+        // 3. Previsão de Caixa (Em Andamento)
+        var osEmAndamento = await DbContext.OrdensServico
+            .Where(o => o.Status == OrdemServicoStatus.EmAndamento)
             .ToListAsync();
 
-        proximasEntregas = await DbContext.OrdensServico
-            .Include(o => o.Veiculo)
-                .ThenInclude(v => v!.Cliente)
-            .Where(o => o.Status == OrdemServicoStatus.EmAndamento || o.Status == OrdemServicoStatus.AguardandoPecas)
-            .OrderBy(o => o.DataPrevisaoEntrega)
-            .Take(5)
+        totalEmAndamento = osEmAndamento.Count;
+        dinheiroNaMesa = osEmAndamento.Sum(o => o.ValorTotal);
+
+        // 4. Atrasos Operacionais
+        totalAtrasadas = await DbContext.OrdensServico
+            .CountAsync(o => (o.Status == OrdemServicoStatus.EmAndamento || o.Status == OrdemServicoStatus.AguardandoPecas) 
+                              && o.DataPrevisaoEntrega.Date < hoje);
+
+        // 5. Funil de OS (Sonsultando O.S Cadastradas no mês)
+        var osMesRaw = await DbContext.OrdensServico
+            .Where(o => o.DataEmissao >= inicioMes)
+            .Select(o => new { o.Status, o.ServicoAExecutar, o.Veiculo })
             .ToListAsync();
+
+        funilData[0] = osMesRaw.Count(o => o.Status == OrdemServicoStatus.Orcamento);
+        funilData[1] = osMesRaw.Count(o => o.Status == OrdemServicoStatus.AguardandoPecas);
+        funilData[2] = osMesRaw.Count(o => o.Status == OrdemServicoStatus.EmAndamento);
+        funilData[3] = osMesRaw.Count(o => o.Status == OrdemServicoStatus.Concluida);
+        funilData[4] = osMesRaw.Count(o => o.Status == OrdemServicoStatus.Cancelada);
+        
+        maxFunil = funilData.Max();
+        if(maxFunil == 0) maxFunil = 1;
+
+        // 6. Taxa de Conversão (Aprovadas vs Canceladas)
+        // Aprovadas: Passaram de Orçamento, então estão em Andamento, AguardPecas ou Concluida (Ignoraremos orçamentos mortos)
+        totalAprovadasMes = funilData[1] + funilData[2] + funilData[3];
+        totalCanceladasMes = funilData[4];
+        var totalDecididas = totalAprovadasMes + totalCanceladasMes;
+
+        taxaConversao = totalDecididas > 0 ? (totalAprovadasMes * 100.0) / totalDecididas : 0;
+
+        // 7. Inteligência de Mercado / Top Marcas
+        var marcasAtendidas = await DbContext.OrdensServico
+            .Include(o => o.Veiculo)
+            .Where(o => o.DataEmissao >= inicioMes && o.Veiculo != null && !string.IsNullOrEmpty(o.Veiculo.Marca))
+            .Select(o => o.Veiculo!.Marca)
+            .ToListAsync();
+            
+        topMarcas = marcasAtendidas
+            .GroupBy(m => m?.ToUpper().Trim() ?? "Outro")
+            .Select(g => new TopRankingItem { Nome = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(g.Key.ToLower()), Quantidade = g.Count() })
+            .OrderByDescending(x => x.Quantidade)
+            .Take(5)
+            .ToList();
+
+        // 8. Top 5 Serviços Realizados
+        topServicos = osMesRaw
+            .Where(o => !string.IsNullOrEmpty(o.ServicoAExecutar))
+            .GroupBy(o => o.ServicoAExecutar!.Trim().ToUpper())
+            .Select(g => new TopRankingItem { Nome = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(g.Key.ToLower()), Quantidade = g.Count() })
+            .OrderByDescending(x => x.Quantidade)
+            .Take(5)
+            .ToList();
     }
 
     private void NavigateTo(int id)

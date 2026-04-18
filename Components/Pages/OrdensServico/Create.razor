@@ -125,13 +125,14 @@
 
 @code {
     [SupplyParameterFromForm]
-    private OrdemServico os { get; set; } = new();
+    private OrdemServico os { get; set; } = default!;
 
     private List<Veiculo>? veiculos;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
+        os ??= new();
         os.DataEmissao = DateTime.Today;
         os.DataPrevisaoEntrega = DateTime.Today.AddDays(5); // Default 5 days delivery
         

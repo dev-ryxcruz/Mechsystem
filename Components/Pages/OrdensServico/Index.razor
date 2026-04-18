@@ -93,7 +93,7 @@ else
     {
         ordensServico = await DbContext.OrdensServico
             .Include(o => o.Veiculo)
-                .ThenInclude(v => v.Cliente)
+                .ThenInclude(v => v!.Cliente)
             .OrderByDescending(o => o.Id)
             .ToListAsync();
     }
