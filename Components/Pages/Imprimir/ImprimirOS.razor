@@ -152,7 +152,7 @@ else
                 </div>
                 <div class="doc-field">
                     <span class="doc-label">Validade do Orçamento</span>
-                    <span class="doc-value">@os.ValidadeOrcamento.ToString("dd/MM/yyyy")</span>
+                    <span class="doc-value">@os.GetValidadeOrcamento(config?.ValidadeOrcamentoDias ?? 10).ToString("dd/MM/yyyy")</span>
                 </div>
             </div>
         </div>

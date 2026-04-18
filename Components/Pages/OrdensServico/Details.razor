@@ -111,7 +111,7 @@ else
             <div class="row mb-4">
                 <div class="col-sm-4"><small class="text-muted d-block">Previsão de Início</small><strong>@(os.DataPrevisaoInicio?.ToString("dd/MM/yyyy") ?? "N/A")</strong></div>
                 <div class="col-sm-4"><small class="text-muted d-block">Previsão de Entrega (CDC)</small><strong>@os.DataPrevisaoEntrega.ToString("dd/MM/yyyy")</strong></div>
-                <div class="col-sm-4"><small class="text-muted d-block">Validade Orçamento</small><strong>@os.ValidadeOrcamento.ToString("dd/MM/yyyy")</strong></div>
+                <div class="col-sm-4"><small class="text-muted d-block">Validade Orçamento</small><strong>@os.GetValidadeOrcamento(config?.ValidadeOrcamentoDias ?? 10).ToString("dd/MM/yyyy")</strong></div>
             </div>
 
             <AuthorizeView Roles="Administrador, Atendimento">
@@ -252,6 +252,7 @@ else
     public int Id { get; set; }
 
     private OrdemServico? os;
+    private Configuracao? config;
     private bool mostrarModalAprovacao = false;
     private string? erroMensagem;
     private string autorizadoPor = "";
@@ -274,6 +275,8 @@ else
         {
             autorizadoPor = os.Veiculo?.Cliente?.Nome ?? "";
         }
+        
+        config = await DbContext.Configuracoes.FirstOrDefaultAsync();
     }
 
     private void AbrirModalAprovacao()
@@ -292,6 +295,12 @@ else
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         if (!authState.User.IsInRole("Administrador") && !authState.User.IsInRole("Atendimento"))
         {
+            return;
+        }
+
+        if (config != null && config.ObrigarVistoriaParaOS && os?.Vistoria == null)
+        {
+            erroMensagem = "Para aprovar este orçamento, as configurações da Oficina exigem a realização da Vistoria de Entrada. Cancele e realize a Vistoria na O.S. primeiro.";
             return;
         }
 

@@ -89,7 +89,15 @@
                 <h5 class="mb-3 border-bottom pb-2 mt-4">Discriminação de Valores (CDC)</h5>
                 <div class="row mb-3">
                     <div class="col-md-4 mb-3">
-                        <label for="valorMaoDeObra" class="form-label">Valor Mão de Obra</label>
+                        <label for="valorMaoDeObra" class="form-label">
+                            Valor base Mão de Obra
+                            @if (config != null && config.TaxaMaoDeObra > 0)
+                            {
+                                <span class="badge bg-warning text-dark ms-2" title="Esta taxa será adicionada ao valor final">
+                                    + @config.TaxaMaoDeObra.ToString("0.##")% (Adicional)
+                                </span>
+                            }
+                        </label>
                         <div class="input-group">
                             <span class="input-group-text">R$</span>
                             <InputNumber id="valorMaoDeObra" @bind-Value="os.ValorMaoDeObra" class="form-control" step="0.01" />
@@ -128,6 +136,7 @@
     private OrdemServico os { get; set; } = default!;
 
     private List<Veiculo>? veiculos;
+    private Configuracao? config;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
@@ -135,6 +144,8 @@
         os ??= new();
         os.DataEmissao = DateTime.Today;
         os.DataPrevisaoEntrega = DateTime.Today.AddDays(5); // Default 5 days delivery
+        
+        config = await DbContext.Configuracoes.FirstOrDefaultAsync();
         
         veiculos = await DbContext.Veiculos
             .Include(v => v.Cliente)
@@ -150,6 +161,11 @@
         {
             // Simple validation feedback if veiculo not selected
             return;
+        }
+        
+        if (config != null && config.TaxaMaoDeObra > 0)
+        {
+            os.ValorMaoDeObra += os.ValorMaoDeObra * (config.TaxaMaoDeObra / 100m);
         }
 
         os.Status = OrdemServicoStatus.Orcamento;

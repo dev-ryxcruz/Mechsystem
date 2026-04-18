@@ -60,7 +60,7 @@ namespace mechsystem.Models
         public DateTime? DataAutorizacao { get; set; }
 
         [Display(Name = "Validade do Orçamento")]
-        public DateTime ValidadeOrcamento => DataEmissao.AddDays(10);
+        public DateTime GetValidadeOrcamento(int validadeDias) => DataEmissao.AddDays(validadeDias);
 
         // Vistoria de Entrada (1 para 1)
         public Vistoria? Vistoria { get; set; }
