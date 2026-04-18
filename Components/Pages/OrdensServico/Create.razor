@@ -60,9 +60,34 @@
                         <InputTextArea id="descricao" @bind-Value="os.DescricaoProblemaRelatado" class="form-control" rows="3"></InputTextArea>
                         <ValidationMessage For="@(() => os.DescricaoProblemaRelatado)" class="text-danger" />
                     </div>
+                    <!-- Painel: Catálogo de Serviços -->
+                    <div class="col-md-12 mb-3">
+                        <div class="card bg-light border-secondary">
+                            <div class="card-body p-3">
+                                <h6 class="fw-bold mb-2"><i class="bi bi-journal-plus text-primary me-2"></i>Catálogo de Serviços</h6>
+                                <p class="small text-muted mb-3">Selecione e adicione serviços pré-cadastrados. A descrição será gerada e o valor da Mão de Obra ajustado automaticamente.</p>
+                                <div class="input-group">
+                                    <select class="form-select" @bind="servicoSelecionadoId">
+                                        <option value="0">-- Selecione um serviço --</option>
+                                        @if (catalogoServicos != null)
+                                        {
+                                            foreach(var s in catalogoServicos)
+                                            {
+                                                <option value="@s.Id">@s.Nome - @s.ValorPadrao.ToString("C")</option>
+                                            }
+                                        }
+                                    </select>
+                                    <button type="button" class="btn btn-primary" @onclick="AdicionarServicoAoTexto" disabled="@(servicoSelecionadoId == 0)">
+                                        <i class="bi bi-plus-lg me-1"></i> Adicionar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="col-md-12">
                         <label for="servicos" class="form-label">Serviços a Executar</label>
-                        <InputTextArea id="servicos" @bind-Value="os.ServicoAExecutar" class="form-control" rows="3"></InputTextArea>
+                        <InputTextArea id="servicos" @bind-Value="os.ServicoAExecutar" class="form-control" rows="3" placeholder="Você também pode digitar manualmente aqui..."></InputTextArea>
                         <ValidationMessage For="@(() => os.ServicoAExecutar)" class="text-danger" />
                     </div>
                 </div>
@@ -136,6 +161,8 @@
     private OrdemServico os { get; set; } = default!;
 
     private List<Veiculo>? veiculos;
+    private List<Servico>? catalogoServicos;
+    private int servicoSelecionadoId = 0;
     private Configuracao? config;
     private bool isLoading = true;
 
@@ -151,6 +178,8 @@
             .Include(v => v.Cliente)
             .OrderBy(v => v.Cliente!.Nome)
             .ToListAsync();
+            
+        catalogoServicos = await DbContext.Servicos.OrderBy(s => s.Nome).ToListAsync();
             
         isLoading = false;
     }
@@ -174,5 +203,28 @@
         await DbContext.SaveChangesAsync();
 
         NavigationManager.NavigateTo($"/ordens-servico/{os.Id}");
+    }
+
+    private void AdicionarServicoAoTexto()
+    {
+        if (servicoSelecionadoId <= 0 || catalogoServicos == null) return;
+        
+        var servico = catalogoServicos.FirstOrDefault(s => s.Id == servicoSelecionadoId);
+        if (servico != null)
+        {
+            var textoInserir = $"- {servico.Nome} ({servico.ValorPadrao:C}){(servico.TempoEstimadoMinutos.HasValue ? $" - Tempo Est.: {servico.TempoEstimadoMinutos} min" : "")}";
+            
+            if (string.IsNullOrWhiteSpace(os.ServicoAExecutar))
+            {
+                os.ServicoAExecutar = textoInserir;
+            }
+            else
+            {
+                os.ServicoAExecutar += $"\n{textoInserir}";
+            }
+
+            os.ValorMaoDeObra += servico.ValorPadrao;
+            servicoSelecionadoId = 0; // Reset
+        }
     }
 }
