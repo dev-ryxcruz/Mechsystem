@@ -46,9 +46,18 @@ else
                 <Authorized>
                     @if (os.Status == OrdemServicoStatus.Orcamento)
                     {
-                        <button class="btn btn-success" @onclick="AbrirModalAprovacao">
-                            <i class="bi bi-check-circle me-1"></i> Aprovar Orçamento
-                        </button>
+                        @if (config != null && config.ObrigarVistoriaParaOS && os.Vistoria == null)
+                        {
+                            <button class="btn btn-secondary disabled" title="A configuração exige Vistoria prévia">
+                                <i class="bi bi-lock-fill me-1"></i> Aprovar (Bloqueado)
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-success" @onclick="AbrirModalAprovacao">
+                                <i class="bi bi-check-circle me-1"></i> Aprovar Orçamento
+                            </button>
+                        }
                     }
                 </Authorized>
             </AuthorizeView>

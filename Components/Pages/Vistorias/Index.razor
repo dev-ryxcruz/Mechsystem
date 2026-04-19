@@ -1,0 +1,99 @@
+@page "/vistorias"
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Models
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject AppDbContext DbContext
+
+<PageTitle>Histórico de Vistorias</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Histórico de Vistorias</h2>
+</div>
+
+@if (vistorias == null)
+{
+    <p><em>Carregando...</em></p>
+}
+else if (!vistorias.Any())
+{
+    <div class="alert alert-info">Nenhuma Vistoria cadastrada ainda no sistema.</div>
+}
+else
+{
+    <div class="card shadow-sm">
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Nº Vistoria</th>
+                        <th>Data</th>
+                        <th>OS Vinculada</th>
+                        <th>Veículo / Cliente</th>
+                        <th>Nível de Combust.</th>
+                        <th>Itens Checklist</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var v in vistorias)
+                    {
+                        <tr>
+                            <td>#@v.Id.ToString("D4")</td>
+                            <td>@v.DataVistoria.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td><a href="/ordens-servico/@v.OrdemServicoId" class="text-decoration-none fw-bold">OS-@v.OrdemServicoId.ToString("D4")</a></td>
+                            <td>
+                                @(v.OrdemServico?.Veiculo?.Modelo) - <strong>@(v.OrdemServico?.Veiculo?.Placa)</strong><br />
+                                <small class="text-muted">@(v.OrdemServico?.Veiculo?.Cliente?.Nome)</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border">@GetEnumDisplayName(v.NivelCombustivel)</span>
+                            </td>
+                            <td>
+                                @{
+                                    int presentes = 0;
+                                    if(v.TemEstepe) presentes++;
+                                    if(v.TemMacaco) presentes++;
+                                    if(v.TemChaveRoda) presentes++;
+                                    if(v.TemRadio) presentes++;
+                                    if(v.TemTriangulo) presentes++;
+                                }
+                                <span class="badge bg-secondary">@presentes/5 Presentes</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="/ordensdeservico/@v.OrdemServicoId/vistoria" class="btn btn-sm btn-outline-primary" title="Ver / Editar Checklist Visual">
+                                    <i class="bi bi-eye"></i> Mapa
+                                </a>
+                                <a href="/imprimir/vistoria/@v.OrdemServicoId" target="_blank" class="btn btn-sm btn-outline-secondary" title="Imprimir PDF">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private List<Vistoria>? vistorias;
+
+    protected override async Task OnInitializedAsync()
+    {
+        vistorias = await DbContext.Vistorias
+            .Include(v => v.OrdemServico)
+                .ThenInclude(os => os!.Veiculo)
+                    .ThenInclude(veic => veic!.Cliente)
+            .OrderByDescending(v => v.DataVistoria)
+            .ToListAsync();
+    }
+
+    private string GetEnumDisplayName(Enum value)
+    {
+        var field = value.GetType().GetField(value.ToString());
+        var attributes = field?.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.DisplayAttribute), false) as System.ComponentModel.DataAnnotations.DisplayAttribute[];
+        return attributes?.Length > 0 ? (attributes[0].Name ?? value.ToString()) : value.ToString();
+    }
+}

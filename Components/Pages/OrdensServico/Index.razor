@@ -38,6 +38,7 @@ else
                         <th>Veículo (Placa)</th>
                         <th>Cliente</th>
                         <th>Status</th>
+                        <th>Vistoria</th>
                         <AuthorizeView Roles="Administrador, Atendimento">
                             <th>Total</th>
                         </AuthorizeView>
@@ -70,6 +71,16 @@ else
                                     <span class="badge bg-secondary">@os.Status</span>
                                 }
                             </td>
+                            <td>
+                                @if (os.Vistoria != null)
+                                {
+                                    <span class="badge bg-success" title="Realizada"><i class="bi bi-shield-check"></i> Feita</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger" title="Pendente"> Pendente</span>
+                                }
+                            </td>
                             <AuthorizeView Roles="Administrador, Atendimento">
                                 <td>@os.ValorTotal.ToString("C")</td>
                             </AuthorizeView>
@@ -94,6 +105,7 @@ else
         ordensServico = await DbContext.OrdensServico
             .Include(o => o.Veiculo)
                 .ThenInclude(v => v!.Cliente)
+            .Include(o => o.Vistoria)
             .OrderByDescending(o => o.Id)
             .ToListAsync();
     }
