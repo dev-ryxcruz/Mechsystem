@@ -1,0 +1,229 @@
+@page "/estoque/ajuste"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Interfaces
+@using mechsystem.Models
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@attribute [Authorize(Roles = "Administrador")]
+@inject IPecaRepository PecaRepository
+@inject AppDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Ajuste de Estoque — Mechsystem</PageTitle>
+
+<div class="row align-items-center mb-4">
+    <div class="col">
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-sliders me-2" style="color: #e67e22;"></i>Ajuste de Estoque
+        </h2>
+        <p class="text-muted mb-0">Correção manual de inventário — restrito ao Administrador</p>
+    </div>
+    <div class="col-auto">
+        <a href="/estoque" class="btn btn-outline-secondary shadow-sm">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+    </div>
+</div>
+
+<div class="alert alert-warning d-flex align-items-center shadow-sm border-0 mb-4" style="border-radius: 0.75rem;">
+    <i class="bi bi-shield-lock-fill fs-4 me-3"></i>
+    <div>
+        <strong>Área Restrita</strong>
+        <span class="d-block small">Ajustes manuais criam registros de auditoria. Use apenas para corrigir divergências reais (perda, furto, erro de contagem).</span>
+    </div>
+</div>
+
+<div class="card shadow-sm dash-card">
+    <div class="card-body p-4">
+        @if (!string.IsNullOrEmpty(mensagemSucesso))
+        {
+            <div class="alert alert-success d-flex align-items-center">
+                <i class="bi bi-check-circle-fill fs-4 me-3"></i>
+                <div>
+                    <strong>Ajuste realizado!</strong>
+                    <span class="d-block small">@mensagemSucesso</span>
+                </div>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(erroMensagem))
+        {
+            <div class="alert alert-danger">@erroMensagem</div>
+        }
+
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="mb-3 border-bottom pb-2">Selecionar Peça</h5>
+
+                <div class="mb-3">
+                    <label class="form-label">Peça</label>
+                    <select class="form-select" @bind="pecaSelecionadaId">
+                        <option value="0">-- Selecione uma peça --</option>
+                        @if (pecas != null)
+                        {
+                            foreach (var p in pecas)
+                            {
+                                <option value="@p.Id">[@p.Sku] @p.Nome — Estoque: @p.EstoqueAtual</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                @if (pecaSelecionada != null)
+                {
+                    <div class="alert bg-light border mb-3">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <small class="text-muted d-block">Estoque Sistema</small>
+                                <strong class="fs-4">@pecaSelecionada.EstoqueAtual</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted d-block">Estoque Mínimo</small>
+                                <strong class="fs-5">@pecaSelecionada.EstoqueMinimo</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted d-block">Localização</small>
+                                <strong>@(pecaSelecionada.Localizacao ?? "N/A")</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h5 class="mb-3 border-bottom pb-2 mt-4">Novo Valor de Estoque</h5>
+
+                    <div class="mb-3">
+                        <label class="form-label">Quantidade Real (Contagem Física) <span class="text-danger">*</span></label>
+                        <InputNumber @bind-Value="novaQuantidade" class="form-control fs-5 fw-bold text-center" min="0" />
+                        
+                        @{
+                            var diff = novaQuantidade - pecaSelecionada.EstoqueAtual;
+                        }
+                        @if (diff != 0)
+                        {
+                            <div class="mt-2 text-center">
+                                <span class="badge @(diff > 0 ? "bg-success" : "bg-danger") px-3 py-2 fs-6">
+                                    Diferença: @(diff > 0 ? "+" : "")@diff unidades
+                                </span>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Motivo do Ajuste <span class="text-danger">*</span></label>
+                        <InputText @bind-Value="motivo" class="form-control" 
+                                   placeholder="Ex: Perda por avaria, divergência inventário, furto..." />
+                    </div>
+
+                    <div class="d-flex justify-content-end mt-4">
+                        <button type="button" class="btn btn-warning shadow-sm text-dark fw-bold"
+                                disabled="@(string.IsNullOrWhiteSpace(motivo) || novaQuantidade == pecaSelecionada?.EstoqueAtual)"
+                                @onclick="RegistrarAjuste">
+                            <i class="bi bi-check2-square me-1"></i> Confirmar Ajuste
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <div class="col-md-6">
+                <h5 class="mb-3 border-bottom pb-2">Últimos Ajustes</h5>
+                @if (ultimosAjustes != null && ultimosAjustes.Any())
+                {
+                    <div class="list-group list-group-flush">
+                        @foreach (var mov in ultimosAjustes)
+                        {
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="badge bg-warning text-dark me-2">
+                                            @(mov.Quantidade >= 0 ? "+" : "")@mov.Quantidade
+                                        </span>
+                                        <strong>@mov.Peca?.Nome</strong>
+                                        <small class="text-muted d-block mt-1">@mov.Referencia</small>
+                                        <small class="text-muted d-block">por @(mov.Usuario?.NomeCompleto ?? "Sistema")</small>
+                                    </div>
+                                    <small class="text-muted">@mov.DataHora.ToLocalTime().ToString("dd/MM HH:mm")</small>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-clipboard-check fs-2 mb-2 d-block"></i>
+                        <p class="small">Nenhum ajuste recente registrado.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IEnumerable<Peca>? pecas;
+    private List<MovimentacaoEstoque>? ultimosAjustes;
+
+    private int pecaSelecionadaId = 0;
+    private int novaQuantidade = 0;
+    private string motivo = "";
+    private string? mensagemSucesso;
+    private string? erroMensagem;
+
+    private Peca? pecaSelecionada => pecas?.FirstOrDefault(p => p.Id == pecaSelecionadaId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarDados();
+    }
+
+    private async Task CarregarDados()
+    {
+        pecas = await PecaRepository.GetAllAsync();
+        ultimosAjustes = await DbContext.MovimentacoesEstoque
+            .Include(m => m.Peca)
+            .Include(m => m.Usuario)
+            .Where(m => m.Tipo == TipoMovimentacao.Ajuste)
+            .OrderByDescending(m => m.DataHora)
+            .Take(10)
+            .ToListAsync();
+    }
+
+    private async Task RegistrarAjuste()
+    {
+        try
+        {
+            erroMensagem = null;
+            mensagemSucesso = null;
+
+            if (pecaSelecionadaId <= 0 || string.IsNullOrWhiteSpace(motivo)) return;
+
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userIdClaim = authState.User.FindFirst(ClaimTypes.NameIdentifier);
+            int usuarioId = userIdClaim != null ? int.Parse(userIdClaim.Value) : 1;
+
+            var peca = pecaSelecionada;
+            var diff = novaQuantidade - (peca?.EstoqueAtual ?? 0);
+
+            await PecaRepository.RegistrarAjusteAsync(
+                pecaSelecionadaId,
+                novaQuantidade,
+                motivo,
+                usuarioId
+            );
+
+            mensagemSucesso = $"Estoque de '{peca?.Nome}' ajustado para {novaQuantidade} ({(diff >= 0 ? "+" : "")}{diff}).";
+
+            // Reset
+            motivo = "";
+            pecaSelecionadaId = 0;
+            novaQuantidade = 0;
+
+            await CarregarDados();
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = ex.Message;
+        }
+    }
+}

@@ -135,6 +135,47 @@
 
         <div class="nav-divider"></div>
 
+        <!-- Menu Estoque -->
+        <div class="nav-item px-3">
+            <div class="nav-link" @onclick="ToggleEstoque" style="cursor: pointer;" title="Estoque">
+                <i class="bi bi-box-seam-fill" aria-hidden="true"></i>
+                @if (!collapseSidebar)
+                {
+                    <span class="nav-text">Estoque</span>
+                    <i class="bi bi-chevron-@(expandEstoque ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
+                }
+            </div>
+            @if (expandEstoque && !collapseSidebar)
+            {
+                <div class="nav-submenu">
+                    <AuthorizeView Roles="Administrador, Atendimento">
+                        <NavLink class="nav-link" href="/estoque/cadastro">
+                            <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
+                            <span class="nav-text">Nova Peça</span>
+                        </NavLink>
+                    </AuthorizeView>
+                    <NavLink class="nav-link" href="/estoque" Match="NavLinkMatch.All">
+                        <i class="bi bi-list-ul" aria-hidden="true"></i>
+                        <span class="nav-text">Listar Peças</span>
+                    </NavLink>
+                    <AuthorizeView Roles="Administrador, Atendimento">
+                        <NavLink class="nav-link" href="/estoque/entrada">
+                            <i class="bi bi-box-arrow-in-down" aria-hidden="true"></i>
+                            <span class="nav-text">Entrada</span>
+                        </NavLink>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="Administrador">
+                        <NavLink class="nav-link" href="/estoque/ajuste">
+                            <i class="bi bi-sliders" aria-hidden="true"></i>
+                            <span class="nav-text">Ajuste</span>
+                        </NavLink>
+                    </AuthorizeView>
+                </div>
+            }
+        </div>
+
+        <div class="nav-divider"></div>
+
         <!-- Menu OS -->
         <div class="nav-item px-3">
             <div class="nav-link" @onclick="ToggleOS" style="cursor: pointer;" title="Ordens de Serviço">
@@ -219,6 +260,7 @@
     private bool expandClientes = false;
     private bool expandVeiculos = false;
     private bool expandServicos = false;
+    private bool expandEstoque = false;
     private bool expandOS = false;
     private bool expandUsuarios = false;
 
@@ -230,6 +272,7 @@
             expandClientes = false;
             expandVeiculos = false;
             expandServicos = false;
+            expandEstoque = false;
             expandOS = false;
             expandUsuarios = false;
         }
@@ -251,6 +294,12 @@
     {
         if (collapseSidebar) collapseSidebar = false;
         expandServicos = !expandServicos;
+    }
+
+    private void ToggleEstoque()
+    {
+        if (collapseSidebar) collapseSidebar = false;
+        expandEstoque = !expandEstoque;
     }
 
     private void ToggleOS()

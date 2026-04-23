@@ -1,0 +1,220 @@
+@page "/estoque/entrada"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Interfaces
+@using mechsystem.Models
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@attribute [Authorize(Roles = "Administrador, Atendimento")]
+@inject IPecaRepository PecaRepository
+@inject AppDbContext DbContext
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Entrada de Estoque — Mechsystem</PageTitle>
+
+<div class="row align-items-center mb-4">
+    <div class="col">
+        <h2 class="fw-bold mb-1">
+            <i class="bi bi-box-arrow-in-down me-2 text-success"></i>Entrada de Estoque
+        </h2>
+        <p class="text-muted mb-0">Registre a chegada de novas peças do fornecedor</p>
+    </div>
+    <div class="col-auto">
+        <a href="/estoque" class="btn btn-outline-secondary shadow-sm">
+            <i class="bi bi-arrow-left me-1"></i> Voltar
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm dash-card">
+    <div class="card-body p-4">
+        @if (!string.IsNullOrEmpty(mensagemSucesso))
+        {
+            <div class="alert alert-success d-flex align-items-center">
+                <i class="bi bi-check-circle-fill fs-4 me-3"></i>
+                <div>
+                    <strong>Entrada registrada!</strong>
+                    <span class="d-block small">@mensagemSucesso</span>
+                </div>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(erroMensagem))
+        {
+            <div class="alert alert-danger">@erroMensagem</div>
+        }
+
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="mb-3 border-bottom pb-2">Selecionar Peça</h5>
+                
+                <div class="mb-3">
+                    <label class="form-label">Peça</label>
+                    <select class="form-select" @bind="pecaSelecionadaId">
+                        <option value="0">-- Selecione uma peça --</option>
+                        @if (pecas != null)
+                        {
+                            foreach (var p in pecas)
+                            {
+                                <option value="@p.Id">[@p.Sku] @p.Nome @(p.Marca != null ? $"({p.Marca})" : "")</option>
+                            }
+                        }
+                    </select>
+                </div>
+
+                @if (pecaSelecionada != null)
+                {
+                    <div class="alert bg-light border mb-3">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <small class="text-muted d-block">Estoque Atual</small>
+                                <strong class="fs-5 @(pecaSelecionada.AbaixoDoMinimo ? "text-danger" : "text-success")">@pecaSelecionada.EstoqueAtual</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted d-block">Custo Atual</small>
+                                <strong>@pecaSelecionada.PrecoCusto.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</strong>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted d-block">Mínimo</small>
+                                <strong>@pecaSelecionada.EstoqueMinimo</strong>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                <h5 class="mb-3 border-bottom pb-2 mt-4">Dados da Entrada</h5>
+
+                <div class="mb-3">
+                    <label class="form-label">Quantidade <span class="text-danger">*</span></label>
+                    <InputNumber @bind-Value="quantidade" class="form-control" min="1" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Novo Preço de Custo (se alterar)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">R$</span>
+                        <InputNumber @bind-Value="novoPrecoCusto" class="form-control" step="0.01" />
+                    </div>
+                    <small class="text-muted">Deixe em branco ou zero para manter o custo atual.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Referência / Nota Fiscal</label>
+                    <InputText @bind-Value="referencia" class="form-control" 
+                               placeholder="Ex: NF 1234 — Fornecedor XYZ" />
+                </div>
+
+                <div class="d-flex justify-content-end mt-4">
+                    <button type="button" class="btn btn-success shadow-sm" 
+                            disabled="@(pecaSelecionadaId == 0 || quantidade <= 0)"
+                            @onclick="RegistrarEntrada">
+                        <i class="bi bi-box-arrow-in-down me-1"></i> Confirmar Entrada
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <h5 class="mb-3 border-bottom pb-2">Últimas Entradas</h5>
+                @if (ultimasEntradas != null && ultimasEntradas.Any())
+                {
+                    <div class="list-group list-group-flush">
+                        @foreach (var mov in ultimasEntradas)
+                        {
+                            <div class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <span class="badge bg-success me-2">+@mov.Quantidade</span>
+                                        <strong>@mov.Peca?.Nome</strong>
+                                        <small class="text-muted d-block mt-1">@mov.Referencia</small>
+                                    </div>
+                                    <small class="text-muted">@mov.DataHora.ToLocalTime().ToString("dd/MM HH:mm")</small>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-2 mb-2 d-block"></i>
+                        <p class="small">Nenhuma entrada recente registrada.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-accent { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; border-radius: 0.5rem; }
+    .btn-accent:hover { background: var(--accent-hover); color: #fff; }
+</style>
+
+@code {
+    private IEnumerable<Peca>? pecas;
+    private List<MovimentacaoEstoque>? ultimasEntradas;
+
+    private int pecaSelecionadaId = 0;
+    private int quantidade = 1;
+    private decimal novoPrecoCusto = 0;
+    private string referencia = "";
+    private string? mensagemSucesso;
+    private string? erroMensagem;
+
+    private Peca? pecaSelecionada => pecas?.FirstOrDefault(p => p.Id == pecaSelecionadaId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarDados();
+    }
+
+    private async Task CarregarDados()
+    {
+        pecas = await PecaRepository.GetAllAsync();
+        ultimasEntradas = await DbContext.MovimentacoesEstoque
+            .Include(m => m.Peca)
+            .Where(m => m.Tipo == TipoMovimentacao.Entrada)
+            .OrderByDescending(m => m.DataHora)
+            .Take(10)
+            .ToListAsync();
+    }
+
+    private async Task RegistrarEntrada()
+    {
+        try
+        {
+            erroMensagem = null;
+            mensagemSucesso = null;
+
+            if (pecaSelecionadaId <= 0 || quantidade <= 0) return;
+
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userIdClaim = authState.User.FindFirst(ClaimTypes.NameIdentifier);
+            int usuarioId = userIdClaim != null ? int.Parse(userIdClaim.Value) : 1;
+
+            await PecaRepository.RegistrarEntradaAsync(
+                pecaSelecionadaId,
+                quantidade,
+                novoPrecoCusto > 0 ? novoPrecoCusto : null,
+                string.IsNullOrWhiteSpace(referencia) ? null : referencia,
+                usuarioId
+            );
+
+            var peca = pecaSelecionada;
+            mensagemSucesso = $"+{quantidade} unidades de '{peca?.Nome}' ({peca?.Sku}) adicionadas ao estoque.";
+
+            // Reset
+            quantidade = 1;
+            novoPrecoCusto = 0;
+            referencia = "";
+            pecaSelecionadaId = 0;
+
+            await CarregarDados();
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = ex.Message;
+        }
+    }
+}

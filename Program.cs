@@ -25,9 +25,11 @@ builder.Services.AddRazorComponents()
 builder.Services.AddScoped<IClienteRepository, ClienteRepository>();
 builder.Services.AddScoped<IVeiculoRepository, VeiculoRepository>();
 builder.Services.AddScoped<IServicoRepository, ServicoRepository>();
+builder.Services.AddScoped<IPecaRepository, PecaRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<UsuarioService>();
 builder.Services.AddScoped<ConfiguracaoService>();
+builder.Services.AddScoped<EstoqueService>();
 
 // Authentication via Cookies
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

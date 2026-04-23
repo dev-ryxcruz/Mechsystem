@@ -64,5 +64,8 @@ namespace mechsystem.Models
 
         // Vistoria de Entrada (1 para 1)
         public Vistoria? Vistoria { get; set; }
+
+        // Peças utilizadas na OS
+        public ICollection<OrdemServicoPeca> PecasUtilizadas { get; set; } = new List<OrdemServicoPeca>();
     }
 }

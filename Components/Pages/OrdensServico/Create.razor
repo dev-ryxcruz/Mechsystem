@@ -3,10 +3,13 @@
 @using Microsoft.EntityFrameworkCore
 @using mechsystem.Data
 @using mechsystem.Models
+@using mechsystem.Interfaces
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Administrador, Atendimento")]
 @inject AppDbContext DbContext
 @inject NavigationManager NavigationManager
+@inject IClienteRepository ClienteRepository
+@inject IVeiculoRepository VeiculoRepository
 
 <PageTitle>Nova Ordem de Serviço</PageTitle>
 
@@ -27,12 +30,6 @@
         {
             <p>Carregando dados...</p>
         }
-        else if (veiculos == null || !veiculos.Any())
-        {
-            <div class="alert alert-warning">
-                Não há veículos cadastrados. Você precisa cadastrar um cliente e um veículo antes de abrir uma OS.
-            </div>
-        }
         else
         {
             <EditForm Model="os" OnValidSubmit="HandleValidSubmit" FormName="NovaOS">
@@ -42,14 +39,30 @@
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <label for="veiculoId" class="form-label">Veículo (Cliente)</label>
-                        <InputSelect id="veiculoId" @bind-Value="os.VeiculoId" class="form-select">
-                            <option value="0">-- Selecione um Veículo --</option>
-                            @foreach (var v in veiculos)
-                            {
-                                <option value="@v.Id">@v.Placa - @v.Modelo (@v.Cliente?.Nome)</option>
-                            }
-                        </InputSelect>
+                        <div class="input-group">
+                            <InputSelect id="veiculoId" @bind-Value="os.VeiculoId" class="form-select">
+                                <option value="0">-- Selecione um Veículo --</option>
+                                @if (veiculos != null)
+                                {
+                                    @foreach (var v in veiculos)
+                                    {
+                                        <option value="@v.Id">@v.Placa - @v.Modelo (@v.Cliente?.Nome)</option>
+                                    }
+                                }
+                            </InputSelect>
+                            <button type="button" class="btn btn-outline-primary" @onclick="AbrirWizardCadastro" title="Cadastrar novo cliente e veículo">
+                                <i class="bi bi-person-plus-fill me-1"></i> Novo
+                            </button>
+                        </div>
                         <ValidationMessage For="@(() => os.VeiculoId)" class="text-danger" />
+
+                        @if (veiculos == null || !veiculos.Any())
+                        {
+                            <div class="alert alert-info mt-2 mb-0 py-2 px-3 d-flex align-items-center gap-2">
+                                <i class="bi bi-info-circle"></i>
+                                <span>Nenhum veículo cadastrado. Use o botão <strong>"Novo"</strong> para cadastrar um cliente e veículo rapidamente.</span>
+                            </div>
+                        }
                     </div>
                 </div>
 
@@ -156,6 +169,166 @@
     </div>
 </div>
 
+@* ─── Modal: Wizard Cadastro Rápido (Cliente + Veículo) ────────────────────── *@
+@if (mostrarWizard)
+{
+    <div class="blazor-modal-backdrop" @onclick="FecharWizard"></div>
+    <div class="blazor-modal">
+        <div class="blazor-modal-content" style="max-width: 620px;">
+            @* ── Header com indicador de passo ── *@
+            <div class="blazor-modal-header" style="background: var(--accent, #ff751f); color: white;">
+                <h5 class="mb-0">
+                    <i class="bi @(passoWizard == 1 ? "bi-person-plus" : "bi-truck") me-2"></i>
+                    @(passoWizard == 1 ? "Passo 1 — Cadastrar Cliente" : "Passo 2 — Cadastrar Veículo")
+                </h5>
+                <button type="button" class="btn-close btn-close-white" @onclick="FecharWizard"></button>
+            </div>
+
+            @* ── Progress indicator ── *@
+            <div class="d-flex px-4 pt-3 pb-0">
+                <div class="flex-fill text-center">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center @(passoWizard >= 1 ? "bg-primary text-white" : "bg-light text-muted")" style="width:32px;height:32px;font-weight:700;font-size:14px;">1</div>
+                    <div class="small mt-1 @(passoWizard >= 1 ? "fw-bold text-primary" : "text-muted")">Cliente</div>
+                </div>
+                <div class="flex-fill d-flex align-items-start justify-content-center" style="padding-top:15px;">
+                    <div style="height:2px;width:100%;background:@(passoWizard >= 2 ? "var(--accent, #ff751f)" : "#dee2e6");border-radius:2px;"></div>
+                </div>
+                <div class="flex-fill text-center">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center @(passoWizard >= 2 ? "bg-primary text-white" : "bg-light text-muted")" style="width:32px;height:32px;font-weight:700;font-size:14px;">2</div>
+                    <div class="small mt-1 @(passoWizard >= 2 ? "fw-bold text-primary" : "text-muted")">Veículo</div>
+                </div>
+            </div>
+
+            @* ── Body ── *@
+            <div class="blazor-modal-body text-dark">
+                @if (!string.IsNullOrEmpty(erroWizard))
+                {
+                    <div class="alert alert-danger py-2">@erroWizard</div>
+                }
+
+                @if (passoWizard == 1)
+                {
+                    @* ──── PASSO 1: CLIENTE ──── *@
+                    <EditForm Model="novoCliente" OnValidSubmit="AvancarParaVeiculo">
+                        <DataAnnotationsValidator />
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Nome Completo <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="novoCliente.Nome" class="form-control" placeholder="Ex: João da Silva" />
+                                <ValidationMessage For="@(() => novoCliente.Nome)" class="text-danger small" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">CPF <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="novoCliente.Cpf" class="form-control" placeholder="Apenas números" />
+                                <ValidationMessage For="@(() => novoCliente.Cpf)" class="text-danger small" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Telefone</label>
+                                <InputText @bind-Value="novoCliente.Telefone" class="form-control" placeholder="(00) 00000-0000" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">E-mail</label>
+                                <InputText @bind-Value="novoCliente.Email" class="form-control" placeholder="joao@email.com" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Endereço</label>
+                                <InputText @bind-Value="novoCliente.Endereco" class="form-control" placeholder="Rua, Número, Bairro, Cidade" />
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-secondary" @onclick="FecharWizard">Cancelar</button>
+                            <button type="submit" class="btn btn-primary" disabled="@salvandoWizard">
+                                @if (salvandoWizard)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                }
+                                Próximo <i class="bi bi-arrow-right ms-1"></i>
+                            </button>
+                        </div>
+                    </EditForm>
+                }
+                else
+                {
+                    @* ──── PASSO 2: VEÍCULO ──── *@
+                    <div class="alert bg-light border mb-3 py-2 d-flex align-items-center gap-2">
+                        <i class="bi bi-person-check text-success fs-5"></i>
+                        <span>Cliente: <strong>@novoCliente.Nome</strong> (CPF: @novoCliente.Cpf)</span>
+                    </div>
+
+                    <EditForm Model="novoVeiculo" OnValidSubmit="ConcluirWizard">
+                        <DataAnnotationsValidator />
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Placa <span class="text-danger">*</span></label>
+                                <InputText @bind-Value="novoVeiculo.Placa" class="form-control text-uppercase" placeholder="ABC-1234" />
+                                <ValidationMessage For="@(() => novoVeiculo.Placa)" class="text-danger small" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Marca</label>
+                                <InputText @bind-Value="novoVeiculo.Marca" class="form-control" placeholder="Ex: Toyota" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Modelo</label>
+                                <InputText @bind-Value="novoVeiculo.Modelo" class="form-control" placeholder="Ex: Corolla" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Cor</label>
+                                <InputText @bind-Value="novoVeiculo.Cor" class="form-control" placeholder="Ex: Preto" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Ano</label>
+                                <InputNumber @bind-Value="novoVeiculo.Ano" class="form-control" placeholder="2020" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Km</label>
+                                <InputNumber @bind-Value="novoVeiculo.Quilometragem" class="form-control" placeholder="0" />
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-outline-secondary" @onclick="VoltarParaCliente">
+                                <i class="bi bi-arrow-left me-1"></i> Voltar
+                            </button>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-secondary" @onclick="FecharWizard">Cancelar</button>
+                                <button type="submit" class="btn btn-success" disabled="@salvandoWizard">
+                                    @if (salvandoWizard)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-1"></span>
+                                    }
+                                    <i class="bi bi-check-lg me-1"></i> Concluir Cadastro
+                                </button>
+                            </div>
+                        </div>
+                    </EditForm>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    /* Blazor-controlled Modal */
+    .blazor-modal-backdrop {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); z-index: 1040;
+    }
+    .blazor-modal {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1050;
+    }
+    .blazor-modal-content {
+        background: white; border-radius: 0.5rem; width: 500px; max-width: 92%;
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.3);
+    }
+    .blazor-modal-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 1rem 1.25rem; border-radius: 0.5rem 0.5rem 0 0;
+    }
+    .blazor-modal-header h5 { margin: 0; }
+    .blazor-modal-body { padding: 1.25rem; }
+</style>
+
 @code {
     [SupplyParameterFromForm]
     private OrdemServico os { get; set; } = default!;
@@ -165,6 +338,14 @@
     private int servicoSelecionadoId = 0;
     private Configuracao? config;
     private bool isLoading = true;
+
+    // ─── Wizard: Cadastro Rápido ─────────────────────────────────────────────────
+    private bool mostrarWizard = false;
+    private int passoWizard = 1;
+    private Cliente novoCliente = new();
+    private Veiculo novoVeiculo = new();
+    private string? erroWizard;
+    private bool salvandoWizard = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -225,6 +406,88 @@
 
             os.ValorMaoDeObra += servico.ValorPadrao;
             servicoSelecionadoId = 0; // Reset
+        }
+    }
+
+    // ─── Wizard: Métodos ─────────────────────────────────────────────────────────
+
+    private void AbrirWizardCadastro()
+    {
+        novoCliente = new Cliente();
+        novoVeiculo = new Veiculo();
+        erroWizard = null;
+        passoWizard = 1;
+        salvandoWizard = false;
+        mostrarWizard = true;
+    }
+
+    private void FecharWizard()
+    {
+        mostrarWizard = false;
+    }
+
+    private void VoltarParaCliente()
+    {
+        erroWizard = null;
+        passoWizard = 1;
+    }
+
+    private async Task AvancarParaVeiculo()
+    {
+        try
+        {
+            salvandoWizard = true;
+            erroWizard = null;
+
+            // Salvar o cliente no banco
+            await ClienteRepository.Salvar(novoCliente);
+
+            // Avançar para passo 2
+            novoVeiculo.ClienteId = novoCliente.Id;
+            novoVeiculo.Ano = DateTime.Today.Year;
+            passoWizard = 2;
+        }
+        catch (Exception ex)
+        {
+            erroWizard = $"Erro ao salvar cliente: {ex.Message}";
+        }
+        finally
+        {
+            salvandoWizard = false;
+        }
+    }
+
+    private async Task ConcluirWizard()
+    {
+        try
+        {
+            salvandoWizard = true;
+            erroWizard = null;
+
+            // Garantir vínculo com o cliente recém-criado
+            novoVeiculo.ClienteId = novoCliente.Id;
+
+            // Salvar o veículo no banco
+            await VeiculoRepository.Salvar(novoVeiculo);
+
+            // Recarregar a lista de veículos
+            veiculos = await DbContext.Veiculos
+                .Include(v => v.Cliente)
+                .OrderBy(v => v.Cliente!.Nome)
+                .ToListAsync();
+
+            // Pré-selecionar o veículo recém-criado
+            os.VeiculoId = novoVeiculo.Id;
+
+            mostrarWizard = false;
+        }
+        catch (Exception ex)
+        {
+            erroWizard = $"Erro ao salvar veículo: {ex.Message}";
+        }
+        finally
+        {
+            salvandoWizard = false;
         }
     }
 }

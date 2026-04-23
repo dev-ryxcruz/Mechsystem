@@ -4,7 +4,9 @@
 @using Microsoft.EntityFrameworkCore
 @using mechsystem.Data
 @using mechsystem.Models
+@using mechsystem.Services
 @inject AppDbContext DbContext
+@inject EstoqueService EstoqueService
 
 <PageTitle>Painel Estratégico (BI) — Mechsystem</PageTitle>
 
@@ -26,6 +28,16 @@
                         <span style="font-size: 0.75rem;">@totalAtrasadas O.S. Atrasadas!</span>
                     </div>
                 </div>
+            }
+            @if (pecasEmRuptura != null && pecasEmRuptura.Any())
+            {
+                <a href="/estoque" class="pulse-alert bg-warning text-dark px-3 py-2 rounded shadow-sm d-flex align-items-center me-2 text-decoration-none">
+                    <i class="bi bi-box-seam-fill me-2 fs-5"></i>
+                    <div>
+                        <span class="d-block fw-bold" style="font-size: 0.85rem; line-height: 1;">Ruptura de Estoque</span>
+                        <span style="font-size: 0.75rem;">@pecasEmRuptura.Count peça(s) abaixo do mínimo!</span>
+                    </div>
+                </a>
             }
             <a href="/ordens-servico/nova" class="btn btn-accent shadow-sm">
                 <i class="bi bi-plus-circle me-1"></i> Nova O.S.
@@ -84,7 +96,42 @@
             </div>
         </div>
 
-        <!-- Inteligência Mercado: Idade da Frota -->
+        <!-- Capital Imobilizado em Estoque -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card shadow-sm stat-card border-top-dark">
+                <div class="stat-body flex-row align-items-center justify-content-between w-100">
+                    <div>
+                        <span class="kpi-label">Capital Imobilizado</span>
+                        <span class="kpi-value text-dark d-block">@capitalImobilizado.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</span>
+                        <span class="stat-subtext mt-1 text-muted">Valor parado em peças</span>
+                    </div>
+                    <div class="stat-icon bg-light text-dark fs-3 opacity-75">
+                        <i class="bi bi-box-seam"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ROW 1.5: Margem de Lucro Real + Idade Frota + Alerta Ruptura -->
+    <div class="row g-3 mb-4">
+        <!-- Margem de Lucro Real -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="kpi-card shadow-sm stat-card" style="border-top: 4px solid #27ae60 !important;">
+                <div class="stat-body flex-row align-items-center justify-content-between w-100">
+                    <div>
+                        <span class="kpi-label">Margem Real (Peças)</span>
+                        <span class="kpi-value d-block" style="color: #27ae60;">@margemLucroReal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</span>
+                        <span class="stat-subtext mt-1 text-muted">Lucro líquido peças no mês</span>
+                    </div>
+                    <div class="stat-icon fs-3 opacity-75" style="background: #e8f8f0; color: #27ae60;">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Idade Média da Frota -->
         <div class="col-sm-6 col-xl-3">
             <div class="kpi-card shadow-sm stat-card border-top-dark">
                 <div class="stat-body flex-row align-items-center justify-content-between w-100">
@@ -96,6 +143,43 @@
                     <div class="stat-icon bg-light text-dark fs-3 opacity-75">
                         <i class="bi bi-car-front"></i>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerta de Ruptura -->
+        <div class="col-sm-12 col-xl-6">
+            <div class="kpi-card shadow-sm h-100" style="border-top: 4px solid @(pecasEmRuptura != null && pecasEmRuptura.Any() ? "#dc3545" : "#28a745") !important;">
+                <div class="w-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="kpi-label">
+                            <i class="bi bi-exclamation-triangle-fill me-1" style="color: @(pecasEmRuptura != null && pecasEmRuptura.Any() ? "#dc3545" : "#28a745")"></i>
+                            Alerta de Ruptura
+                        </span>
+                        <a href="/estoque" class="badge bg-dark text-decoration-none" style="font-size: 0.7rem;">Ver Estoque →</a>
+                    </div>
+                    @if (pecasEmRuptura != null && pecasEmRuptura.Any())
+                    {
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var peca in pecasEmRuptura.Take(6))
+                            {
+                                <div class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1" style="font-size: 0.78rem;">
+                                    <i class="bi bi-exclamation-circle me-1"></i>@peca.Sku — <strong>@peca.EstoqueAtual un.</strong>
+                                </div>
+                            }
+                            @if (pecasEmRuptura.Count > 6)
+                            {
+                                <div class="badge bg-light text-dark border">+@(pecasEmRuptura.Count - 6) mais</div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-success d-flex align-items-center gap-2" style="font-size: 0.9rem;">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <span>Estoque OK — nenhuma peça abaixo do mínimo.</span>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
@@ -479,6 +563,11 @@
     private int totalAprovadasMes;
     private int totalCanceladasMes;
 
+    // Estoque / BI
+    private decimal capitalImobilizado;
+    private decimal margemLucroReal;
+    private List<mechsystem.Models.Peca> pecasEmRuptura = new();
+
     // Listas e Rankings
     private int[] funilData = new int[5]; // Orcamento, AguardPcs, Andamento, Concluida, Cancelada
     private int maxFunil = 1;
@@ -574,6 +663,16 @@
             .OrderByDescending(x => x.Quantidade)
             .Take(5)
             .ToList();
+
+        // 9. Estoque — Alertas de Ruptura
+        pecasEmRuptura = await EstoqueService.GetAlertasRupturaAsync();
+
+        // 10. Capital Imobilizado
+        capitalImobilizado = await EstoqueService.GetCapitalImobilizadoAsync();
+
+        // 11. Margem de Lucro Real (Peças nas OS concluídas do mês)
+        var (lucro, _) = await EstoqueService.GetMargemLucroRealAsync(inicioMes, hoje.AddDays(1));
+        margemLucroReal = lucro;
     }
 
     private void NavigateTo(int id)
