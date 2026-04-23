@@ -126,7 +126,7 @@
 
                 <h5 class="mb-3 border-bottom pb-2 mt-4">Discriminação de Valores (CDC)</h5>
                 <div class="row mb-3">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                         <label for="valorMaoDeObra" class="form-label">
                             Valor base Mão de Obra
                             @if (config != null && config.TaxaMaoDeObra > 0)
@@ -142,20 +142,15 @@
                         </div>
                         <ValidationMessage For="@(() => os.ValorMaoDeObra)" class="text-danger" />
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="valorPecas" class="form-label">Valor das Peças</label>
-                        <div class="input-group">
-                            <span class="input-group-text">R$</span>
-                            <InputNumber id="valorPecas" @bind-Value="os.ValorPecas" class="form-control" step="0.01" />
-                        </div>
-                        <ValidationMessage For="@(() => os.ValorPecas)" class="text-danger" />
-                    </div>
-                    <div class="col-md-4 mb-3">
-                        <label class="form-label">Valor Total (Previsto/Orçado)</label>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Valor Total (Mão de Obra)</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light">R$</span>
-                            <input type="text" class="form-control bg-light fw-bold text-success" value="@os.ValorTotal.ToString("N2")" readonly />
+                            <input type="text" class="form-control bg-light fw-bold text-success" value="@os.ValorMaoDeObra.ToString("N2")" readonly />
                         </div>
+                        <small class="text-muted mt-1 d-block">
+                            <i class="bi bi-info-circle me-1"></i>Peças serão adicionadas após a criação da O.S., na tela de detalhes.
+                        </small>
                     </div>
                 </div>
                 

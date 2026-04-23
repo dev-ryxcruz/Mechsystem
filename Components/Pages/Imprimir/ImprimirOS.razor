@@ -171,7 +171,7 @@ else
                         </tr>
                         <tr>
                             <td>Peças e Materiais</td>
-                            <td class="text-end">@os.ValorPecas.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
+                            <td class="text-end">@os.ValorPecasEfetivo.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
                         </tr>
                         <tr class="doc-total-row">
                             <td>VALOR TOTAL</td>
@@ -251,6 +251,7 @@ else
         os = await DbContext.OrdensServico
             .Include(o => o.Veiculo)
                 .ThenInclude(v => v!.Cliente)
+            .Include(o => o.PecasUtilizadas)
             .FirstOrDefaultAsync(o => o.Id == Id);
 
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();

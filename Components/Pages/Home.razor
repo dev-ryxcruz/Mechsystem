@@ -595,12 +595,13 @@
 
         // 2. Faturamento e Ticket Médio (OS Concluídas no Mês)
         var osConcluidas = await DbContext.OrdensServico
+            .Include(o => o.PecasUtilizadas)
             .Where(o => o.Status == OrdemServicoStatus.Concluida && o.DataAutorizacao >= inicioMes)
             .ToListAsync();
             
         totalOSConcluidasMes = osConcluidas.Count;
         faturamentoMaoDeObra = osConcluidas.Sum(o => o.ValorMaoDeObra);
-        faturamentoPecas = osConcluidas.Sum(o => o.ValorPecas);
+        faturamentoPecas = osConcluidas.Sum(o => o.ValorPecasEfetivo);
         faturamentoMes = faturamentoMaoDeObra + faturamentoPecas;
         
         ticketMedio = totalOSConcluidasMes > 0 ? faturamentoMes / totalOSConcluidasMes : 0;

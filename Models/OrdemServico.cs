@@ -29,13 +29,32 @@ namespace mechsystem.Models
         [Range(0, double.MaxValue, ErrorMessage = "O valor não pode ser negativo.")]
         public decimal ValorMaoDeObra { get; set; } = 0;
 
+        /// <summary>
+        /// Valor manual de peças. Mantido para retrocompatibilidade.
+        /// REGRA DE GRACEFUL DEGRADATION: Se existirem peças vinculadas em PecasUtilizadas,
+        /// este valor é IGNORADO e sobrescrito pela soma calculada das peças.
+        /// </summary>
         [Display(Name = "Valor das Peças")]
         [Column(TypeName = "decimal(18,2)")]
         [Range(0, double.MaxValue, ErrorMessage = "O valor não pode ser negativo.")]
         public decimal ValorPecas { get; set; } = 0;
 
+        /// <summary>
+        /// Valor efetivo de peças: se houver peças vinculadas, retorna a soma calculada;
+        /// caso contrário, retorna o valor manual (fallback / graceful degradation).
+        /// </summary>
+        [NotMapped]
+        public decimal ValorPecasEfetivo =>
+            PecasUtilizadas != null && PecasUtilizadas.Any()
+                ? PecasUtilizadas.Sum(p => p.Subtotal)
+                : ValorPecas;
+
+        /// <summary>
+        /// Valor total da OS: Mão de Obra + Valor Efetivo de Peças.
+        /// Usa ValorPecasEfetivo para aplicar a regra de graceful degradation.
+        /// </summary>
         [Display(Name = "Valor Total")]
-        public decimal ValorTotal => ValorMaoDeObra + ValorPecas;
+        public decimal ValorTotal => ValorMaoDeObra + ValorPecasEfetivo;
 
         // Descrições
         [Required(ErrorMessage = "O diagnóstico/problema relatado é obrigatório.")]

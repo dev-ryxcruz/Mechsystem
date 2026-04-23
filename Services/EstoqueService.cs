@@ -94,7 +94,7 @@ namespace mechsystem.Services
                     && op.OrdemServico.DataAutorizacao <= fim)
                 .ToListAsync();
 
-            var receitaPecas = pecasOS.Sum(op => op.Quantidade * op.PrecoUnitarioVenda);
+            var receitaPecas = pecasOS.Sum(op => op.Quantidade * op.ValorCobrado);
             var custoPecas = pecasOS.Sum(op => op.Quantidade * op.PrecoCustoSnapshot);
             var lucroReal = receitaPecas - custoPecas;
 

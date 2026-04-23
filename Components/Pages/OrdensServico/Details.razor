@@ -153,7 +153,8 @@ else
                                 <th>SKU</th>
                                 <th>Peça</th>
                                 <th class="text-center">Qtd</th>
-                                <th class="text-end">Preço Unit.</th>
+                                <th class="text-end">Preço Base</th>
+                                <th class="text-end">Valor Cobrado</th>
                                 <th class="text-end">Subtotal</th>
                                 @if (os.Status == OrdemServicoStatus.Orcamento || os.Status == OrdemServicoStatus.EmAndamento)
                                 {
@@ -164,11 +165,18 @@ else
                         <tbody>
                             @foreach (var item in os.PecasUtilizadas)
                             {
-                                <tr>
+                                <tr class="@(item.TemDescontoAbaixoDoMinimo ? "table-warning" : "")">
                                     <td><span class="badge bg-dark font-monospace">@item.Peca?.Sku</span></td>
-                                    <td>@item.Peca?.Nome</td>
+                                    <td>
+                                        @item.Peca?.Nome
+                                        @if (item.TemDescontoAbaixoDoMinimo)
+                                        {
+                                            <i class="bi bi-exclamation-triangle-fill text-warning ms-1" title="Desconto abaixo do preço sugerido"></i>
+                                        }
+                                    </td>
                                     <td class="text-center fw-bold">@item.Quantidade</td>
-                                    <td class="text-end">@item.PrecoUnitarioVenda.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
+                                    <td class="text-end text-muted">@item.PrecoBase.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
+                                    <td class="text-end @(item.TemDescontoAbaixoDoMinimo ? "text-danger fw-bold" : "")">@item.ValorCobrado.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
                                     <td class="text-end fw-bold">@item.Subtotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
                                     @if (os.Status == OrdemServicoStatus.Orcamento || os.Status == OrdemServicoStatus.EmAndamento)
                                     {
@@ -183,7 +191,7 @@ else
                         </tbody>
                         <tfoot class="table-light">
                             <tr>
-                                <td colspan="4" class="text-end fw-bold">Total Peças:</td>
+                                <td colspan="5" class="text-end fw-bold">Total Peças:</td>
                                 <td class="text-end fw-bold text-success fs-6" colspan="2">
                                     @os.PecasUtilizadas.Sum(p => p.Subtotal).ToString("C", new System.Globalization.CultureInfo("pt-BR"))
                                 </td>
@@ -222,7 +230,7 @@ else
                                 </tr>
                                 <tr>
                                     <td>Peças</td>
-                                    <td class="text-end">@os.ValorPecas.ToString("C")</td>
+                                    <td class="text-end">@os.ValorPecasEfetivo.ToString("C")</td>
                                 </tr>
                                 <tr class="table-active fw-bold">
                                     <td>Valor Total</td>
@@ -321,7 +329,7 @@ else
 
                     <div class="mb-3">
                         <label class="form-label">Buscar Peça</label>
-                        <select class="form-select" @bind="pecaSelecionadaId">
+                        <select class="form-select" @bind="pecaSelecionadaId" @bind:after="OnPecaSelecionada">
                             <option value="0">-- Selecione uma peça --</option>
                             @if (pecasDisponiveis != null)
                             {
@@ -346,7 +354,7 @@ else
                                     <strong>@pecaSelecionadaParaAdicionar.PrecoCusto.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</strong>
                                 </div>
                                 <div class="col-3">
-                                    <small class="text-muted d-block">Venda</small>
+                                    <small class="text-muted d-block">Venda (Base)</small>
                                     <strong class="text-success">@pecaSelecionadaParaAdicionar.PrecoVenda.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</strong>
                                 </div>
                                 <div class="col-3">
@@ -357,17 +365,40 @@ else
                         </div>
                     }
 
-                    <div class="mb-3">
-                        <label class="form-label">Quantidade</label>
-                        <input type="number" class="form-control" @bind="qtdPecaAdicionar" min="1" />
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label">Quantidade</label>
+                            <input type="number" class="form-control" @bind="qtdPecaAdicionar" min="1" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Valor Cobrado (R$)</label>
+                            <input type="number" class="form-control @(temDescontoModal ? "border-warning" : "")" @bind="valorCobradoModal" step="0.01" min="0" />
+                        </div>
                     </div>
+
+                    @if (temDescontoModal)
+                    {
+                        <div class="alert alert-warning py-2 d-flex align-items-center gap-2">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            <span><strong>Atenção:</strong> O valor cobrado (@valorCobradoModal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))) está <strong>abaixo</strong> do preço base sugerido (@precoBaseModal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))).</span>
+                        </div>
+                    }
                 </div>
                 <div class="blazor-modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="FecharModalPeca">Cancelar</button>
-                    <button type="button" class="btn btn-primary" @onclick="AdicionarPecaOS"
-                            disabled="@(pecaSelecionadaId == 0 || qtdPecaAdicionar <= 0)">
-                        <i class="bi bi-plus-lg me-1"></i> Adicionar
-                    </button>
+                    @if (temDescontoModal && !isAdmin)
+                    {
+                        <button type="button" class="btn btn-primary" disabled title="Apenas Administradores podem aplicar desconto abaixo do preço base">
+                            <i class="bi bi-lock-fill me-1"></i> Bloqueado (Desconto)
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-primary" @onclick="AdicionarPecaOS"
+                                disabled="@(pecaSelecionadaId == 0 || qtdPecaAdicionar <= 0)">
+                            <i class="bi bi-plus-lg me-1"></i> Adicionar
+                        </button>
+                    }
                 </div>
             </div>
         </div>
@@ -465,13 +496,19 @@ else
     private IEnumerable<Peca>? pecasDisponiveis;
     private int pecaSelecionadaId = 0;
     private int qtdPecaAdicionar = 1;
+    private decimal valorCobradoModal = 0;
+    private decimal precoBaseModal = 0;
     private string? erroPeca;
+    private bool isAdmin = false;
 
     private Peca? pecaSelecionadaParaAdicionar => pecasDisponiveis?.FirstOrDefault(p => p.Id == pecaSelecionadaId);
+    private bool temDescontoModal => pecaSelecionadaId > 0 && valorCobradoModal < precoBaseModal;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        isAdmin = authState.User.IsInRole("Administrador");
     }
 
     private async Task LoadData()
@@ -620,8 +657,24 @@ else
         erroPeca = null;
         pecaSelecionadaId = 0;
         qtdPecaAdicionar = 1;
+        valorCobradoModal = 0;
+        precoBaseModal = 0;
         pecasDisponiveis = await PecaRepository.GetAllAsync();
         mostrarModalPeca = true;
+    }
+
+    private void OnPecaSelecionada()
+    {
+        if (pecaSelecionadaParaAdicionar != null)
+        {
+            precoBaseModal = pecaSelecionadaParaAdicionar.PrecoVenda;
+            valorCobradoModal = pecaSelecionadaParaAdicionar.PrecoVenda;
+        }
+        else
+        {
+            precoBaseModal = 0;
+            valorCobradoModal = 0;
+        }
     }
 
     private void FecharModalPeca()
@@ -652,7 +705,8 @@ else
                     OrdemServicoId = os.Id,
                     PecaId = peca.Id,
                     Quantidade = qtdPecaAdicionar,
-                    PrecoUnitarioVenda = peca.PrecoVenda,
+                    PrecoBase = peca.PrecoVenda,
+                    ValorCobrado = valorCobradoModal,
                     PrecoCustoSnapshot = peca.PrecoCusto
                 };
                 DbContext.OrdemServicoPecas.Add(osPeca);
@@ -663,8 +717,8 @@ else
             // Reload para obter os dados frescos e recalcular
             await LoadData();
 
-            // Recalcular ValorPecas da OS com os dados recarregados
-            if (os != null && os.PecasUtilizadas != null)
+            // Sincronizar ValorPecas manual com a soma calculada (graceful degradation)
+            if (os != null && os.PecasUtilizadas != null && os.PecasUtilizadas.Any())
             {
                 os.ValorPecas = os.PecasUtilizadas.Sum(p => p.Subtotal);
                 await DbContext.SaveChangesAsync();
@@ -692,7 +746,7 @@ else
             await LoadData();
             if (os != null)
             {
-                os.ValorPecas = os.PecasUtilizadas?.Sum(p => p.Subtotal) ?? 0;
+                os.ValorPecas = os.PecasUtilizadas?.Any() == true ? os.PecasUtilizadas.Sum(p => p.Subtotal) : 0;
                 await DbContext.SaveChangesAsync();
             }
         }
