@@ -95,4 +95,4 @@ Desenvolvido com dedicação por **Ryan Cristian**.
 Este projeto reflete o meu foco em criar soluções de software escaláveis e interfaces modernas.
 
 *   [LinkedIn](https://www.linkedin.com/in/ryan-cristian-a0889324b)
-*   [Portfólio (GitHub)](https://github.com/ryxcruz)
+*   [Portfólio (GitHub)](https://github.com/dev-ryxcruz)
