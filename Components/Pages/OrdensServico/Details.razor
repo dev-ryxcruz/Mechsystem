@@ -477,6 +477,88 @@ else
         .term-box { page-break-inside: avoid; border: 1px solid #ccc !important; }
         .blazor-modal-backdrop, .blazor-modal { display: none !important; }
     }
+
+    /* ── Responsividade Mobile ── */
+    @@media (max-width: 768px) {
+
+        /* Toolbar: empilhar botões verticalmente */
+        .d-print-none.mb-4.d-flex.justify-content-between {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+        }
+        .d-print-none.mb-4.d-flex.justify-content-between > div {
+            width: 100%;
+        }
+        .d-print-none.mb-4.d-flex.justify-content-between .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Card header da OS: empilhar número e status */
+        .os-document .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding: 1rem;
+        }
+        .os-document .card-header h4 {
+            font-size: 1.1rem;
+            margin: 0;
+        }
+        .os-document .card-header .text-end {
+            text-align: left !important;
+        }
+
+        /* Card body: padding menor */
+        .os-document .card-body {
+            padding: 1rem;
+        }
+
+        /* Dados do veículo: empilhar em 2 colunas (col-sm-3 já está, mas fonte fica pequena) */
+        .os-document .row .col-sm-3,
+        .os-document .row .col-sm-4 {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Tabela de peças: indicador de scroll */
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
+        .table-responsive::after {
+            content: '';
+            display: block;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255,117,31,0.3), transparent);
+            margin-top: -2px;
+        }
+
+        /* Modais: altura máxima e scroll interno */
+        .blazor-modal-content {
+            width: 95% !important;
+            max-height: 85vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Term box: padding menor */
+        .term-box {
+            padding: 1rem;
+        }
+
+        /* Tabela de valores: largura total */
+        .col-md-6.offset-md-6 {
+            margin-left: 0 !important;
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .os-document .card-header h4 {
+            font-size: 1rem;
+        }
+    }
 </style>
 
 @code {

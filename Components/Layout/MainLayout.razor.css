@@ -74,12 +74,35 @@ main {
         justify-content: space-between;
         background: #ffffff;
         box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+        height: auto;
+        min-height: 3.5rem;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding-top: 0.4rem;
+        padding-bottom: 0.4rem;
     }
 
     .top-row ::deep a, .top-row ::deep .btn-link {
         margin-left: 0;
+        font-size: 0.82rem;
+    }
+
+    /* Garantir que o nome do usuário não trunque */
+    .top-row ::deep span {
+        font-size: 0.85rem;
+        white-space: normal;
+        overflow: visible;
+    }
+
+    /* Content area com padding reduzido */
+    .top-row, article {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
     }
 }
+
 
 /* ==============================================
    DESKTOP

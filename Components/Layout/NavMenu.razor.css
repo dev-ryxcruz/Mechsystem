@@ -242,6 +242,9 @@
     background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 117, 31, 0.85%29' stroke-linecap='round' stroke-miterlimit='round' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem rgba(255, 255, 255, 0.05);
     border-radius: var(--radius-sm);
     transition: background-color var(--transition-fast);
+    /* Touch target adequado */
+    min-height: 44px;
+    min-width: 44px;
 }
 
 .navbar-toggler:checked {
@@ -254,6 +257,28 @@
 
 .navbar-toggler:checked ~ .nav-scrollable {
     display: block;
+    /* Limitar altura para não ocupar toda a tela */
+    max-height: calc(100vh - 3.5rem);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Touch targets: todos os links de nav >= 44px em mobile */
+@media (max-width: 640px) {
+    .nav-item ::deep .nav-link {
+        height: auto;
+        min-height: 44px;
+        padding-top: 0.6rem;
+        padding-bottom: 0.6rem;
+    }
+
+    .nav-submenu ::deep .nav-link {
+        min-height: 40px;
+    }
+
+    .nav-section-title {
+        padding-top: 0.5rem;
+    }
 }
 
 /* ==============================================

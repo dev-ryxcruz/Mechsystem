@@ -255,6 +255,7 @@
         padding: 0.25rem 0.75rem;
         width: 350px;
         border: 1px solid #e9ecef;
+        transition: width var(--transition-normal);
     }
     .search-box input { background: transparent; }
     .search-box input:focus { background: transparent; }
@@ -270,6 +271,46 @@
     .blazor-modal-header h5 { margin: 0; }
     .blazor-modal-body { padding: 1.25rem; }
     .blazor-modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 1rem 1.25rem; border-top: 1px solid #dee2e6; }
+
+    /* ── Responsividade Mobile ── */
+    @@media (max-width: 768px) {
+        /* Header: empilhar título e botões */
+        .d-flex.justify-content-between.align-items-center.mb-4 {
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        .d-flex.justify-content-between.align-items-center.mb-4 > div:last-child {
+            width: 100%;
+        }
+        .d-flex.justify-content-between.align-items-center.mb-4 .btn {
+            flex: 1;
+            justify-content: center;
+        }
+
+        /* Search box: largura total */
+        .search-box {
+            width: 100%;
+        }
+
+        /* Card header: empilhar search e badge */
+        .card-header.d-flex {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.5rem;
+        }
+
+        /* Alert de ruptura: empilhar ícone e texto */
+        .alert .d-flex.align-items-center {
+            flex-wrap: wrap;
+        }
+
+        /* Modal de histórico: altura máxima */
+        .blazor-modal-content {
+            max-height: 85vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+    }
 </style>
 
 @code {
