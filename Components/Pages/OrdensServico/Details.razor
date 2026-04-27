@@ -212,6 +212,87 @@ else
                 </div>
             }
 
+            <div class="row mt-5 mb-4">
+                <!-- QR Code e Link de Acompanhamento -->
+                <div class="col-md-5 mb-4 mb-md-0">
+                    <h5 class="fw-bold border-bottom pb-2"><i class="bi bi-qr-code-scan me-2 text-primary"></i>Acompanhamento Online</h5>
+                    <div class="card shadow-sm border-0 bg-light mt-3">
+                        <div class="card-body text-center p-4">
+                            @if (!string.IsNullOrEmpty(os.TokenAcompanhamento))
+                            {
+                                var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={NavigationManager.ToAbsoluteUri($"/acompanhar/{os.TokenAcompanhamento}")}";
+                                <img src="@qrUrl" alt="QR Code" class="img-fluid border p-2 bg-white rounded mb-3" style="width: 150px; height: 150px;" />
+                                <p class="small text-muted mb-3">O cliente pode escanear este código para ver o status da O.S. pelo celular.</p>
+                                <button class="btn btn-outline-primary btn-sm w-100 fw-bold" @onclick="CopiarLinkAcompanhamento">
+                                    <i class="bi bi-link-45deg me-1"></i> Copiar Link
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Histórico de Contatos -->
+                <div class="col-md-7">
+                    <h5 class="fw-bold border-bottom pb-2"><i class="bi bi-chat-left-text me-2 text-primary"></i>Histórico de Contatos</h5>
+                    <div class="card shadow-sm border-0 mt-3">
+                        <div class="card-body p-0">
+                            <!-- Novo Contato -->
+                            <div class="bg-light p-3 border-bottom">
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-auto">
+                                        <select class="form-select form-select-sm" @bind="novoContatoTipo">
+                                            @foreach (TipoContato tipo in Enum.GetValues(typeof(TipoContato)))
+                                            {
+                                                <option value="@tipo">@tipo</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col">
+                                        <input type="text" class="form-control form-control-sm" placeholder="Ex: Cliente aprovou o orçamento" @bind="novoContatoDescricao" @bind:event="oninput" />
+                                    </div>
+                                    <div class="col-auto">
+                                        <button class="btn btn-primary btn-sm" disabled="@(string.IsNullOrWhiteSpace(novoContatoDescricao))" @onclick="AdicionarContato">
+                                            <i class="bi bi-plus-lg"></i> Adicionar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Lista de Contatos -->
+                            <ul class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+                                @if (os.Contatos == null || !os.Contatos.Any())
+                                {
+                                    <li class="list-group-item text-center text-muted py-4">
+                                        <small>Nenhum contato registrado ainda.</small>
+                                    </li>
+                                }
+                                else
+                                {
+                                    @foreach (var contato in os.Contatos.OrderByDescending(c => c.DataContato))
+                                    {
+                                        <li class="list-group-item py-3">
+                                            <div class="d-flex w-100 justify-content-between mb-1">
+                                                <h6 class="mb-0 fw-bold" style="font-size: 0.85rem;">
+                                                    @if (contato.Tipo == TipoContato.WhatsApp) { <i class="bi bi-whatsapp text-success me-1"></i> }
+                                                    else if (contato.Tipo == TipoContato.Ligacao) { <i class="bi bi-telephone text-primary me-1"></i> }
+                                                    else if (contato.Tipo == TipoContato.Email) { <i class="bi bi-envelope text-warning me-1"></i> }
+                                                    else if (contato.Tipo == TipoContato.Presencial) { <i class="bi bi-person-badge text-secondary me-1"></i> }
+                                                    else { <i class="bi bi-chat text-info me-1"></i> }
+                                                    @contato.Tipo
+                                                </h6>
+                                                <small class="text-muted">@contato.DataContato.ToString("dd/MM/yyyy HH:mm")</small>
+                                            </div>
+                                            <p class="mb-1 text-dark" style="font-size: 0.9rem;">@contato.Descricao</p>
+                                            <small class="text-muted" style="font-size: 0.75rem;">Por: @contato.RegistradoPor</small>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <h5 class="fw-bold border-bottom pb-2">Prazos e Valores</h5>
             <div class="row mb-4">
                 <div class="col-sm-4"><small class="text-muted d-block">Previsão de Início</small><strong>@(os.DataPrevisaoInicio?.ToString("dd/MM/yyyy") ?? "N/A")</strong></div>
@@ -601,14 +682,60 @@ else
                 .ThenInclude(v => v!.Cliente)
             .Include(o => o.PecasUtilizadas)
                 .ThenInclude(p => p.Peca)
+            .Include(o => o.Contatos)
             .FirstOrDefaultAsync(o => o.Id == Id);
             
         if (os != null)
         {
             autorizadoPor = os.Veiculo?.Cliente?.Nome ?? "";
+
+            // Gerar token se não existir
+            if (string.IsNullOrEmpty(os.TokenAcompanhamento))
+            {
+                os.TokenAcompanhamento = Guid.NewGuid().ToString("N");
+                await DbContext.SaveChangesAsync();
+            }
         }
         
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();
+    }
+
+    // ─── Comunicação e Contatos ──────────────────────────────────────────────────
+    private string novoContatoDescricao = "";
+    private TipoContato novoContatoTipo = TipoContato.WhatsApp;
+
+    private async Task AdicionarContato()
+    {
+        if (os == null || string.IsNullOrWhiteSpace(novoContatoDescricao)) return;
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var nomeUsuario = authState.User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value 
+                        ?? authState.User.Identity?.Name ?? "Usuário";
+
+        var contato = new ContatoOS
+        {
+            OrdemServicoId = os.Id,
+            Tipo = novoContatoTipo,
+            Descricao = novoContatoDescricao,
+            RegistradoPor = nomeUsuario,
+            DataContato = DateTime.Now
+        };
+
+        DbContext.ContatosOS.Add(contato);
+        await DbContext.SaveChangesAsync();
+
+        novoContatoDescricao = ""; // limpar campo
+        await LoadData(); // atualizar grid
+    }
+
+    private async Task CopiarLinkAcompanhamento()
+    {
+        if (os?.TokenAcompanhamento != null)
+        {
+            var url = NavigationManager.ToAbsoluteUri($"/acompanhar/{os.TokenAcompanhamento}").ToString();
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", url);
+            // Optionally, we could show a toast here, but for simplicity we rely on the native action.
+        }
     }
 
     // ─── Aprovação ───────────────────────────────────────────────────────────────

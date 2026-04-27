@@ -19,6 +19,7 @@ namespace mechsystem.Data
         public DbSet<Peca> Pecas { get; set; }
         public DbSet<MovimentacaoEstoque> MovimentacoesEstoque { get; set; }
         public DbSet<OrdemServicoPeca> OrdemServicoPecas { get; set; }
+        public DbSet<ContatoOS> ContatosOS { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

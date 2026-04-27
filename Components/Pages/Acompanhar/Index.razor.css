@@ -1,0 +1,160 @@
+/* Background layout reset just for this page to look like a mobile app */
+.public-container {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 2rem 1rem;
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-body);
+}
+
+.tracking-card {
+    background: #ffffff;
+    border-radius: 1.25rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    max-width: 600px;
+    overflow: hidden;
+    animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.tracking-header {
+    background: linear-gradient(135deg, #1e2227 0%, #111418 100%);
+    padding: 2rem;
+    position: relative;
+    border-bottom: 4px solid var(--accent);
+}
+
+.tracking-body {
+    padding: 2rem;
+}
+
+/* --- Progress Track --- */
+.progress-track {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+    position: relative;
+}
+
+.progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    width: 60px;
+}
+
+.step-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: #f1f3f5;
+    color: #adb5bd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.progress-step.active .step-icon {
+    background-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 15px var(--accent-glow);
+}
+
+.step-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.progress-step.active .step-label {
+    color: var(--text-primary);
+}
+
+.progress-line {
+    flex-grow: 1;
+    height: 4px;
+    background-color: #f1f3f5;
+    margin-bottom: 25px; /* align with centers of circles roughly */
+    z-index: 1;
+    transition: background-color 0.3s ease;
+    border-radius: 2px;
+}
+
+.progress-line.active {
+    background-color: var(--accent);
+}
+
+/* --- Info Boxes --- */
+.info-box {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 1rem;
+    border: 1px solid #dee2e6;
+    height: 100%;
+}
+
+.info-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-right: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.tracking-footer {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-top: 1px solid #dee2e6;
+    text-align: center;
+}
+
+/* Hide standard layout components since this is a public page */
+::deep .sidebar, 
+::deep .top-row,
+::deep .navbar {
+    display: none !important;
+}
+
+::deep .page {
+    display: block !important;
+}
+
+::deep main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+}
+
+::deep article.content {
+    padding: 0 !important;
+    max-width: none !important;
+}
+
+::deep body {
+    background-color: var(--bg-body);
+}

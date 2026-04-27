@@ -1,0 +1,215 @@
+@page "/acompanhar/{token}"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Models
+@inject AppDbContext DbContext
+@inject NavigationManager NavigationManager
+
+<PageTitle>Acompanhamento de O.S. - MechSystem</PageTitle>
+
+<div class="public-container">
+    @if (os == null)
+    {
+        @if (carregando)
+        {
+            <div class="text-center mt-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-3 text-muted">Buscando informações da ordem de serviço...</p>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-danger shadow-sm mt-5 mx-auto" style="max-width: 500px;">
+                <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>Link Inválido</h4>
+                <p>Não foi possível encontrar a ordem de serviço informada. Verifique se o link está correto ou entre em contato com a oficina.</p>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="tracking-card">
+            <div class="tracking-header">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0 text-white fw-bold d-flex align-items-center">
+                        <i class="bi bi-tools me-2 text-warning"></i> MechSystem Auto Center
+                    </h5>
+                    <span class="badge bg-dark bg-opacity-50 text-light border border-secondary border-opacity-25 rounded-pill px-3 py-2">OS Nº @os.Id.ToString("D4")</span>
+                </div>
+                
+                <h3 class="mb-1 text-white">@os.Veiculo?.Marca / @os.Veiculo?.Modelo</h3>
+                <p class="mb-0 text-white-50 fs-5 font-monospace">@os.Veiculo?.Placa</p>
+            </div>
+
+            <div class="tracking-body">
+                <!-- Status Timeline/Progress -->
+                <div class="status-section text-center mb-5 mt-2">
+                    @{
+                        int step = 1;
+                        if (os.Status == OrdemServicoStatus.Orcamento) step = 1;
+                        else if (os.Status == OrdemServicoStatus.AguardandoPecas) step = 2;
+                        else if (os.Status == OrdemServicoStatus.EmAndamento) step = 3;
+                        else if (os.Status == OrdemServicoStatus.Concluida) step = 4;
+                        else if (os.Status == OrdemServicoStatus.Cancelada) step = 0;
+                    }
+
+                    @if (os.Status == OrdemServicoStatus.Cancelada)
+                    {
+                        <div class="alert alert-danger d-inline-flex align-items-center mb-0 px-4 py-3 border-0 shadow-sm rounded-4">
+                            <i class="bi bi-x-circle-fill fs-3 me-3 text-danger"></i>
+                            <div class="text-start">
+                                <h5 class="mb-0 fw-bold text-danger">Serviço Cancelado</h5>
+                                <small class="text-danger opacity-75">Entre em contato para mais detalhes.</small>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <h4 class="fw-bold mb-4" style="color: @GetStatusColor(os.Status)">
+                            <i class="@GetStatusIcon(os.Status) me-2"></i> @GetStatusName(os.Status)
+                        </h4>
+
+                        <div class="progress-track">
+                            <div class="progress-step @(step >= 1 ? "active" : "")">
+                                <div class="step-icon"><i class="bi bi-file-earmark-text"></i></div>
+                                <span class="step-label">Orçamento</span>
+                            </div>
+                            <div class="progress-line @(step >= 2 ? "active" : "")"></div>
+                            
+                            <div class="progress-step @(step >= 2 ? "active" : "")">
+                                <div class="step-icon"><i class="bi bi-check-circle"></i></div>
+                                <span class="step-label">Aprovado</span>
+                            </div>
+                            <div class="progress-line @(step >= 3 ? "active" : "")"></div>
+                            
+                            <div class="progress-step @(step >= 3 ? "active" : "")">
+                                <div class="step-icon"><i class="bi bi-gear-wide-connected"></i></div>
+                                <span class="step-label">Na Oficina</span>
+                            </div>
+                            <div class="progress-line @(step >= 4 ? "active" : "")"></div>
+                            
+                            <div class="progress-step @(step >= 4 ? "active" : "")">
+                                <div class="step-icon"><i class="bi bi-flag-fill"></i></div>
+                                <span class="step-label">Pronto</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-sm-6">
+                        <div class="info-box">
+                            <div class="info-icon text-secondary"><i class="bi bi-calendar-arrow-down"></i></div>
+                            <div>
+                                <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Entrada</small>
+                                <span class="fw-bold fs-6">@os.DataEmissao.ToString("dd/MM/yyyy")</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        @{
+                            var diasAtraso = (DateTime.Now.Date - os.DataPrevisaoEntrega.Date).Days;
+                            bool isAtrasado = diasAtraso > 0 && os.Status != OrdemServicoStatus.Concluida && os.Status != OrdemServicoStatus.Cancelada;
+                            var diasRestantes = (os.DataPrevisaoEntrega.Date - DateTime.Now.Date).Days;
+                        }
+                        <div class="info-box @(isAtrasado ? "border-danger bg-danger bg-opacity-10" : "")">
+                            <div class="info-icon @(isAtrasado ? "text-danger" : "text-primary")"><i class="bi bi-calendar-check"></i></div>
+                            <div>
+                                <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Previsão de Entrega</small>
+                                <span class="fw-bold fs-6 @(isAtrasado ? "text-danger" : "")">
+                                    @os.DataPrevisaoEntrega.ToString("dd/MM/yyyy")
+                                </span>
+                                @if (os.Status != OrdemServicoStatus.Concluida && os.Status != OrdemServicoStatus.Cancelada)
+                                {
+                                    @if (isAtrasado)
+                                    {
+                                        <span class="badge bg-danger ms-2">Atrasado @diasAtraso dia(s)</span>
+                                    }
+                                    else if (diasRestantes == 0)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-2">É Hoje!</span>
+                                    }
+                                    else if (diasRestantes == 1)
+                                    {
+                                        <span class="badge bg-info text-dark ms-2">Amanhã</span>
+                                    }
+                                    else if (diasRestantes > 1)
+                                    {
+                                        <span class="badge bg-secondary ms-2">em @diasRestantes dias</span>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="service-details p-4 rounded-4 bg-light border">
+                    <h6 class="text-muted text-uppercase fw-bold mb-3" style="font-size: 0.8rem; letter-spacing: 0.5px;">
+                        <i class="bi bi-card-text me-1"></i> Serviço a Executar
+                    </h6>
+                    <p class="mb-0 text-dark" style="white-space: pre-wrap; line-height: 1.6;">@(string.IsNullOrWhiteSpace(os.ServicoAExecutar) ? "Aguardando diagnóstico..." : os.ServicoAExecutar)</p>
+                </div>
+            </div>
+            
+            <div class="tracking-footer">
+                <div class="d-flex align-items-center justify-content-center text-muted">
+                    <i class="bi bi-shield-check me-2 fs-5"></i>
+                    <small>Este é um link seguro e exclusivo para o seu acompanhamento.</small>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string Token { get; set; } = "";
+
+    private OrdemServico? os;
+    private bool carregando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            os = await DbContext.OrdensServico
+                .Include(o => o.Veiculo)
+                .ThenInclude(v => v!.Cliente)
+                .FirstOrDefaultAsync(o => o.TokenAcompanhamento == Token);
+        }
+        finally
+        {
+            carregando = false;
+        }
+    }
+
+    private string GetStatusName(OrdemServicoStatus status) => status switch
+    {
+        OrdemServicoStatus.Orcamento => "Orçamento em Análise",
+        OrdemServicoStatus.EmAndamento => "Serviço em Andamento",
+        OrdemServicoStatus.AguardandoPecas => "Aguardando Peças",
+        OrdemServicoStatus.Concluida => "Serviço Concluído",
+        OrdemServicoStatus.Cancelada => "Cancelada",
+        _ => status.ToString()
+    };
+
+    private string GetStatusColor(OrdemServicoStatus status) => status switch
+    {
+        OrdemServicoStatus.Orcamento => "#6c757d",      // Secondary
+        OrdemServicoStatus.EmAndamento => "#0d6efd",    // Primary
+        OrdemServicoStatus.AguardandoPecas => "#fd7e14", // Orange
+        OrdemServicoStatus.Concluida => "#198754",      // Success
+        OrdemServicoStatus.Cancelada => "#dc3545",      // Danger
+        _ => "#6c757d"
+    };
+
+    private string GetStatusIcon(OrdemServicoStatus status) => status switch
+    {
+        OrdemServicoStatus.Orcamento => "bi bi-file-earmark-text",
+        OrdemServicoStatus.EmAndamento => "bi bi-tools",
+        OrdemServicoStatus.AguardandoPecas => "bi bi-box-seam",
+        OrdemServicoStatus.Concluida => "bi bi-stars",
+        OrdemServicoStatus.Cancelada => "bi bi-x-circle",
+        _ => "bi bi-info-circle"
+    };
+}

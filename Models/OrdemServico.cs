@@ -86,5 +86,9 @@ namespace mechsystem.Models
 
         // Peças utilizadas na OS
         public ICollection<OrdemServicoPeca> PecasUtilizadas { get; set; } = new List<OrdemServicoPeca>();
+
+        // Comunicação com Cliente
+        public string? TokenAcompanhamento { get; set; }
+        public ICollection<ContatoOS> Contatos { get; set; } = new List<ContatoOS>();
     }
 }
