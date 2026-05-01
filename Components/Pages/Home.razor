@@ -16,7 +16,7 @@
     <div class="dash-header mb-4">
         <div>
             <h2 class="fw-bold mb-1"><i class="bi bi-graph-up-arrow me-2" style="color: var(--accent);"></i>Visão Executiva</h2>
-            <p class="text-muted mb-0">Painel Financeiro, Operacional e Inteligência de Mercado / @DateTime.Now.ToString("MMMM 'de' yyyy", new System.Globalization.CultureInfo("pt-BR")).ToUpper()</p>
+            <p class="text-muted mb-0">Painel Financeiro, Operacional e Inteligência de Mercado / @GetPeriodLabel()</p>
         </div>
         <div class="d-flex gap-2 align-items-center">
             @if (totalAtrasadas > 0)
@@ -43,6 +43,30 @@
                 <i class="bi bi-plus-circle me-1"></i> Nova O.S.
             </a>
         </div>
+    </div>
+
+    <!-- Filtro de Período -->
+    <div class="period-filter d-flex align-items-center gap-2 mb-4 flex-wrap">
+        <div class="btn-group shadow-sm" role="group">
+            <button class="btn btn-sm btn-outline-secondary" @onclick="PreviousMonth" disabled="@isAllTime" title="Mês anterior">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+            <span class="btn btn-sm btn-outline-secondary px-3 fw-bold pe-none" style="min-width: 180px; opacity: 1 !important; color: var(--text-color, #333) !important;">
+                <i class="bi bi-calendar3 me-1"></i>@GetPeriodLabel()
+            </span>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="NextMonth" disabled="@(isAllTime || IsCurrentMonth())" title="Próximo mês">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+        <button class="btn btn-sm @(isAllTime ? "btn-accent text-white shadow-sm" : "btn-outline-secondary")" @onclick="ToggleAllTime">
+            <i class="bi bi-calendar-range me-1"></i>Acumulado Geral
+        </button>
+        @if (!isAllTime && !IsCurrentMonth())
+        {
+            <button class="btn btn-sm btn-link text-muted text-decoration-none" @onclick="async () => { selectedMonth = DateTime.Today.Month; selectedYear = DateTime.Today.Year; await LoadDashboardData(); }">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Voltar ao mês atual
+            </button>
+        }
     </div>
 
     <!-- ROW 1: KPIs Rápidos (Dono e Chefe) -->
@@ -619,9 +643,27 @@
             font-size: 0.95rem !important;
         }
     }
+
+    /* Period Filter Bar */
+    .period-filter .btn-group .btn {
+        border-color: #dee2e6;
+        font-size: 0.82rem;
+    }
+    .period-filter .btn-group .btn:hover:not(:disabled) {
+        background-color: #f0f0f0;
+    }
+    .period-filter .btn-outline-secondary:disabled {
+        opacity: 0.5;
+    }
+
 </style>
 
 @code {
+    // Filtro de Período
+    private int selectedMonth;
+    private int selectedYear;
+    private bool isAllTime;
+
     // Totais e Informações Base
     private int totalVeiculos;
     private int totalAtrasadas;
@@ -649,7 +691,7 @@
     private List<mechsystem.Models.Peca> pecasEmRuptura = new();
 
     // Listas e Rankings
-    private int[] funilData = new int[5]; // Orcamento, AguardPcs, Andamento, Concluida, Cancelada
+    private int[] funilData = new int[5];
     private int maxFunil = 1;
 
     private List<TopRankingItem> topMarcas = new();
@@ -665,69 +707,78 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var hoje = DateTime.Today;
-        var inicioMes = new DateTime(hoje.Year, hoje.Month, 1);
+        selectedMonth = DateTime.Today.Month;
+        selectedYear = DateTime.Today.Year;
+        isAllTime = false;
+        await LoadDashboardData();
+    }
 
-        // 1. Idade Média da Frota
+    private async Task LoadDashboardData()
+    {
+        var hoje = DateTime.Today;
+        DateTime? filtroInicio = isAllTime ? null : new DateTime(selectedYear, selectedMonth, 1);
+        DateTime? filtroFim = isAllTime ? null : filtroInicio?.AddMonths(1);
+
+        // 1. Idade Média da Frota (sempre geral)
         var veiculosComAno = await DbContext.Veiculos.Where(v => v.Ano > 1900 && v.Ano <= hoje.Year).ToListAsync();
         totalVeiculos = veiculosComAno.Count;
         idadeMediaFrota = veiculosComAno.Any() ? (decimal)veiculosComAno.Average(v => hoje.Year - v.Ano) : 0;
 
-        // 2. Faturamento e Ticket Médio (OS Concluídas no Mês)
-        var osConcluidas = await DbContext.OrdensServico
+        // 2. Faturamento e Ticket Médio (OS Concluídas no período)
+        var queryConc = DbContext.OrdensServico
             .Include(o => o.PecasUtilizadas)
-            .Where(o => o.Status == OrdemServicoStatus.Concluida && o.DataAutorizacao >= inicioMes)
-            .ToListAsync();
+            .Where(o => o.Status == OrdemServicoStatus.Concluida);
+        if (filtroInicio != null) queryConc = queryConc.Where(o => o.DataAutorizacao >= filtroInicio);
+        if (filtroFim != null) queryConc = queryConc.Where(o => o.DataAutorizacao < filtroFim);
+        var osConcluidas = await queryConc.ToListAsync();
             
         totalOSConcluidasMes = osConcluidas.Count;
         faturamentoMaoDeObra = osConcluidas.Sum(o => o.ValorMaoDeObra);
         faturamentoPecas = osConcluidas.Sum(o => o.ValorPecasEfetivo);
         faturamentoMes = faturamentoMaoDeObra + faturamentoPecas;
-        
         ticketMedio = totalOSConcluidasMes > 0 ? faturamentoMes / totalOSConcluidasMes : 0;
 
-        // 3. Previsão de Caixa (Em Andamento)
+        // 3. Previsão de Caixa (Em Andamento — sempre real-time)
         var osEmAndamento = await DbContext.OrdensServico
             .Where(o => o.Status == OrdemServicoStatus.EmAndamento)
             .ToListAsync();
-
         totalEmAndamento = osEmAndamento.Count;
         dinheiroNaMesa = osEmAndamento.Sum(o => o.ValorTotal);
 
-        // 4. Atrasos Operacionais
+        // 4. Atrasos Operacionais (sempre real-time)
         totalAtrasadas = await DbContext.OrdensServico
             .CountAsync(o => (o.Status == OrdemServicoStatus.EmAndamento || o.Status == OrdemServicoStatus.AguardandoPecas) 
                               && o.DataPrevisaoEntrega.Date < hoje);
 
-        // 5. Funil de OS (Sonsultando O.S Cadastradas no mês)
-        var osMesRaw = await DbContext.OrdensServico
-            .Where(o => o.DataEmissao >= inicioMes)
+        // 5. Funil de OS (período selecionado)
+        var queryFunil = DbContext.OrdensServico.AsQueryable();
+        if (filtroInicio != null) queryFunil = queryFunil.Where(o => o.DataEmissao >= filtroInicio);
+        if (filtroFim != null) queryFunil = queryFunil.Where(o => o.DataEmissao < filtroFim);
+        var osPeriodo = await queryFunil
             .Select(o => new { o.Status, o.ServicoAExecutar, o.Veiculo })
             .ToListAsync();
 
-        funilData[0] = osMesRaw.Count(o => o.Status == OrdemServicoStatus.Orcamento);
-        funilData[1] = osMesRaw.Count(o => o.Status == OrdemServicoStatus.AguardandoPecas);
-        funilData[2] = osMesRaw.Count(o => o.Status == OrdemServicoStatus.EmAndamento);
-        funilData[3] = osMesRaw.Count(o => o.Status == OrdemServicoStatus.Concluida);
-        funilData[4] = osMesRaw.Count(o => o.Status == OrdemServicoStatus.Cancelada);
-        
+        funilData[0] = osPeriodo.Count(o => o.Status == OrdemServicoStatus.Orcamento);
+        funilData[1] = osPeriodo.Count(o => o.Status == OrdemServicoStatus.AguardandoPecas);
+        funilData[2] = osPeriodo.Count(o => o.Status == OrdemServicoStatus.EmAndamento);
+        funilData[3] = osPeriodo.Count(o => o.Status == OrdemServicoStatus.Concluida);
+        funilData[4] = osPeriodo.Count(o => o.Status == OrdemServicoStatus.Cancelada);
         maxFunil = funilData.Max();
         if(maxFunil == 0) maxFunil = 1;
 
-        // 6. Taxa de Conversão (Aprovadas vs Canceladas)
-        // Aprovadas: Passaram de Orçamento, então estão em Andamento, AguardPecas ou Concluida (Ignoraremos orçamentos mortos)
+        // 6. Taxa de Conversão
         totalAprovadasMes = funilData[1] + funilData[2] + funilData[3];
         totalCanceladasMes = funilData[4];
         var totalDecididas = totalAprovadasMes + totalCanceladasMes;
-
         taxaConversao = totalDecididas > 0 ? (totalAprovadasMes * 100.0) / totalDecididas : 0;
 
-        // 7. Inteligência de Mercado / Top Marcas
-        var marcasAtendidas = await DbContext.OrdensServico
+        // 7. Top Marcas (período selecionado)
+        var queryMarcas = DbContext.OrdensServico
             .Include(o => o.Veiculo)
-            .Where(o => o.DataEmissao >= inicioMes && o.Veiculo != null && !string.IsNullOrEmpty(o.Veiculo.Marca))
-            .Select(o => o.Veiculo!.Marca)
-            .ToListAsync();
+            .Where(o => o.Veiculo != null && !string.IsNullOrEmpty(o.Veiculo.Marca));
+        if (filtroInicio != null) queryMarcas = queryMarcas.Where(o => o.DataEmissao >= filtroInicio);
+        if (filtroFim != null) queryMarcas = queryMarcas.Where(o => o.DataEmissao < filtroFim);
+        var marcasAtendidas = await queryMarcas.Select(o => o.Veiculo!.Marca).ToListAsync();
             
         topMarcas = marcasAtendidas
             .GroupBy(m => m?.ToUpper().Trim() ?? "Outro")
@@ -737,7 +788,7 @@
             .ToList();
 
         // 8. Top 5 Serviços Realizados
-        topServicos = osMesRaw
+        topServicos = osPeriodo
             .Where(o => !string.IsNullOrEmpty(o.ServicoAExecutar))
             .GroupBy(o => o.ServicoAExecutar!.Trim().ToUpper())
             .Select(g => new TopRankingItem { Nome = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(g.Key.ToLower()), Quantidade = g.Count() })
@@ -745,15 +796,48 @@
             .Take(5)
             .ToList();
 
-        // 9. Estoque — Alertas de Ruptura
+        // 9. Estoque — Alertas de Ruptura (sempre real-time)
         pecasEmRuptura = await EstoqueService.GetAlertasRupturaAsync();
 
-        // 10. Capital Imobilizado
+        // 10. Capital Imobilizado (sempre real-time)
         capitalImobilizado = await EstoqueService.GetCapitalImobilizadoAsync();
 
-        // 11. Margem de Lucro Real (Peças nas OS concluídas do mês)
-        var (lucro, _) = await EstoqueService.GetMargemLucroRealAsync(inicioMes, hoje.AddDays(1));
+        // 11. Margem de Lucro Real (período selecionado)
+        var margemInicio = filtroInicio ?? DateTime.MinValue;
+        var margemFim = filtroFim ?? DateTime.MaxValue;
+        var (lucro, _) = await EstoqueService.GetMargemLucroRealAsync(margemInicio, margemFim);
         margemLucroReal = lucro;
+    }
+
+    // --- Navegação de Período ---
+    private async Task PreviousMonth()
+    {
+        if (selectedMonth == 1) { selectedMonth = 12; selectedYear--; }
+        else selectedMonth--;
+        await LoadDashboardData();
+    }
+
+    private async Task NextMonth()
+    {
+        if (selectedMonth == 12) { selectedMonth = 1; selectedYear++; }
+        else selectedMonth++;
+        await LoadDashboardData();
+    }
+
+    private async Task ToggleAllTime()
+    {
+        isAllTime = !isAllTime;
+        if (!isAllTime) { selectedMonth = DateTime.Today.Month; selectedYear = DateTime.Today.Year; }
+        await LoadDashboardData();
+    }
+
+    private bool IsCurrentMonth() => selectedYear == DateTime.Today.Year && selectedMonth == DateTime.Today.Month;
+
+    private string GetPeriodLabel()
+    {
+        if (isAllTime) return "ACUMULADO GERAL";
+        return new DateTime(selectedYear, selectedMonth, 1)
+            .ToString("MMMM 'de' yyyy", new System.Globalization.CultureInfo("pt-BR")).ToUpper();
     }
 
     private void NavigateTo(int id)
