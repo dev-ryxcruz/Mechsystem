@@ -401,6 +401,52 @@
         </div>
 
     </div>
+
+    <!-- ROW 4: RELATÓRIOS INSTANTÂNEOS (Demonstração POO: Classe Abstrata + Override + Polimorfismo) -->
+    <div class="row g-3 mt-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold text-muted mb-0"><i class="bi bi-file-earmark-bar-graph me-2"></i>Relatórios Instantâneos</h6>
+                <span class="badge bg-dark bg-opacity-75 px-3 py-2" style="font-size: 0.72rem;">
+                    <i class="bi bi-cpu me-1"></i>Gerados via Polimorfismo (POO)
+                </span>
+            </div>
+        </div>
+
+        @if (relatoriosGerados != null)
+        {
+            @foreach (var relatorio in relatoriosGerados)
+            {
+                <div class="col-md-4">
+                    <div class="card shadow-sm dash-card h-100 report-card" style="border-left: 5px solid @relatorio.GetCorTema() !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="report-icon me-3 d-flex align-items-center justify-content-center rounded" style="width: 42px; height: 42px; background: @(relatorio.GetCorTema())15; flex-shrink: 0;">
+                                    <i class="bi @relatorio.GetIcone() fs-5" style="color: @relatorio.GetCorTema();"></i>
+                                </div>
+                                <div>
+                                    <h6 class="fw-bold mb-0" style="font-size: 0.9rem; color: @relatorio.GetCorTema();">@relatorio.Titulo</h6>
+                                    <small class="text-muted" style="font-size: 0.7rem;">@relatorio.GetDataFormatada()</small>
+                                </div>
+                            </div>
+                            <div class="bg-light rounded p-2 mt-2" style="font-size: 0.78rem; line-height: 1.7; word-break: break-word;">
+                                @foreach (var parte in relatorio.GerarResumo().Split(" | "))
+                                {
+                                    <span class="d-block"><i class="bi bi-dot text-muted"></i>@parte</span>
+                                }
+                            </div>
+                            <div class="text-end mt-2">
+                                <small class="text-muted fst-italic" style="font-size: 0.65rem;">
+                                    @relatorio.GetCabecalho()
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
 </div>
 
 <style>
@@ -656,6 +702,19 @@
         opacity: 0.5;
     }
 
+    /* Report Cards (POO: Polimorfismo) */
+    .report-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-radius: 0.5rem;
+    }
+    .report-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.08) !important;
+    }
+    .report-icon {
+        border-radius: 0.5rem;
+    }
+
 </style>
 
 @code {
@@ -689,6 +748,9 @@
     private decimal capitalImobilizado;
     private decimal margemLucroReal;
     private List<mechsystem.Models.Peca> pecasEmRuptura = new();
+
+    // Relatórios POO (Classe Abstrata + Override + Polimorfismo)
+    private List<Relatorio> relatoriosGerados = new();
 
     // Listas e Rankings
     private int[] funilData = new int[5];
@@ -807,6 +869,70 @@
         var margemFim = filtroFim ?? DateTime.MaxValue;
         var (lucro, _) = await EstoqueService.GetMargemLucroRealAsync(margemInicio, margemFim);
         margemLucroReal = lucro;
+
+        // 12. Gerar Relatórios via Polimorfismo (POO: abstract + override)
+        GerarRelatorios();
+    }
+
+    /// <summary>
+    /// Demonstração de POLIMORFISMO: instancia classes filhas (RelatorioOS, RelatorioEstoque, RelatorioFinanceiro)
+    /// e as armazena em uma lista do tipo base (List<Relatorio>).
+    /// Ao renderizar no HTML, chamamos GerarResumo(), GetIcone() e GetCorTema() —
+    /// métodos abstratos que cada classe filha sobrescreve (override).
+    /// </summary>
+    private void GerarRelatorios()
+    {
+        relatoriosGerados = new List<Relatorio>();
+
+        // 1. Relatório de Ordens de Serviço (RelatorioOS : Relatorio)
+        var relOS = new RelatorioOS
+        {
+            Titulo = "Ordens de Serviço",
+            TotalOS = funilData.Sum(),
+            TotalConcluidas = funilData[3],
+            TotalCanceladas = funilData[4],
+            TotalEmAndamento = funilData[2],
+            TotalOrcamentos = funilData[0],
+            FaturamentoTotal = faturamentoMes,
+            TicketMedio = ticketMedio,
+            TaxaConversao = taxaConversao
+        };
+        relatoriosGerados.Add(relOS); // Adicionado como Relatorio (tipo base)
+
+        // 2. Relatório de Estoque (RelatorioEstoque : Relatorio)
+        var totalPecas = DbContext.Pecas.Count();
+        var pecasAtivas = DbContext.Pecas.Count(p => p.Ativo);
+        var margemMedia = DbContext.Pecas.Where(p => p.Ativo && p.PrecoVenda > 0)
+            .AsEnumerable()
+            .Select(p => p.MargemLucro)
+            .DefaultIfEmpty(0)
+            .Average();
+        var totalMov = DbContext.MovimentacoesEstoque.Count();
+
+        var relEstoque = new RelatorioEstoque
+        {
+            Titulo = "Controle de Estoque",
+            TotalPecasCadastradas = totalPecas,
+            PecasAtivas = pecasAtivas,
+            PecasAbaixoDoMinimo = pecasEmRuptura?.Count ?? 0,
+            CapitalImobilizado = capitalImobilizado,
+            MargemLucroMedia = (decimal)margemMedia,
+            TotalMovimentacoes = totalMov
+        };
+        relatoriosGerados.Add(relEstoque); // Adicionado como Relatorio (tipo base)
+
+        // 3. Relatório Financeiro (RelatorioFinanceiro : Relatorio)
+        var relFinanceiro = new RelatorioFinanceiro
+        {
+            Titulo = "Panorama Financeiro",
+            ReceitaMaoDeObra = faturamentoMaoDeObra,
+            ReceitaPecas = faturamentoPecas,
+            ReceitaTotal = faturamentoMes,
+            LucroRealPecas = margemLucroReal,
+            CapitalImobilizado = capitalImobilizado,
+            TotalOSPagas = totalOSConcluidasMes
+        };
+        relatoriosGerados.Add(relFinanceiro); // Adicionado como Relatorio (tipo base)
     }
 
     // --- Navegação de Período ---

@@ -1,0 +1,475 @@
+@page "/relatorios"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Models
+@using mechsystem.Services
+@inject AppDbContext DbContext
+@inject EstoqueService EstoqueService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Relatórios — Mechsystem</PageTitle>
+
+<div class="relatorios-page pb-5">
+
+    <!-- Header -->
+    <div class="rel-header mb-4">
+        <div>
+            <h2 class="fw-bold mb-1"><i class="bi bi-file-earmark-bar-graph me-2" style="color: var(--accent);"></i>Central de Relatórios</h2>
+            <p class="text-muted mb-0">Emissão e impressão de relatórios gerenciais</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <div class="d-flex gap-1 align-items-center d-print-none">
+                <span class="text-muted small me-1"><i class="bi bi-calendar3"></i></span>
+                <select class="form-select form-select-sm" style="width: auto;" @bind="selectedMonth" @bind:after="CarregarDados">
+                    @for (int m = 1; m <= 12; m++)
+                    {
+                        <option value="@m">@(new DateTime(2026, m, 1).ToString("MMMM", ptBR))</option>
+                    }
+                </select>
+                <select class="form-select form-select-sm" style="width: auto;" @bind="selectedYear" @bind:after="CarregarDados">
+                    @for (int y = DateTime.Today.Year - 2; y <= DateTime.Today.Year + 1; y++)
+                    {
+                        <option value="@y">@y</option>
+                    }
+                </select>
+            </div>
+            <button class="btn btn-sm btn-accent shadow-sm d-print-none" @onclick="GerarTodos" disabled="@carregando">
+                <i class="bi bi-arrow-repeat me-1"></i>Gerar Relatórios
+            </button>
+        </div>
+    </div>
+
+    @if (carregando)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Gerando relatórios...</p>
+        </div>
+    }
+    else if (relatorios != null && relatorios.Any())
+    {
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mb-0 d-print-none" role="tablist">
+            @for (int i = 0; i < relatorios.Count; i++)
+            {
+                var idx = i;
+                var rel = relatorios[i];
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link @(abaAtiva == idx ? "active" : "")" @onclick="() => abaAtiva = idx">
+                        <i class="bi @rel.GetIcone() me-1" style="color: @rel.GetCorTema();"></i>
+                        @rel.Titulo
+                    </button>
+                </li>
+            }
+        </ul>
+
+        <!-- Conteúdo da aba ativa -->
+        @if (abaAtiva >= 0 && abaAtiva < relatorios.Count)
+        {
+            var relAtivo = relatorios[abaAtiva];
+
+            <!-- Toolbar de impressão -->
+            <div class="rel-toolbar d-print-none">
+                <button class="btn btn-sm btn-dark" @onclick="Imprimir">
+                    <i class="bi bi-printer-fill me-1"></i>Imprimir / PDF
+                </button>
+                <span class="text-muted small ms-3">
+                    <i class="bi bi-clock me-1"></i>@relAtivo.GetDataFormatada()
+                </span>
+            </div>
+
+            <!-- Documento imprimível -->
+            <div class="rel-documento" id="relatorio-print">
+
+                <!-- Cabeçalho do documento -->
+                <div class="rel-doc-header">
+                    <div>
+                        <div class="rel-doc-empresa">@(config?.NomeFantasia ?? "MechSystem")</div>
+                        @if (!string.IsNullOrEmpty(config?.Cnpj))
+                        {
+                            <div class="rel-doc-info">CNPJ: @config.Cnpj</div>
+                        }
+                        @if (!string.IsNullOrEmpty(config?.Telefone))
+                        {
+                            <div class="rel-doc-info">Tel: @config.Telefone</div>
+                        }
+                        @if (!string.IsNullOrEmpty(config?.EnderecoCompleto))
+                        {
+                            <div class="rel-doc-info">@config.EnderecoCompleto</div>
+                        }
+                    </div>
+                    <div class="text-end">
+                        <div class="rel-doc-tipo">RELATÓRIO GERENCIAL</div>
+                        <div class="rel-doc-titulo" style="color: @relAtivo.GetCorTema();">
+                            <i class="bi @relAtivo.GetIcone() me-1"></i>@relAtivo.Titulo
+                        </div>
+                        <div class="rel-doc-periodo">@GetPeriodoLabel()</div>
+                    </div>
+                </div>
+
+                <div class="rel-doc-divider"></div>
+
+                <!-- Conteúdo específico por tipo -->
+                @if (relAtivo is RelatorioOS relOS)
+                {
+                    <div class="rel-section">
+                        <div class="rel-section-title">RESUMO OPERACIONAL</div>
+                        <div class="rel-kpi-grid">
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor" style="color: @relOS.GetCorTema();">@relOS.TotalOS</span>
+                                <span class="rel-kpi-label">Total de O.S.</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor text-success">@relOS.TotalConcluidas</span>
+                                <span class="rel-kpi-label">Concluídas</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor" style="color: #fd7e14;">@relOS.TotalEmAndamento</span>
+                                <span class="rel-kpi-label">Em Andamento</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor text-warning">@relOS.TotalOrcamentos</span>
+                                <span class="rel-kpi-label">Orçamentos</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor text-danger">@relOS.TotalCanceladas</span>
+                                <span class="rel-kpi-label">Canceladas</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor" style="color: #6f42c1;">@relOS.TaxaConversao.ToString("N1")%</span>
+                                <span class="rel-kpi-label">Conversão</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rel-doc-divider"></div>
+
+                    <div class="rel-section">
+                        <div class="rel-section-title">INDICADORES FINANCEIROS</div>
+                        <table class="rel-table">
+                            <tbody>
+                                <tr><td>Faturamento Total</td><td class="text-end fw-bold">@relOS.FaturamentoTotal.ToString("C", ptBR)</td></tr>
+                                <tr><td>Ticket Médio por O.S.</td><td class="text-end">@relOS.TicketMedio.ToString("C", ptBR)</td></tr>
+                                <tr><td>Taxa de Conversão</td><td class="text-end">@relOS.TaxaConversao.ToString("N1")%</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="rel-doc-divider"></div>
+
+                    <!-- Tabela detalhada de OS -->
+                    <div class="rel-section">
+                        <div class="rel-section-title">DETALHAMENTO POR STATUS</div>
+                        <table class="rel-table rel-table-detail">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th class="text-center">Quantidade</th>
+                                    <th class="text-end">% do Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var statusList = new[] {
+                                        ("Orçamento", relOS.TotalOrcamentos, "#f6c23e"),
+                                        ("Em Andamento", relOS.TotalEmAndamento, "#fd7e14"),
+                                        ("Concluídas", relOS.TotalConcluidas, "#1cc88a"),
+                                        ("Canceladas", relOS.TotalCanceladas, "#e74c3c")
+                                    };
+                                }
+                                @foreach (var (nome, qtd, cor) in statusList)
+                                {
+                                    var pct = relOS.TotalOS > 0 ? (qtd * 100.0 / relOS.TotalOS) : 0;
+                                    <tr>
+                                        <td><span class="dot me-2" style="background: @cor;"></span>@nome</td>
+                                        <td class="text-center fw-bold">@qtd</td>
+                                        <td class="text-end">@pct.ToString("N1")%</td>
+                                    </tr>
+                                }
+                                <tr class="rel-total-row">
+                                    <td>TOTAL</td>
+                                    <td class="text-center fw-bold">@relOS.TotalOS</td>
+                                    <td class="text-end">100%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else if (relAtivo is RelatorioEstoque relEst)
+                {
+                    <div class="rel-section">
+                        <div class="rel-section-title">VISÃO GERAL DO ESTOQUE</div>
+                        <div class="rel-kpi-grid">
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor" style="color: @relEst.GetCorTema();">@relEst.TotalPecasCadastradas</span>
+                                <span class="rel-kpi-label">Peças Cadastradas</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor text-success">@relEst.PecasAtivas</span>
+                                <span class="rel-kpi-label">Ativas</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor text-danger">@relEst.PecasAbaixoDoMinimo</span>
+                                <span class="rel-kpi-label">Em Ruptura</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor" style="color: #6f42c1;">@relEst.MargemLucroMedia.ToString("N1")%</span>
+                                <span class="rel-kpi-label">Margem Média</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor text-dark">@relEst.TotalMovimentacoes</span>
+                                <span class="rel-kpi-label">Movimentações</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor text-success">@relEst.CapitalImobilizado.ToString("C", ptBR)</span>
+                                <span class="rel-kpi-label">Capital Imobilizado</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rel-doc-divider"></div>
+
+                    <!-- Peças em ruptura -->
+                    @if (pecasRuptura != null && pecasRuptura.Any())
+                    {
+                        <div class="rel-section">
+                            <div class="rel-section-title">⚠ PEÇAS EM RUPTURA DE ESTOQUE</div>
+                            <table class="rel-table rel-table-detail">
+                                <thead>
+                                    <tr>
+                                        <th>SKU</th>
+                                        <th>Nome</th>
+                                        <th class="text-center">Estoque Atual</th>
+                                        <th class="text-center">Estoque Mínimo</th>
+                                        <th class="text-end">Preço Venda</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var p in pecasRuptura)
+                                    {
+                                        <tr>
+                                            <td class="fw-bold">@p.Sku</td>
+                                            <td>@p.Nome</td>
+                                            <td class="text-center text-danger fw-bold">@p.EstoqueAtual</td>
+                                            <td class="text-center">@p.EstoqueMinimo</td>
+                                            <td class="text-end">@p.PrecoVenda.ToString("C", ptBR)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="rel-section">
+                            <div class="alert alert-success d-flex align-items-center gap-2 mb-0">
+                                <i class="bi bi-check-circle-fill fs-5"></i>
+                                <span>Estoque saudável — nenhuma peça abaixo do mínimo.</span>
+                            </div>
+                        </div>
+                    }
+                }
+                else if (relAtivo is RelatorioFinanceiro relFin)
+                {
+                    <div class="rel-section">
+                        <div class="rel-section-title">PANORAMA FINANCEIRO</div>
+                        <div class="rel-kpi-grid">
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor text-success">@relFin.ReceitaTotal.ToString("C", ptBR)</span>
+                                <span class="rel-kpi-label">Receita Total</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor" style="color: @relFin.GetCorTema();">@relFin.TotalOSPagas</span>
+                                <span class="rel-kpi-label">O.S. Pagas</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor" style="color: #6f42c1;">@relFin.LucroRealPecas.ToString("C", ptBR)</span>
+                                <span class="rel-kpi-label">Lucro Real (Peças)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rel-doc-divider"></div>
+
+                    <div class="rel-section">
+                        <div class="rel-section-title">COMPOSIÇÃO DA RECEITA</div>
+                        <table class="rel-table">
+                            <tbody>
+                                <tr>
+                                    <td><span class="dot me-2 bg-success"></span>Mão de Obra</td>
+                                    <td class="text-end">@relFin.ReceitaMaoDeObra.ToString("C", ptBR)</td>
+                                    <td class="text-end" style="width: 80px;">@relFin.PercentualMaoDeObra.ToString("N1")%</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="dot me-2" style="background: #fd7e14;"></span>Peças</td>
+                                    <td class="text-end">@relFin.ReceitaPecas.ToString("C", ptBR)</td>
+                                    <td class="text-end">@relFin.PercentualPecas.ToString("N1")%</td>
+                                </tr>
+                                <tr class="rel-total-row">
+                                    <td>RECEITA TOTAL</td>
+                                    <td class="text-end fw-bold">@relFin.ReceitaTotal.ToString("C", ptBR)</td>
+                                    <td class="text-end">100%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="rel-doc-divider"></div>
+
+                    <div class="rel-section">
+                        <div class="rel-section-title">ANÁLISE DE LUCRATIVIDADE</div>
+                        <table class="rel-table">
+                            <tbody>
+                                <tr>
+                                    <td>Capital Imobilizado em Estoque</td>
+                                    <td class="text-end">@relFin.CapitalImobilizado.ToString("C", ptBR)</td>
+                                </tr>
+                                <tr>
+                                    <td>Lucro Real em Peças (Venda - Custo)</td>
+                                    <td class="text-end fw-bold text-success">@relFin.LucroRealPecas.ToString("C", ptBR)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                }
+
+                <!-- Resumo textual (GerarResumo via override) -->
+                <div class="rel-doc-divider"></div>
+                <div class="rel-section">
+                    <div class="rel-section-title">RESUMO AUTOMÁTICO (GERADO VIA POLIMORFISMO)</div>
+                    <div class="rel-resumo-box">
+                        @foreach (var parte in relAtivo.GerarResumo().Split(" | "))
+                        {
+                            <span class="d-block"><i class="bi bi-chevron-right me-1 text-muted" style="font-size: 0.7rem;"></i>@parte</span>
+                        }
+                    </div>
+                </div>
+
+                <!-- Rodapé -->
+                <div class="rel-rodape">
+                    @relAtivo.GetCabecalho()
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private System.Globalization.CultureInfo ptBR = new("pt-BR");
+    private int selectedMonth = DateTime.Today.Month;
+    private int selectedYear = DateTime.Today.Year;
+    private bool carregando = false;
+    private int abaAtiva = 0;
+
+    private Configuracao? config;
+    private List<Relatorio> relatorios = new();
+    private List<Peca> pecasRuptura = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarDados();
+    }
+
+    private async Task CarregarDados()
+    {
+        carregando = true;
+        StateHasChanged();
+
+        config = await DbContext.Configuracoes.FirstOrDefaultAsync();
+
+        var inicio = new DateTime(selectedYear, selectedMonth, 1);
+        var fim = inicio.AddMonths(1);
+
+        // OS do período
+        var osPeriodo = await DbContext.OrdensServico
+            .Include(o => o.PecasUtilizadas)
+            .Where(o => o.DataEmissao >= inicio && o.DataEmissao < fim)
+            .ToListAsync();
+
+        var osConcluidas = osPeriodo.Where(o => o.Status == OrdemServicoStatus.Concluida).ToList();
+        var faturamento = osConcluidas.Sum(o => o.ValorMaoDeObra + o.ValorPecasEfetivo);
+        var ticketMedio = osConcluidas.Count > 0 ? faturamento / osConcluidas.Count : 0;
+
+        int totalAprovadas = osPeriodo.Count(o =>
+            o.Status == OrdemServicoStatus.EmAndamento ||
+            o.Status == OrdemServicoStatus.AguardandoPecas ||
+            o.Status == OrdemServicoStatus.Concluida);
+        int totalCanceladas = osPeriodo.Count(o => o.Status == OrdemServicoStatus.Cancelada);
+        int totalDecididas = totalAprovadas + totalCanceladas;
+        double taxaConversao = totalDecididas > 0 ? (totalAprovadas * 100.0) / totalDecididas : 0;
+
+        // Estoque
+        pecasRuptura = await EstoqueService.GetAlertasRupturaAsync();
+        var capitalImob = await EstoqueService.GetCapitalImobilizadoAsync();
+        var totalPecas = await DbContext.Pecas.CountAsync();
+        var pecasAtivas = await DbContext.Pecas.CountAsync(p => p.Ativo);
+        var margemMedia = await DbContext.Pecas.Where(p => p.Ativo && p.PrecoVenda > 0)
+            .Select(p => new { p.PrecoVenda, p.PrecoCusto })
+            .ToListAsync();
+        var mm = margemMedia.Any()
+            ? margemMedia.Average(p => p.PrecoVenda > 0 ? ((double)(p.PrecoVenda - p.PrecoCusto) / (double)p.PrecoVenda) * 100 : 0)
+            : 0;
+        var totalMov = await DbContext.MovimentacoesEstoque.CountAsync();
+
+        // Financeiro
+        var faturamentoMDO = osConcluidas.Sum(o => o.ValorMaoDeObra);
+        var faturamentoPecas = osConcluidas.Sum(o => o.ValorPecasEfetivo);
+        var (lucro, _) = await EstoqueService.GetMargemLucroRealAsync(inicio, fim);
+
+        // ─── POLIMORFISMO: instanciação de classes filhas armazenadas como Relatorio ───
+        relatorios = new List<Relatorio>
+        {
+            new RelatorioOS
+            {
+                Titulo = "Ordens de Serviço",
+                TotalOS = osPeriodo.Count,
+                TotalConcluidas = osConcluidas.Count,
+                TotalCanceladas = totalCanceladas,
+                TotalEmAndamento = osPeriodo.Count(o => o.Status == OrdemServicoStatus.EmAndamento),
+                TotalOrcamentos = osPeriodo.Count(o => o.Status == OrdemServicoStatus.Orcamento),
+                FaturamentoTotal = faturamento,
+                TicketMedio = ticketMedio,
+                TaxaConversao = taxaConversao
+            },
+            new RelatorioEstoque
+            {
+                Titulo = "Controle de Estoque",
+                TotalPecasCadastradas = totalPecas,
+                PecasAtivas = pecasAtivas,
+                PecasAbaixoDoMinimo = pecasRuptura.Count,
+                CapitalImobilizado = capitalImob,
+                MargemLucroMedia = (decimal)mm,
+                TotalMovimentacoes = totalMov
+            },
+            new RelatorioFinanceiro
+            {
+                Titulo = "Panorama Financeiro",
+                ReceitaMaoDeObra = faturamentoMDO,
+                ReceitaPecas = faturamentoPecas,
+                ReceitaTotal = faturamento,
+                LucroRealPecas = lucro,
+                CapitalImobilizado = capitalImob,
+                TotalOSPagas = osConcluidas.Count
+            }
+        };
+
+        carregando = false;
+    }
+
+    private async Task GerarTodos()
+    {
+        await CarregarDados();
+    }
+
+    private async Task Imprimir()
+    {
+        await JSRuntime.InvokeVoidAsync("window.print");
+    }
+
+    private string GetPeriodoLabel()
+    {
+        return new DateTime(selectedYear, selectedMonth, 1)
+            .ToString("MMMM 'de' yyyy", ptBR).ToUpper();
+    }
+}
