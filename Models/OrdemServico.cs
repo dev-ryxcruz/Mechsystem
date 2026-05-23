@@ -24,10 +24,24 @@ namespace mechsystem.Models
         public DateTime DataPrevisaoEntrega { get; set; }
 
         // Valores
+        /// <summary>
+        /// Valor manual de mão de obra. Mantido para retrocompatibilidade/orçamento simples.
+        /// REGRA DE GRACEFUL DEGRADATION: Se existirem serviços vinculados em ServicosAExecutarList,
+        /// este valor é IGNORADO e sobrescrito pela soma calculada dos serviços.
+        /// </summary>
         [Display(Name = "Valor Mão de Obra")]
         [Column(TypeName = "decimal(18,2)")]
         [Range(0, double.MaxValue, ErrorMessage = "O valor não pode ser negativo.")]
         public decimal ValorMaoDeObra { get; set; } = 0;
+
+        /// <summary>
+        /// Valor efetivo da mão de obra (fallback / graceful degradation).
+        /// </summary>
+        [NotMapped]
+        public decimal ValorMaoDeObraEfetivo =>
+            ServicosAExecutarList != null && ServicosAExecutarList.Any()
+                ? ServicosAExecutarList.Sum(s => s.Subtotal)
+                : ValorMaoDeObra;
 
         /// <summary>
         /// Valor manual de peças. Mantido para retrocompatibilidade.
@@ -40,8 +54,7 @@ namespace mechsystem.Models
         public decimal ValorPecas { get; set; } = 0;
 
         /// <summary>
-        /// Valor efetivo de peças: se houver peças vinculadas, retorna a soma calculada;
-        /// caso contrário, retorna o valor manual (fallback / graceful degradation).
+        /// Valor efetivo de peças (fallback / graceful degradation).
         /// </summary>
         [NotMapped]
         public decimal ValorPecasEfetivo =>
@@ -50,11 +63,26 @@ namespace mechsystem.Models
                 : ValorPecas;
 
         /// <summary>
-        /// Valor total da OS: Mão de Obra + Valor Efetivo de Peças.
-        /// Usa ValorPecasEfetivo para aplicar a regra de graceful degradation.
+        /// Valor de desconto a ser aplicado diretamente na Ordem de Serviço.
+        /// </summary>
+        [Display(Name = "Desconto (R$)")]
+        [Column(TypeName = "decimal(18,2)")]
+        [Range(0, double.MaxValue, ErrorMessage = "O valor não pode ser negativo.")]
+        public decimal ValorDesconto { get; set; } = 0;
+
+        /// <summary>
+        /// Valor total da OS: Mão de Obra Efetiva + Peças Efetivas - Desconto.
         /// </summary>
         [Display(Name = "Valor Total")]
-        public decimal ValorTotal => ValorMaoDeObra + ValorPecasEfetivo;
+        public decimal ValorTotal => (ValorMaoDeObraEfetivo + ValorPecasEfetivo) - ValorDesconto;
+
+        /// <summary>
+        /// Tempo total estimado para realizar todos os serviços listados.
+        /// </summary>
+        [NotMapped]
+        [Display(Name = "Tempo Total Estimado (Minutos)")]
+        public int TempoTotalEstimadoMinutos =>
+            ServicosAExecutarList != null ? ServicosAExecutarList.Sum(s => s.TempoTotalLinhaMinutos) : 0;
 
         // Descrições
         [Required(ErrorMessage = "O diagnóstico/problema relatado é obrigatório.")]
@@ -86,6 +114,9 @@ namespace mechsystem.Models
 
         // Peças utilizadas na OS
         public ICollection<OrdemServicoPeca> PecasUtilizadas { get; set; } = new List<OrdemServicoPeca>();
+
+        // Serviços listados na OS
+        public ICollection<OrdemServicoServico> ServicosAExecutarList { get; set; } = new List<OrdemServicoServico>();
 
         // Comunicação com Cliente
         public string? TokenAcompanhamento { get; set; }

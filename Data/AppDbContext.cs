@@ -19,6 +19,7 @@ namespace mechsystem.Data
         public DbSet<Peca> Pecas { get; set; }
         public DbSet<MovimentacaoEstoque> MovimentacoesEstoque { get; set; }
         public DbSet<OrdemServicoPeca> OrdemServicoPecas { get; set; }
+        public DbSet<OrdemServicoServico> OrdemServicoServicos { get; set; }
         public DbSet<ContatoOS> ContatosOS { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -54,6 +55,19 @@ namespace mechsystem.Data
                 .HasOne(op => op.Peca)
                 .WithMany()
                 .HasForeignKey(op => op.PecaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // OrdemServicoServico: FKs
+            modelBuilder.Entity<OrdemServicoServico>()
+                .HasOne(os => os.OrdemServico)
+                .WithMany(o => o.ServicosAExecutarList)
+                .HasForeignKey(os => os.OrdemServicoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<OrdemServicoServico>()
+                .HasOne(os => os.Servico)
+                .WithMany()
+                .HasForeignKey(os => os.ServicoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Usuario>().HasData(new Usuario

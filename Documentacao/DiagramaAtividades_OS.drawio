@@ -1,0 +1,312 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0" version="26.0.16">
+  <diagram id="os-act" name="Diagrama de Atividades - O.S.">
+    <mxGraphModel dx="1800" dy="2400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="3300" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <!-- TITULO -->
+        <mxCell id="t1" value="ORDEM DE SERVIÇO" style="text;html=1;fontSize=20;fontStyle=1;align=center;whiteSpace=wrap;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="400" height="40" as="geometry" />
+        </mxCell>
+        <!-- ATORES -->
+        <mxCell id="a1" value="Atendente" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="250" y="70" width="30" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="Mecânico" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="700" y="70" width="30" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="Estoque" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="70" width="30" height="50" as="geometry" />
+        </mxCell>
+        <!-- SEPARADORES DE RAIA -->
+        <mxCell id="sep1" style="line;strokeWidth=1;strokeColor=#888888;dashed=1;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="490" y="70" width="1" height="3100" as="geometry" />
+        </mxCell>
+        <mxCell id="sep2" style="line;strokeWidth=1;strokeColor=#888888;dashed=1;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="930" y="70" width="1" height="3100" as="geometry" />
+        </mxCell>
+        <!-- INICIO -->
+        <mxCell id="start" value="INÍCIO" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000000;fontColor=#FFFFFF;strokeColor=#FFFFFF;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="220" y="180" width="80" height="40" as="geometry" />
+        </mxCell>
+        <!-- N1: Cliente chega -->
+        <mxCell id="n1" value="Cliente chega à oficina" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="180" y="270" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- D1: Cliente cadastrado? -->
+        <mxCell id="d1" value="Cliente já cadastrado?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="370" width="120" height="80" as="geometry" />
+        </mxCell>
+        <!-- N2: Cadastrar Cliente -->
+        <mxCell id="n2" value="Cadastrar Cliente" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="60" y="510" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- D2: Veiculo cadastrado? -->
+        <mxCell id="d2" value="Veículo já cadastrado?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="620" width="120" height="80" as="geometry" />
+        </mxCell>
+        <!-- N3: Cadastrar Veiculo -->
+        <mxCell id="n3" value="Cadastrar Veículo" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="60" y="760" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- N4: Criar OS -->
+        <mxCell id="n4" value="Criar Ordem de Serviço" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="880" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- FORK BAR 1 -->
+        <mxCell id="fork1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#CC0066;strokeColor=#CC0066;" vertex="1" parent="1">
+          <mxGeometry x="100" y="980" width="750" height="6" as="geometry" />
+        </mxCell>
+        <!-- N5: Realizar Vistoria (Mecanico) -->
+        <mxCell id="n5" value="Realizar Vistoria" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="630" y="1030" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- N6: Elaborar Orcamento (Mecanico) -->
+        <mxCell id="n6" value="Elaborar Orçamento" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="630" y="1130" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- JOIN BAR 1 -->
+        <mxCell id="join1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#CC0066;strokeColor=#CC0066;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1230" width="750" height="6" as="geometry" />
+        </mxCell>
+        <!-- N7: Apresentar Orcamento (Atendente) -->
+        <mxCell id="n7" value="Apresentar Orçamento ao Cliente" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="180" y="1290" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- D3: Cliente Autoriza? -->
+        <mxCell id="d3" value="Cliente Autoriza?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="200" y="1390" width="120" height="80" as="geometry" />
+        </mxCell>
+        <!-- N8: OS Cancelada -->
+        <mxCell id="n8" value="O.S. Cancelada" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1540" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- End Cancel -->
+        <mxCell id="end_c" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="125" y="1630" width="30" height="30" as="geometry" />
+        </mxCell>
+        <!-- D4: Pecas disponiveis? (Estoque) -->
+        <mxCell id="d4" value="Peças disponíveis no Estoque?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="1390" width="140" height="100" as="geometry" />
+        </mxCell>
+        <!-- N9: Solicitar Peca -->
+        <mxCell id="n9" value="Solicitar / Comprar Peça" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="1270" y="1500" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- N10: Entrada de Peca -->
+        <mxCell id="n10" value="Entrada de Peça" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="1270" y="1600" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- N11: Vincular Pecas (Estoque) -->
+        <mxCell id="n11" value="Vincular Peças à O.S." style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="1720" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- FORK BAR 2 -->
+        <mxCell id="fork2" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#CC0066;strokeColor=#CC0066;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1820" width="1100" height="6" as="geometry" />
+        </mxCell>
+        <!-- N12: Executar OS (Mecanico) -->
+        <mxCell id="n12" value="Executar O.S." style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="630" y="1880" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- D5: Servico Concluido? -->
+        <mxCell id="d5" value="Serviço Concluído?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="650" y="1980" width="120" height="80" as="geometry" />
+        </mxCell>
+        <!-- N13: Registrar Contato (Atendente) -->
+        <mxCell id="n13" value="Registrar Contato com Cliente" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="180" y="1990" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- N14: Conferir Checklist (Mecanico) -->
+        <mxCell id="n14" value="Conferir Checklist de Entrega" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="630" y="2130" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- JOIN BAR 2 -->
+        <mxCell id="join2" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#CC0066;strokeColor=#CC0066;" vertex="1" parent="1">
+          <mxGeometry x="100" y="2230" width="750" height="6" as="geometry" />
+        </mxCell>
+        <!-- N15: Gerar Documento (Atendente) -->
+        <mxCell id="n15" value="Gerar Documento de Entrega (OS Impressa)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="170" y="2290" width="180" height="45" as="geometry" />
+        </mxCell>
+        <!-- N16: Entregar Veiculo -->
+        <mxCell id="n16" value="Entregar Veículo" style="rounded=1;whiteSpace=wrap;html=1;arcSize=50;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="2390" width="160" height="45" as="geometry" />
+        </mxCell>
+        <!-- FIM -->
+        <mxCell id="end_ok" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#000000;strokeColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="245" y="2490" width="30" height="30" as="geometry" />
+        </mxCell>
+        <!-- ====== EDGES ====== -->
+        <!-- Start → N1 -->
+        <mxCell id="e1" edge="1" source="start" target="n1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- N1 → D1 -->
+        <mxCell id="e2" edge="1" source="n1" target="d1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- D1 [Não] → N2 -->
+        <mxCell id="e3" edge="1" source="d1" target="n2" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lb3" value="Não" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="140" y="440" width="40" height="20" as="geometry" />
+        </mxCell>
+        <!-- D1 [Sim] → D2 -->
+        <mxCell id="e4" edge="1" source="d1" target="d2" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="410" />
+              <mxPoint x="400" y="620" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lb4" value="Sim" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="340" y="390" width="40" height="20" as="geometry" />
+        </mxCell>
+        <!-- N2 → D2 -->
+        <mxCell id="e5" edge="1" source="n2" target="d2" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- D2 [Não] → N3 -->
+        <mxCell id="e6" edge="1" source="d2" target="n3" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lb6" value="Não" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="140" y="690" width="40" height="20" as="geometry" />
+        </mxCell>
+        <!-- D2 [Sim] → N4 -->
+        <mxCell id="e7" edge="1" source="d2" target="n4" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="660" />
+              <mxPoint x="400" y="880" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lb7" value="Sim" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="340" y="640" width="40" height="20" as="geometry" />
+        </mxCell>
+        <!-- N3 → N4 -->
+        <mxCell id="e8" edge="1" source="n3" target="n4" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- N4 → Fork1 -->
+        <mxCell id="e9" edge="1" source="n4" target="fork1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- Fork1 → N5 -->
+        <mxCell id="e10" edge="1" source="fork1" target="n5" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- N5 → N6 -->
+        <mxCell id="e11" edge="1" source="n5" target="n6" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- N6 → Join1 -->
+        <mxCell id="e12" edge="1" source="n6" target="join1" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- Join1 → N7 -->
+        <mxCell id="e13" edge="1" source="join1" target="n7" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- N7 → D3 -->
+        <mxCell id="e14" edge="1" source="n7" target="d3" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- D3 [Não] → N8 -->
+        <mxCell id="e15" edge="1" source="d3" target="n8" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lb15" value="Não" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="140" y="1470" width="40" height="20" as="geometry" />
+        </mxCell>
+        <!-- N8 → End Cancel -->
+        <mxCell id="e16" edge="1" source="n8" target="end_c" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- D3 [Sim] → D4 -->
+        <mxCell id="e17" edge="1" source="d3" target="d4" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lb17" value="Sim" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="340" y="1410" width="40" height="20" as="geometry" />
+        </mxCell>
+        <!-- D4 [Não] → N9 -->
+        <mxCell id="e18" edge="1" source="d4" target="n9" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lb18" value="Não" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="1470" width="40" height="20" as="geometry" />
+        </mxCell>
+        <!-- D4 [Sim] → N11 -->
+        <mxCell id="e19" edge="1" source="d4" target="n11" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lb19" value="Sim" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="1510" width="40" height="20" as="geometry" />
+        </mxCell>
+        <!-- N9 → N10 -->
+        <mxCell id="e20" edge="1" source="n9" target="n10" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- N10 → N11 -->
+        <mxCell id="e21" edge="1" source="n10" target="n11" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- N11 → Fork2 -->
+        <mxCell id="e22" edge="1" source="n11" target="fork2" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- Fork2 → N12 -->
+        <mxCell id="e23" edge="1" source="fork2" target="n12" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- N12 → D5 -->
+        <mxCell id="e24" edge="1" source="n12" target="d5" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- D5 [Não] → N13 -->
+        <mxCell id="e25" edge="1" source="d5" target="n13" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lb25" value="Não" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="430" y="2000" width="40" height="20" as="geometry" />
+        </mxCell>
+        <!-- N13 → N12 (loop) -->
+        <mxCell id="e26" edge="1" source="n13" target="n12" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="260" y="1903" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <!-- D5 [Sim] → N14 -->
+        <mxCell id="e27" edge="1" source="d5" target="n14" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lb27" value="Sim" style="text;html=1;fontSize=11;fillColor=none;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="720" y="2080" width="40" height="20" as="geometry" />
+        </mxCell>
+        <!-- N14 → Join2 -->
+        <mxCell id="e28" edge="1" source="n14" target="join2" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- Join2 → N15 -->
+        <mxCell id="e29" edge="1" source="join2" target="n15" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- N15 → N16 -->
+        <mxCell id="e30" edge="1" source="n15" target="n16" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <!-- N16 → End -->
+        <mxCell id="e31" edge="1" source="n16" target="end_ok" parent="1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
