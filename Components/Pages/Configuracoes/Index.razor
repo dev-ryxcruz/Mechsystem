@@ -6,6 +6,7 @@
 @using mechsystem.Services
 @using Microsoft.AspNetCore.Authorization
 @inject ConfiguracaoService ConfiguracaoService
+@inject IJSRuntime JS
 
 <PageTitle>Configurações do Sistema — Mechsystem</PageTitle>
 
@@ -104,7 +105,7 @@ else
                             <label class="cfg-label">Telefone</label>
                             <div class="cfg-input-wrap">
                                 <i class="bi bi-telephone cfg-input-icon"></i>
-                                <InputText @bind-Value="config.Telefone" class="cfg-input cfg-input--icon" placeholder="(00) 0000-0000" />
+                                <InputText @bind-Value="config.Telefone" class="cfg-input cfg-input--icon mask-telefone" placeholder="(00) 0000-0000" />
                             </div>
                         </div>
 
@@ -112,7 +113,7 @@ else
                             <label class="cfg-label">WhatsApp</label>
                             <div class="cfg-input-wrap">
                                 <i class="bi bi-whatsapp cfg-input-icon"></i>
-                                <InputText @bind-Value="config.WhatsApp" class="cfg-input cfg-input--icon" placeholder="(00) 9 0000-0000" />
+                                <InputText @bind-Value="config.WhatsApp" class="cfg-input cfg-input--icon mask-telefone" placeholder="(00) 9 0000-0000" />
                             </div>
                         </div>
 
@@ -316,6 +317,14 @@ else
         finally
         {
             isSaving = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender || config != null)
+        {
+            await JS.InvokeVoidAsync("applyMasks");
         }
     }
 }

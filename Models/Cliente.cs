@@ -17,6 +17,7 @@ namespace mechsystem.Models
         [MaxLength(14, ErrorMessage = "O CPF não pode exceder 14 caracteres.")]
         public string? Cpf { get; set; }
 
+        [EmailAddress(ErrorMessage = "E-mail inválido.")]
         public string? Email { get; set; }
         
         [TelefoneValidation]

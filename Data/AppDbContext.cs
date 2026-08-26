@@ -26,6 +26,34 @@ namespace mechsystem.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<Cliente>()
+                .Property(c => c.Cpf)
+                .HasConversion(
+                    v => string.IsNullOrEmpty(v) ? v : new string(v.Where(char.IsDigit).ToArray()),
+                    v => v
+                );
+
+            modelBuilder.Entity<Cliente>()
+                .Property(c => c.Telefone)
+                .HasConversion(
+                    v => string.IsNullOrEmpty(v) ? v : new string(v.Where(char.IsDigit).ToArray()),
+                    v => v
+                );
+
+            modelBuilder.Entity<Configuracao>()
+                .Property(c => c.Telefone)
+                .HasConversion(
+                    v => string.IsNullOrEmpty(v) ? v : new string(v.Where(char.IsDigit).ToArray()),
+                    v => v
+                );
+
+            modelBuilder.Entity<Configuracao>()
+                .Property(c => c.WhatsApp)
+                .HasConversion(
+                    v => string.IsNullOrEmpty(v) ? v : new string(v.Where(char.IsDigit).ToArray()),
+                    v => v
+                );
+
             modelBuilder.Entity<Usuario>().HasIndex(u => u.Username).IsUnique();
 
             // Peca: SKU único

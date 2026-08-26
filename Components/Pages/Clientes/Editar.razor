@@ -8,6 +8,7 @@
 
 @inject IClienteRepository ClienteRepository
 @inject NavigationManager NavigationManager
+@inject IJSRuntime JS
 
 <div class="container mt-5">
     <div class="card shadow-sm">
@@ -28,7 +29,7 @@
 
                     <div class="col-md-6 mb-3">
                         <label class="form-label">CPF</label>
-                        <InputText @bind-Value="cliente.Cpf" class="form-control" />
+                        <InputText @bind-Value="cliente.Cpf" class="form-control mask-cpf" />
                         <ValidationMessage For="@(() => cliente.Cpf)" class="text-danger" />
                     </div>
                 </div>
@@ -37,11 +38,12 @@
                     <div class="col-md-6 mb-3">
                         <label class="form-label">E-mail</label>
                         <InputText @bind-Value="cliente.Email" class="form-control" />
+                        <ValidationMessage For="@(() => cliente.Email)" class="text-danger" />
                     </div>
 
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Telefone</label>
-                        <InputText @bind-Value="cliente.Telefone" class="form-control" />
+                        <InputText @bind-Value="cliente.Telefone" class="form-control mask-telefone" />
                     </div>
                 </div>
 
@@ -91,5 +93,13 @@
     private void Cancelar()
     {
         NavigationManager.NavigateTo("/clientes");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("applyMasks");
+        }
     }
 }

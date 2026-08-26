@@ -22,6 +22,26 @@
     <Routes />
     <ReconnectModal />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    <script src="https://unpkg.com/imask"></script>
+    <script>
+        window.applyMasks = () => {
+            document.querySelectorAll('.mask-cpf').forEach(el => {
+                if (!el.maskInstance) {
+                    el.maskInstance = IMask(el, { mask: '000.000.000-00' });
+                }
+            });
+            document.querySelectorAll('.mask-telefone').forEach(el => {
+                if (!el.maskInstance) {
+                    el.maskInstance = IMask(el, {
+                        mask: [
+                            { mask: '(00) 0000-0000' },
+                            { mask: '(00) 00000-0000' }
+                        ]
+                    });
+                }
+            });
+        };
+    </script>
 </body>
 
 </html>

@@ -10,6 +10,7 @@
 @inject NavigationManager NavigationManager
 @inject IClienteRepository ClienteRepository
 @inject IVeiculoRepository VeiculoRepository
+@inject IJSRuntime JS
 
 <PageTitle>Nova Ordem de Serviço</PageTitle>
 
@@ -214,16 +215,17 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">CPF <span class="text-danger">*</span></label>
-                                <InputText @bind-Value="novoCliente.Cpf" class="form-control" placeholder="Apenas números" />
+                                <InputText @bind-Value="novoCliente.Cpf" class="form-control mask-cpf" placeholder="Apenas números" />
                                 <ValidationMessage For="@(() => novoCliente.Cpf)" class="text-danger small" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Telefone</label>
-                                <InputText @bind-Value="novoCliente.Telefone" class="form-control" placeholder="(00) 00000-0000" />
+                                <InputText @bind-Value="novoCliente.Telefone" class="form-control mask-telefone" placeholder="(00) 00000-0000" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">E-mail</label>
                                 <InputText @bind-Value="novoCliente.Email" class="form-control" placeholder="joao@email.com" />
+                                <ValidationMessage For="@(() => novoCliente.Email)" class="text-danger small" />
                             </div>
                             <div class="col-12">
                                 <label class="form-label fw-bold">Endereço</label>
@@ -433,7 +435,7 @@
 
     // ─── Wizard: Métodos ─────────────────────────────────────────────────────────
 
-    private void AbrirWizardCadastro()
+    private async Task AbrirWizardCadastro()
     {
         novoCliente = new Cliente();
         novoVeiculo = new Veiculo();
@@ -441,6 +443,9 @@
         passoWizard = 1;
         salvandoWizard = false;
         mostrarWizard = true;
+        StateHasChanged();
+        await Task.Delay(100);
+        await JS.InvokeVoidAsync("applyMasks");
     }
 
     private void FecharWizard()
