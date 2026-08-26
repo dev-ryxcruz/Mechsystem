@@ -41,6 +41,13 @@ namespace mechsystem.Repositories
 
         public async Task UpdateAsync(Peca peca)
         {
+            var existingEntity = _context.ChangeTracker.Entries<Peca>()
+                .FirstOrDefault(e => e.Entity.Id == peca.Id);
+            if (existingEntity != null)
+            {
+                existingEntity.State = EntityState.Detached;
+            }
+
             _context.Entry(peca).State = EntityState.Modified;
             await _context.SaveChangesAsync();
         }

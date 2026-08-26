@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using mechsystem.Attributes;
 
 namespace mechsystem.Models
 {
@@ -15,9 +16,11 @@ namespace mechsystem.Models
         public string? Cnpj { get; set; }
 
         [MaxLength(20)]
+        [TelefoneValidation]
         public string? Telefone { get; set; }
 
         [MaxLength(20)]
+        [TelefoneValidation]
         public string? WhatsApp { get; set; }
 
         [MaxLength(100)]

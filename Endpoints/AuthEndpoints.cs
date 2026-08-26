@@ -12,8 +12,8 @@ namespace mechsystem.Endpoints
             app.MapPost("/api/auth/login", async (HttpContext context, IAuthService authService) =>
             {
                 var form = await context.Request.ReadFormAsync();
-                var username = form["username"].ToString();
-                var password = form["password"].ToString();
+                var username = form["username"].ToString().Trim();
+                var password = form["password"].ToString().Trim();
 
                 if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                 {

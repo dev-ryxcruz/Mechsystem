@@ -27,95 +27,106 @@
 
 <div class="card shadow-sm dash-card">
     <div class="card-body p-4">
-        @if (!string.IsNullOrEmpty(erroMensagem))
+        @if (!carregado)
         {
-            <div class="alert alert-danger">@erroMensagem</div>
+            <div class="text-center p-5">
+                <div class="spinner-border text-accent" role="status">
+                    <span class="visually-hidden">Carregando...</span>
+                </div>
+            </div>
         }
+        else
+        {
+            @if (!string.IsNullOrEmpty(erroMensagem))
+            {
+                <div class="alert alert-danger">@erroMensagem</div>
+            }
 
-        <EditForm Model="peca" OnValidSubmit="HandleValidSubmit" FormName="CadastroPeca">
-            <DataAnnotationsValidator />
+            <EditForm Model="peca" OnValidSubmit="HandleValidSubmit" FormName="CadastroPeca">
+                <DataAnnotationsValidator />
 
-            <h5 class="mb-3 border-bottom pb-2">Identificação</h5>
-            <div class="row mb-3">
-                <div class="col-md-4 mb-3">
-                    <label for="sku" class="form-label">Código (SKU) <span class="text-danger">*</span></label>
-                    <InputText id="sku" @bind-Value="peca.Sku" class="form-control font-monospace" 
-                               placeholder="Ex: FILTRO-OL-001" />
-                    <ValidationMessage For="@(() => peca.Sku)" class="text-danger" />
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label for="nome" class="form-label">Nome da Peça <span class="text-danger">*</span></label>
-                    <InputText id="nome" @bind-Value="peca.Nome" class="form-control" 
-                               placeholder="Ex: Filtro de Óleo" />
-                    <ValidationMessage For="@(() => peca.Nome)" class="text-danger" />
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label for="marca" class="form-label">Marca / Fabricante</label>
-                    <InputText id="marca" @bind-Value="peca.Marca" class="form-control" 
-                               placeholder="Ex: Bosch, Mann, Wega..." />
-                </div>
-            </div>
-
-            <h5 class="mb-3 border-bottom pb-2 mt-4">Valores</h5>
-            <div class="row mb-3">
-                <div class="col-md-4 mb-3">
-                    <label for="precoCusto" class="form-label">Preço de Custo <span class="text-danger">*</span></label>
-                    <div class="input-group">
-                        <span class="input-group-text">R$</span>
-                        <InputNumber id="precoCusto" @bind-Value="peca.PrecoCusto" class="form-control" step="0.01" />
+                <h5 class="mb-3 border-bottom pb-2">Identificação</h5>
+                <div class="row mb-3">
+                    <div class="col-md-4 mb-3">
+                        <label for="sku" class="form-label">Código (SKU) <span class="text-danger">*</span></label>
+                        <InputText id="sku" @bind-Value="peca.Sku" class="form-control font-monospace" 
+                                   placeholder="Ex: FILTRO-OL-001" />
+                        <ValidationMessage For="@(() => peca.Sku)" class="text-danger" />
                     </div>
-                    <ValidationMessage For="@(() => peca.PrecoCusto)" class="text-danger" />
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label for="precoVenda" class="form-label">Preço de Venda <span class="text-danger">*</span></label>
-                    <div class="input-group">
-                        <span class="input-group-text">R$</span>
-                        <InputNumber id="precoVenda" @bind-Value="peca.PrecoVenda" class="form-control" step="0.01" />
+                    <div class="col-md-4 mb-3">
+                        <label for="nome" class="form-label">Nome da Peça <span class="text-danger">*</span></label>
+                        <InputText id="nome" @bind-Value="peca.Nome" class="form-control" 
+                                   placeholder="Ex: Filtro de Óleo" />
+                        <ValidationMessage For="@(() => peca.Nome)" class="text-danger" />
                     </div>
-                    <ValidationMessage For="@(() => peca.PrecoVenda)" class="text-danger" />
-                </div>
-                <div class="col-md-4 mb-3">
-                    <label class="form-label">Margem de Lucro</label>
-                    <div class="input-group">
-                        <input type="text" class="form-control bg-light fw-bold" readonly
-                               value="@(peca.PrecoVenda > 0 ? ((peca.PrecoVenda - peca.PrecoCusto) / peca.PrecoVenda * 100).ToString("0.#") + "%" : "—")" />
-                        <span class="input-group-text">
-                            <i class="bi bi-graph-up-arrow text-success"></i>
-                        </span>
+                    <div class="col-md-4 mb-3">
+                        <label for="marca" class="form-label">Marca / Fabricante</label>
+                        <InputText id="marca" @bind-Value="peca.Marca" class="form-control" 
+                                   placeholder="Ex: Bosch, Mann, Wega..." />
                     </div>
                 </div>
-            </div>
 
-            <h5 class="mb-3 border-bottom pb-2 mt-4">Estoque</h5>
-            <div class="row mb-3">
-                <div class="col-md-3 mb-3">
-                    <label for="estoqueAtual" class="form-label">Estoque Inicial</label>
-                    <InputNumber id="estoqueAtual" @bind-Value="peca.EstoqueAtual" class="form-control" />
-                    <small class="text-muted">Use "Entrada de Estoque" para receber futuras peças.</small>
-                    <ValidationMessage For="@(() => peca.EstoqueAtual)" class="text-danger" />
+                <h5 class="mb-3 border-bottom pb-2 mt-4">Valores</h5>
+                <div class="row mb-3">
+                    <div class="col-md-4 mb-3">
+                        <label for="precoCusto" class="form-label">Preço de Custo <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <InputNumber id="precoCusto" @bind-Value="peca.PrecoCusto" class="form-control" step="0.01" />
+                        </div>
+                        <ValidationMessage For="@(() => peca.PrecoCusto)" class="text-danger" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="precoVenda" class="form-label">Preço de Venda <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">R$</span>
+                            <InputNumber id="precoVenda" @bind-Value="peca.PrecoVenda" class="form-control" step="0.01" />
+                        </div>
+                        <ValidationMessage For="@(() => peca.PrecoVenda)" class="text-danger" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Margem de Lucro</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control bg-light fw-bold" readonly
+                                   value="@(peca.PrecoVenda > 0 ? ((peca.PrecoVenda - peca.PrecoCusto) / peca.PrecoVenda * 100).ToString("0.#") + "%" : "—")" />
+                            <span class="input-group-text">
+                                <i class="bi bi-graph-up-arrow text-success"></i>
+                            </span>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-3 mb-3">
-                    <label for="estoqueMinimo" class="form-label">Estoque Mínimo (Alerta)</label>
-                    <InputNumber id="estoqueMinimo" @bind-Value="peca.EstoqueMinimo" class="form-control" />
-                    <small class="text-muted">O sistema alertará ao atingir este nível.</small>
-                    <ValidationMessage For="@(() => peca.EstoqueMinimo)" class="text-danger" />
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="localizacao" class="form-label">
-                        <i class="bi bi-geo-alt me-1"></i>Localização Física
-                    </label>
-                    <InputText id="localizacao" @bind-Value="peca.Localizacao" class="form-control" 
-                               placeholder="Ex: Prateleira A2, Gaveta 3" />
-                </div>
-            </div>
 
-            <div class="d-flex justify-content-end mt-4 gap-2">
-                <a href="/estoque" class="btn btn-outline-secondary">Cancelar</a>
-                <button type="submit" class="btn btn-accent shadow-sm">
-                    <i class="bi bi-save me-1"></i> @(Id.HasValue ? "Salvar Alterações" : "Cadastrar Peça")
-                </button>
-            </div>
-        </EditForm>
+                <h5 class="mb-3 border-bottom pb-2 mt-4">Estoque</h5>
+                <div class="row mb-3">
+                    <div class="col-md-3 mb-3">
+                        <label for="estoqueAtual" class="form-label">Estoque Inicial</label>
+                        <InputNumber id="estoqueAtual" @bind-Value="peca.EstoqueAtual" class="form-control" />
+                        <small class="text-muted">Use "Entrada de Estoque" para receber futuras peças.</small>
+                        <ValidationMessage For="@(() => peca.EstoqueAtual)" class="text-danger" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="estoqueMinimo" class="form-label">Estoque Mínimo (Alerta)</label>
+                        <InputNumber id="estoqueMinimo" @bind-Value="peca.EstoqueMinimo" class="form-control" />
+                        <small class="text-muted">O sistema alertará ao atingir este nível.</small>
+                        <ValidationMessage For="@(() => peca.EstoqueMinimo)" class="text-danger" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="localizacao" class="form-label">
+                            <i class="bi bi-geo-alt me-1"></i>Localização Física
+                        </label>
+                        <InputText id="localizacao" @bind-Value="peca.Localizacao" class="form-control" 
+                                   placeholder="Ex: Prateleira A2, Gaveta 3" />
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end mt-4 gap-2">
+                    <a href="/estoque" class="btn btn-outline-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-accent shadow-sm">
+                        <i class="bi bi-save me-1"></i> @(Id.HasValue ? "Salvar Alterações" : "Cadastrar Peça")
+                    </button>
+                </div>
+            </EditForm>
+        }
     </div>
 </div>
 
@@ -128,10 +139,10 @@
     [Parameter]
     public int? Id { get; set; }
 
-    [SupplyParameterFromForm]
-    private Peca peca { get; set; } = default!;
+    private Peca peca { get; set; } = new Peca();
 
     private string? erroMensagem;
+    private bool carregado = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -145,10 +156,8 @@
             }
             peca = existing;
         }
-        else
-        {
-            peca ??= new Peca();
-        }
+
+        carregado = true;
     }
 
     private async Task HandleValidSubmit()
@@ -159,6 +168,7 @@
 
             if (Id.HasValue)
             {
+                peca.Id = Id.Value;
                 await PecaRepository.UpdateAsync(peca);
             }
             else
@@ -174,3 +184,4 @@
         }
     }
 }
+
