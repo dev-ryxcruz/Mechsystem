@@ -16,6 +16,7 @@ namespace mechsystem.Models
 
         [Required]
         [Display(Name = "Quantidade")]
+        [Range(1, int.MaxValue, ErrorMessage = "A quantidade deve ser maior que zero.")]
         public int Quantidade { get; set; }
 
         [Display(Name = "Data/Hora")]

@@ -13,6 +13,7 @@ namespace mechsystem.Models
         public string NomeFantasia { get; set; } = "MechSystem Auto Center";
 
         [MaxLength(20)]
+        [CnpjValidation]
         public string? Cnpj { get; set; }
 
         [MaxLength(20)]

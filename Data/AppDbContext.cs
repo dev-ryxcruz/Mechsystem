@@ -54,6 +54,13 @@ namespace mechsystem.Data
                     v => v
                 );
 
+            modelBuilder.Entity<Configuracao>()
+                .Property(c => c.Cnpj)
+                .HasConversion(
+                    v => string.IsNullOrEmpty(v) ? v : new string(v.Where(char.IsDigit).ToArray()),
+                    v => v
+                );
+
             modelBuilder.Entity<Usuario>().HasIndex(u => u.Username).IsUnique();
 
             // Peca: SKU único

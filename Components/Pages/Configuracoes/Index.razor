@@ -97,8 +97,9 @@ else
                             <label class="cfg-label">CNPJ</label>
                             <div class="cfg-input-wrap">
                                 <i class="bi bi-file-earmark-text cfg-input-icon"></i>
-                                <InputText @bind-Value="config.Cnpj" class="cfg-input cfg-input--icon" placeholder="00.000.000/0000-00" />
+                                <InputText @bind-Value="config.Cnpj" class="cfg-input cfg-input--icon mask-cnpj" placeholder="00.000.000/0000-00" />
                             </div>
+                            <ValidationMessage For="@(() => config.Cnpj)" class="cfg-validation" />
                         </div>
 
                         <div class="cfg-field">

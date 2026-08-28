@@ -30,6 +30,11 @@
                     el.maskInstance = IMask(el, { mask: '000.000.000-00' });
                 }
             });
+            document.querySelectorAll('.mask-cnpj').forEach(el => {
+                if (!el.maskInstance) {
+                    el.maskInstance = IMask(el, { mask: '00.000.000/0000-00' });
+                }
+            });
             document.querySelectorAll('.mask-telefone').forEach(el => {
                 if (!el.maskInstance) {
                     el.maskInstance = IMask(el, {

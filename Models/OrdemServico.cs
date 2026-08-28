@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace mechsystem.Models
 {
-    public class OrdemServico
+    public class OrdemServico : IValidatableObject
     {
         public int Id { get; set; }
 
@@ -121,5 +121,16 @@ namespace mechsystem.Models
         // Comunicação com Cliente
         public string? TokenAcompanhamento { get; set; }
         public ICollection<ContatoOS> Contatos { get; set; } = new List<ContatoOS>();
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (DataPrevisaoEntrega < DataEmissao.Date)
+            {
+                yield return new ValidationResult(
+                    "A data de previsão de entrega não pode ser anterior à data de emissão.",
+                    new[] { nameof(DataPrevisaoEntrega) }
+                );
+            }
+        }
     }
 }
