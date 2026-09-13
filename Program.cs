@@ -122,6 +122,9 @@ using (var scope = app.Services.CreateScope())
             await db.SaveChangesAsync();
         }
     }
+
+    // Popula dados de teste
+    await mechsystem.Data.DatabaseSeeder.SeedAsync(db);
 }
 
 app.Run();

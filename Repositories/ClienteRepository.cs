@@ -16,7 +16,7 @@ namespace mechsystem.Repositories
 
         public async Task<List<Cliente>> Listar()
         {
-            return await _context.Clientes.ToListAsync();
+            return await _context.Clientes.Where(c => c.Ativo).ToListAsync();
         }
 
         public async Task<Cliente?> BuscarPorId(int id)
@@ -41,7 +41,8 @@ namespace mechsystem.Repositories
             var cliente = await BuscarPorId(id);
             if (cliente != null)
             {
-                _context.Clientes.Remove(cliente);
+                cliente.Ativo = false;
+                _context.Clientes.Update(cliente);
                 await _context.SaveChangesAsync();
             }
         }

@@ -25,6 +25,8 @@ namespace mechsystem.Models
         
         public string? Endereco { get; set; }
 
+        public bool Ativo { get; set; } = true;
+
         public ICollection<Veiculo> Veiculos { get; set; } = new List<Veiculo>();
     }
 }
