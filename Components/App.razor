@@ -47,6 +47,17 @@
             });
         };
     </script>
+    <script>
+        window.toggleSidebar = () => {
+            document.querySelector('.sidebar')?.classList.toggle('open');
+            document.querySelector('.sidebar-backdrop')?.classList.toggle('show');
+        };
+        window.closeSidebar = window.closeMobileSidebar = () => {
+            document.querySelector('.sidebar')?.classList.remove('open');
+            document.querySelector('.sidebar-backdrop')?.classList.remove('show');
+        };
+        window.isMobileScreen = () => window.innerWidth < 768;
+    </script>
 </body>
 
 </html>

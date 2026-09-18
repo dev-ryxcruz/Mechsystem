@@ -9,15 +9,26 @@
 @inject IVeiculoRepository VeiculoRepository
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JS
 
 <div class="container mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h3><i class="bi bi-car-front"></i> Veículos Cadastrados</h3>
-        <AuthorizeView Roles="Administrador, Atendimento">
-            <button class="btn btn-success" @onclick="NovoVeiculo">
-                <i class="bi bi-plus-lg"></i> Novo Veículo
-            </button>
-        </AuthorizeView>
+        <div class="d-flex gap-2 align-items-center">
+            <div class="btn-group" role="group" aria-label="Alternar visualização">
+                <button type="button" class="btn btn-outline-secondary @(!IsGridView ? "active" : "")" @onclick="() => ToggleView(false)">
+                    <i class="bi bi-list-ul"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary @(IsGridView ? "active" : "")" @onclick="() => ToggleView(true)">
+                    <i class="bi bi-grid-fill"></i>
+                </button>
+            </div>
+            <AuthorizeView Roles="Administrador, Atendimento">
+                <button class="btn btn-success" @onclick="NovoVeiculo">
+                    <i class="bi bi-plus-lg"></i> Novo Veículo
+                </button>
+            </AuthorizeView>
+        </div>
     </div>
 
     @if (veiculos == null)
@@ -35,7 +46,44 @@
     }
     else
     {
-        <div class="card shadow-sm">
+        @if (IsGridView)
+        {
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                @foreach (var veiculo in veiculos)
+                {
+                    <div class="col">
+                        <div class="card h-100 shadow-sm border-0">
+                            <div class="card-body">
+                                <h5>@veiculo.Marca @veiculo.Modelo</h5>
+                                <p class="mb-1 text-muted"><i class="bi bi-calendar"></i> @veiculo.Ano - @veiculo.Cor</p>
+                                <p class="mb-1"><span class="text-uppercase border px-2 py-1 rounded bg-light">@veiculo.Placa</span></p>
+                                <AuthorizeView Roles="Administrador, Atendimento">
+                                    <p class="mb-0 mt-2 text-muted small"><i class="bi bi-person"></i> Dono: @(veiculo.Cliente != null ? veiculo.Cliente.Nome : "Sem dono")</p>
+                                </AuthorizeView>
+                            </div>
+                            <div class="card-footer bg-transparent border-0 d-flex justify-content-end gap-2">
+                                <button class="btn btn-sm btn-outline-info" title="Prontuário" @onclick="() => IrParaDetalhes(veiculo.Id)">
+                                    <i class="bi bi-journal-medical"></i>
+                                </button>
+                                <AuthorizeView Roles="Administrador, Atendimento">
+                                    <button class="btn btn-sm btn-outline-primary" title="Editar" @onclick="() => IrParaEdicao(veiculo.Id)">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </AuthorizeView>
+                                <AuthorizeView Roles="Administrador">
+                                    <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => ApagarVeiculo(veiculo.Id)">
+                                        <i class="bi bi-archive"></i>
+                                    </button>
+                                </AuthorizeView>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+        <div class="card shadow-sm border-0">
             <div class="table-responsive">
                 <table class="table table-striped table-hover mb-0">
                     <thead class="table-dark">
@@ -64,17 +112,17 @@
                                 <td>@veiculo.Ano</td>
                                 <td>@veiculo.Cor</td>
                                 <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-info me-1" title="Prontuário / Linha do Tempo" @onclick="() => IrParaDetalhes(veiculo.Id)">
-                                        <i class="bi bi-journal-medical"></i> Prontuário
+                                    <button class="btn btn-sm btn-outline-info me-1" title="Prontuário" @onclick="() => IrParaDetalhes(veiculo.Id)">
+                                        <i class="bi bi-journal-medical"></i>
                                     </button>
                                     <AuthorizeView Roles="Administrador, Atendimento">
-                                        <button class="btn btn-sm btn-outline-warning me-1" title="Editar" @onclick="() => IrParaEdicao(veiculo.Id)">
-                                            Editar
+                                        <button class="btn btn-sm btn-outline-primary me-1" title="Editar" @onclick="() => IrParaEdicao(veiculo.Id)">
+                                            <i class="bi bi-pencil"></i>
                                         </button>
                                     </AuthorizeView>
                                     <AuthorizeView Roles="Administrador">
-                                        <button class="btn btn-sm btn-outline-danger" title="Excluir" @onclick="() => ApagarVeiculo(veiculo.Id)">
-                                            Excluir
+                                        <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => ApagarVeiculo(veiculo.Id)">
+                                            <i class="bi bi-archive"></i>
                                         </button>
                                     </AuthorizeView>
                                 </td>
@@ -84,15 +132,56 @@
                 </table>
             </div>
         </div>
+        }
     }
 </div>
 
+@if (ShowConfirmModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-warning text-dark border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Inativação</h5>
+                    <button type="button" class="btn-close" @onclick="CloseConfirmModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0 fs-5">Tem certeza que deseja inativar este veículo?</p>
+                    <p class="text-muted mt-2 mb-0"><small>Ele não aparecerá mais nas buscas, mas o seu histórico será mantido e permanecerá associado às ordens de serviço existentes.</small></p>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CloseConfirmModal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" @onclick="ConfirmInativar">Inativar Veículo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<Veiculo>? veiculos;
+    private bool IsGridView = false;
+    private bool ShowConfirmModal = false;
+    private int VeiculoIdToInactivate = 0;
+
+    private void ToggleView(bool gridView) => IsGridView = gridView;
 
     protected override async Task OnInitializedAsync()
     {
         veiculos = await VeiculoRepository.Listar();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var isMobile = await JS.InvokeAsync<bool>("isMobileScreen");
+            if (isMobile && !IsGridView)
+            {
+                IsGridView = true;
+                StateHasChanged();
+            }
+        }
     }
 
     private void NovoVeiculo()
@@ -110,15 +199,29 @@
         NavigationManager.NavigateTo($"/veiculos/detalhes/{id}");
     }
 
-    private async Task ApagarVeiculo(int id)
+    private void ApagarVeiculo(int id)
+    {
+        VeiculoIdToInactivate = id;
+        ShowConfirmModal = true;
+    }
+
+    private void CloseConfirmModal()
+    {
+        ShowConfirmModal = false;
+        VeiculoIdToInactivate = 0;
+    }
+
+    private async Task ConfirmInativar()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         if (!authState.User.IsInRole("Administrador"))
         {
+            CloseConfirmModal();
             return;
         }
 
-        await VeiculoRepository.Deletar(id);
+        await VeiculoRepository.Deletar(VeiculoIdToInactivate);
         veiculos = await VeiculoRepository.Listar();
+        CloseConfirmModal();
     }
 }

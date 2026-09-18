@@ -126,6 +126,28 @@
     }
 </div>
 
+@if (ShowConfirmModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-warning text-dark border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Inativação</h5>
+                    <button type="button" class="btn-close" @onclick="CloseConfirmModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0 fs-5">Tem certeza que deseja inativar este cliente?</p>
+                    <p class="text-muted mt-2 mb-0"><small>Ele não aparecerá mais nas buscas, mas o seu histórico será mantido e permanecerá associado às ordens de serviço existentes.</small></p>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CloseConfirmModal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" @onclick="ConfirmInativar">Inativar Cliente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<Cliente>? clientes;
     private Cliente _cliente = new Cliente();
@@ -141,6 +163,19 @@
         clientes = await ClienteRepository.Listar();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var isMobile = await JS.InvokeAsync<bool>("isMobileScreen");
+            if (isMobile && !IsGridView)
+            {
+                IsGridView = true;
+                StateHasChanged();
+            }
+        }
+    }
+
     private void NovoCliente()
     {
         NavigationManager.NavigateTo("/clientes/cadastro");
@@ -152,22 +187,37 @@ private void IrParaEdicao(int id)
         NavigationManager.NavigateTo($"/clientes/editar/{id}");
     }
 
-    private async Task ApagarCliente(int id)
+    private bool ShowConfirmModal = false;
+    private int ClienteIdToInactivate = 0;
+
+    private void ApagarCliente(int id)
+    {
+        ClienteIdToInactivate = id;
+        ShowConfirmModal = true;
+    }
+
+    private void CloseConfirmModal()
+    {
+        ShowConfirmModal = false;
+        ClienteIdToInactivate = 0;
+    }
+
+    private async Task ConfirmInativar()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         if (!authState.User.IsInRole("Administrador"))
         {
+            CloseConfirmModal();
             return;
         }
 
-        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Tem certeza que deseja inativar este cliente? Ele não aparecerá mais nas buscas, mas seu histórico será mantido.");
-        if (!confirmed) return;
-
         // 1. Vai à base de dados e inativa o cliente
-        await ClienteRepository.Deletar(id);
+        await ClienteRepository.Deletar(ClienteIdToInactivate);
         
         // 2. Consulta a base de dados novamente para atualizar a tabela no ecrã
         clientes = await ClienteRepository.Listar();
+        
+        CloseConfirmModal();
     }
 
     private string FormatCpf(string? cpf)

@@ -5,8 +5,13 @@
         <NavMenu />
     </div>
 
+    <div class="sidebar-backdrop d-md-none" onclick="closeSidebar()"></div>
+
     <main>
         <div class="top-row px-4">
+            <button type="button" class="sidebar-toggler d-md-none" onclick="toggleSidebar()" aria-label="Abrir menu">
+                <i class="bi bi-list"></i>
+            </button>
             <AuthorizeView>
                 <Authorized>
                     <div class="d-flex align-items-center gap-2">

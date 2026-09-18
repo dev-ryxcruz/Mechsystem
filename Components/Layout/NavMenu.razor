@@ -1,4 +1,7 @@
 @rendermode InteractiveServer
+@inject IJSRuntime JS
+@inject NavigationManager NavigationManager
+@implements IDisposable
 
 @* Controle da largura da sidebar — usa <style> porque NavMenu não tem acesso direto
    ao elemento .sidebar do MainLayout. A transição funciona porque .sidebar 
@@ -6,7 +9,7 @@
 @if (collapseSidebar)
 {
     <style>
-        @@media (min-width: 641px) {
+        @@media (min-width: 768px) {
             .sidebar { width: 4.5rem !important; }
         }
     </style>
@@ -26,8 +29,6 @@
         </button>
     </div>
 </div>
-
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
 <div class="nav-scrollable" style="@(collapseSidebar ? "overflow-x: hidden;" : "")">
     <nav class="nav flex-column @(collapseSidebar ? "nav-collapsed" : "")">
@@ -273,6 +274,22 @@
     private bool expandEstoque = false;
     private bool expandOS = false;
     private bool expandUsuarios = false;
+
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        try { await JS.InvokeVoidAsync("closeMobileSidebar"); }
+        catch { /* JS runtime may not be available during prerender */ }
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
 
     private void ToggleSidebar()
     {
