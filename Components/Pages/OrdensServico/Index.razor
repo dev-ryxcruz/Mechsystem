@@ -11,11 +11,17 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <h2>Ordens de Serviço</h2>
-    <AuthorizeView Roles="Administrador, Atendimento">
-        <a href="/ordens-servico/nova" class="btn btn-primary shadow-sm">
-            <i class="bi bi-plus-circle me-1"></i> Nova O.S.
-        </a>
-    </AuthorizeView>
+    <div class="d-flex gap-2 align-items-center flex-wrap flex-md-nowrap w-100" style="max-width: 600px;">
+        <div class="input-group">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" class="form-control border-start-0 ps-0 shadow-none" placeholder="Pesquisar O.S..." @bind="termoPesquisa" @bind:event="oninput" />
+        </div>
+        <AuthorizeView Roles="Administrador, Atendimento">
+            <a href="/ordens-servico/nova" class="btn btn-primary shadow-sm text-nowrap">
+                <i class="bi bi-plus-circle me-1"></i> Nova O.S.
+            </a>
+        </AuthorizeView>
+    </div>
 </div>
 
 @if (ordensServico == null)
@@ -28,32 +34,33 @@ else if (!ordensServico.Any())
 }
 else
 {
-    <div class="card shadow-sm">
-        <div class="card-body p-0 table-responsive">
-            <table class="table table-hover table-striped mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Nº OS</th>
-                        <th>Emissão</th>
-                        <th>Veículo (Placa)</th>
-                        <th>Cliente</th>
-                        <th>Status</th>
-                        <th>Vistoria</th>
-                        <AuthorizeView Roles="Administrador, Atendimento">
-                            <th>Total</th>
-                        </AuthorizeView>
-                        <th class="text-end">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var os in ordensServico)
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-borderless align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="10%" class="text-center">Nº OS</th>
+                            <th width="10%" class="text-center">Emissão</th>
+                            <th width="20%" class="text-start">Veículo (Placa)</th>
+                            <th width="20%" class="text-start">Cliente</th>
+                            <th width="15%" class="text-center">Status</th>
+                            <th width="10%" class="text-center">Vistoria</th>
+                            <AuthorizeView Roles="Administrador, Atendimento">
+                                <th width="10%" class="text-center">Total</th>
+                            </AuthorizeView>
+                            <th width="5%" class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var os in OrdensServicoFiltradas!)
                     {
                         <tr>
-                            <td>@os.Id.ToString("D4")</td>
-                            <td>@os.DataEmissao.ToString("dd/MM/yyyy")</td>
-                            <td>@os.Veiculo?.Modelo - @os.Veiculo?.Placa</td>
-                            <td>@os.Veiculo?.Cliente?.Nome</td>
-                            <td>
+                            <td class="text-center">@os.Id.ToString("D4")</td>
+                            <td class="text-center">@os.DataEmissao.ToString("dd/MM/yyyy")</td>
+                            <td class="text-start">@os.Veiculo?.Modelo - @os.Veiculo?.Placa</td>
+                            <td class="text-start">@os.Veiculo?.Cliente?.Nome</td>
+                            <td class="text-center">
                                 @if(os.Status == OrdemServicoStatus.Orcamento)
                                 {
                                     <span class="badge bg-warning text-dark">Orçamento</span>
@@ -71,7 +78,7 @@ else
                                     <span class="badge bg-secondary">@os.Status</span>
                                 }
                             </td>
-                            <td>
+                            <td class="text-center">
                                 @if (os.Vistoria != null)
                                 {
                                     <span class="badge bg-success" title="Realizada"><i class="bi bi-shield-check"></i> Feita</span>
@@ -82,23 +89,31 @@ else
                                 }
                             </td>
                             <AuthorizeView Roles="Administrador, Atendimento">
-                                <td>@os.ValorTotal.ToString("C")</td>
+                                <td class="text-center">@os.ValorTotal.ToString("C")</td>
                             </AuthorizeView>
-                            <td class="text-end">
+                            <td class="text-center">
                                 <a href="/ordens-servico/@os.Id" class="btn btn-sm btn-outline-primary" title="Visualizar / Editar">
                                     <i class="bi bi-eye"></i>
                                 </a>
                             </td>
                         </tr>
                     }
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 }
 
 @code {
     private List<OrdemServico>? ordensServico;
+    private string termoPesquisa = "";
+    private IEnumerable<OrdemServico>? OrdensServicoFiltradas => string.IsNullOrWhiteSpace(termoPesquisa) 
+        ? ordensServico 
+        : ordensServico?.Where(o => 
+            o.Id.ToString().Contains(termoPesquisa) ||
+            (o.Veiculo?.Placa != null && o.Veiculo.Placa.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)) ||
+            (o.Veiculo?.Cliente?.Nome != null && o.Veiculo.Cliente.Nome.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)));
 
     protected override async Task OnInitializedAsync()
     {

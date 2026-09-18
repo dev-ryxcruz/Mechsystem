@@ -14,7 +14,11 @@
 <div class="container mt-5">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h3><i class="bi bi-car-front"></i> Veículos Cadastrados</h3>
-        <div class="d-flex gap-2 align-items-center">
+        <div class="d-flex gap-2 align-items-center flex-wrap flex-md-nowrap w-100" style="max-width: 600px;">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" class="form-control border-start-0 ps-0 shadow-none" placeholder="Pesquisar veículo..." @bind="termoPesquisa" @bind:event="oninput" />
+            </div>
             <div class="btn-group" role="group" aria-label="Alternar visualização">
                 <button type="button" class="btn btn-outline-secondary @(!IsGridView ? "active" : "")" @onclick="() => ToggleView(false)">
                     <i class="bi bi-list-ul"></i>
@@ -24,7 +28,7 @@
                 </button>
             </div>
             <AuthorizeView Roles="Administrador, Atendimento">
-                <button class="btn btn-success" @onclick="NovoVeiculo">
+                <button class="btn btn-success text-nowrap" @onclick="NovoVeiculo">
                     <i class="bi bi-plus-lg"></i> Novo Veículo
                 </button>
             </AuthorizeView>
@@ -49,7 +53,7 @@
         @if (IsGridView)
         {
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                @foreach (var veiculo in veiculos)
+                @foreach (var veiculo in VeiculosFiltrados!)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm border-0">
@@ -83,35 +87,36 @@
         }
         else
         {
-        <div class="card shadow-sm border-0">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover mb-0">
-                    <thead class="table-dark">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-borderless align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <th>ID</th>
+                            <th width="5%" class="text-center">ID</th>
                             <AuthorizeView Roles="Administrador, Atendimento">
-                                <th>Dono (Cliente)</th>
+                                <th width="20%" class="text-start">Dono (Cliente)</th>
                             </AuthorizeView>
-                            <th>Placa</th>
-                            <th>Marca/Modelo</th>
-                            <th>Ano</th>
-                            <th>Cor</th>
-                            <th class="text-end">Ações</th>
+                            <th width="15%" class="text-start">Placa</th>
+                            <th width="25%" class="text-start">Marca/Modelo</th>
+                            <th width="10%" class="text-center">Ano</th>
+                            <th width="10%" class="text-center">Cor</th>
+                            <th width="15%" class="text-center">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var veiculo in veiculos)
+                        @foreach (var veiculo in VeiculosFiltrados!)
                         {
                             <tr>
-                                <td>@veiculo.Id</td>
+                                <td class="text-center">@veiculo.Id</td>
                                 <AuthorizeView Roles="Administrador, Atendimento">
-                                    <td><strong>@(veiculo.Cliente != null ? veiculo.Cliente.Nome : "Sem dono")</strong></td>
+                                    <td class="text-start"><strong>@(veiculo.Cliente != null ? veiculo.Cliente.Nome : "Sem dono")</strong></td>
                                 </AuthorizeView>
-                                <td><span class="text-uppercase border px-2 py-1 rounded bg-light">@veiculo.Placa</span></td>
-                                <td>@veiculo.Marca @veiculo.Modelo</td>
-                                <td>@veiculo.Ano</td>
-                                <td>@veiculo.Cor</td>
-                                <td class="text-end">
+                                <td class="text-start"><span class="text-uppercase border px-2 py-1 rounded bg-light">@veiculo.Placa</span></td>
+                                <td class="text-start">@veiculo.Marca @veiculo.Modelo</td>
+                                <td class="text-center">@veiculo.Ano</td>
+                                <td class="text-center">@veiculo.Cor</td>
+                                <td class="text-center">
                                     <button class="btn btn-sm btn-outline-info me-1" title="Prontuário" @onclick="() => IrParaDetalhes(veiculo.Id)">
                                         <i class="bi bi-journal-medical"></i>
                                     </button>
@@ -130,6 +135,7 @@
                         }
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
         }
@@ -160,6 +166,15 @@
 
 @code {
     private List<Veiculo>? veiculos;
+    private string termoPesquisa = "";
+    private IEnumerable<Veiculo>? VeiculosFiltrados => string.IsNullOrWhiteSpace(termoPesquisa) 
+        ? veiculos 
+        : veiculos?.Where(v => 
+            (v.Placa != null && v.Placa.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)) ||
+            (v.Marca != null && v.Marca.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)) ||
+            (v.Modelo != null && v.Modelo.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)) ||
+            (v.Cliente?.Nome != null && v.Cliente.Nome.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)));
+
     private bool IsGridView = false;
     private bool ShowConfirmModal = false;
     private int VeiculoIdToInactivate = 0;

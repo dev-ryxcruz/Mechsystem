@@ -1,0 +1,260 @@
+@page "/operacional/painel"
+@rendermode InteractiveServer
+@using mechsystem.Data
+@using mechsystem.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador, Atendimento, Mecanico")]
+@inject AppDbContext DbContext
+
+<PageTitle>Painel do Mecânico</PageTitle>
+
+<div class="container-fluid py-4 min-vh-100" style="background-color: #f8f9fa;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-0 text-dark"><i class="bi bi-tools text-primary me-2"></i>Painel Operacional</h2>
+            <p class="text-muted mb-0 mt-1">Área de trabalho da oficina (Mecânicos)</p>
+        </div>
+    </div>
+
+    <!-- Tabs for Mobile -->
+    <ul class="nav nav-pills nav-fill d-md-none mb-4 bg-white p-1 rounded shadow-sm" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill fw-semibold @(ActiveTab == "pendentes" ? "active bg-warning text-dark shadow-sm" : "text-muted")" @onclick="@(() => ActiveTab = "pendentes")">Pendentes</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill fw-semibold @(ActiveTab == "execucao" ? "active bg-primary shadow-sm" : "text-muted")" @onclick="@(() => ActiveTab = "execucao")">Execução</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill fw-semibold @(ActiveTab == "finalizadas" ? "active bg-success shadow-sm" : "text-muted")" @onclick="@(() => ActiveTab = "finalizadas")">Concluídas</button>
+        </li>
+    </ul>
+
+    <!-- Kanban Grid -->
+    <div class="row g-4">
+        <!-- Coluna Pendentes -->
+        <div class="col-12 col-md-4 @(ActiveTab == "pendentes" ? "d-block" : "d-none d-md-block")">
+            <div class="d-flex align-items-center mb-3 d-none d-md-flex">
+                <h5 class="mb-0 fw-bold text-secondary"><i class="bi bi-clock-history me-2"></i>Pendentes</h5>
+                <span class="badge bg-secondary ms-auto rounded-pill px-2 py-1">@ordens.Count(o => o.Status == OrdemServicoStatus.Orcamento || o.Status == OrdemServicoStatus.AguardandoPecas)</span>
+            </div>
+            <div>
+                @foreach (var os in ordens.Where(o => o.Status == OrdemServicoStatus.Orcamento || o.Status == OrdemServicoStatus.AguardandoPecas))
+                {
+                    @RenderCard(os)
+                }
+            </div>
+        </div>
+        
+        <!-- Coluna Em Execução -->
+        <div class="col-12 col-md-4 @(ActiveTab == "execucao" ? "d-block" : "d-none d-md-block")">
+            <div class="d-flex align-items-center mb-3 d-none d-md-flex">
+                <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-wrench-adjustable me-2"></i>Em Execução</h5>
+                <span class="badge bg-primary ms-auto rounded-pill px-2 py-1">@ordens.Count(o => o.Status == OrdemServicoStatus.EmAndamento)</span>
+            </div>
+            <div>
+                @foreach (var os in ordens.Where(o => o.Status == OrdemServicoStatus.EmAndamento))
+                {
+                    @RenderCard(os)
+                }
+            </div>
+        </div>
+
+        <!-- Coluna Finalizadas -->
+        <div class="col-12 col-md-4 @(ActiveTab == "finalizadas" ? "d-block" : "d-none d-md-block")">
+            <div class="d-flex align-items-center mb-3 d-none d-md-flex">
+                <h5 class="mb-0 fw-bold text-success"><i class="bi bi-check2-all me-2"></i>Finalizadas</h5>
+                <span class="badge bg-success ms-auto rounded-pill px-2 py-1">@ordens.Count(o => o.Status == OrdemServicoStatus.Concluida)</span>
+            </div>
+            <div>
+                @foreach (var os in ordens.Where(o => o.Status == OrdemServicoStatus.Concluida))
+                {
+                    @RenderCard(os)
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Notas -->
+@if (osSelecionada != null && exibirModalNotas)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); z-index: 1050;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-card-checklist text-primary me-2"></i>Notas da O.S. @osSelecionada.Id.ToString("D4")
+                    </h5>
+                    <button type="button" class="btn-close shadow-none" @onclick="FecharModalNotas"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Problema Relatado / Diagnóstico</label>
+                        <div class="p-3 bg-light rounded border text-dark" style="white-space: pre-wrap;">
+                            @(string.IsNullOrWhiteSpace(osSelecionada.DescricaoProblemaRelatado) ? "Nenhum problema relatado." : osSelecionada.DescricaoProblemaRelatado)
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Observações Adicionais</label>
+                        <div class="p-3 bg-light rounded border text-dark" style="white-space: pre-wrap;">
+                            @(string.IsNullOrWhiteSpace(osSelecionada.ServicoAExecutar) ? "Nenhuma anotação adicional." : osSelecionada.ServicoAExecutar)
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-secondary w-100 rounded-pill fw-semibold" @onclick="FecharModalNotas">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string ActiveTab = "pendentes";
+    private List<OrdemServico> ordens = new();
+    
+    private OrdemServico? osSelecionada;
+    private bool exibirModalNotas = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarOrdens();
+    }
+
+    private async Task CarregarOrdens()
+    {
+        ordens = await DbContext.OrdensServico
+            .Include(o => o.Veiculo)
+            .Include(o => o.ServicosAExecutarList)
+                .ThenInclude(s => s.Servico)
+            .Where(o => o.Status != OrdemServicoStatus.Cancelada)
+            .ToListAsync();
+    }
+
+    private RenderFragment<OrdemServico> RenderCard => os => __builder =>
+    {
+        bool isPendente = os.Status == OrdemServicoStatus.Orcamento || os.Status == OrdemServicoStatus.AguardandoPecas;
+        bool isExecucao = os.Status == OrdemServicoStatus.EmAndamento;
+        bool isFinalizada = os.Status == OrdemServicoStatus.Concluida;
+
+        string borderClass = isPendente ? "border-warning" : (isExecucao ? "border-primary" : "border-success");
+        string urgencyClass = "bg-dark"; 
+        
+        int totalMinutes = os.ServicosAExecutarList?.Sum(s => s.TempoTotalLinhaMinutos) ?? 0;
+        string estimatedTime = totalMinutes > 0 ? $"{totalMinutes / 60}h {totalMinutes % 60}m" : "--";
+
+        <div class="card mb-4 shadow-sm border-0 border-start border-4 @borderClass rounded-3">
+            <div class="card-body p-4">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h4 class="card-title fw-bolder mb-0 text-uppercase" style="letter-spacing: 1px;">@os.Veiculo?.Placa</h4>
+                        <small class="text-muted fw-semibold">@os.Veiculo?.Modelo</small>
+                    </div>
+                    <span class="badge @urgencyClass rounded-pill shadow-sm px-3 py-2">
+                        <i class="bi bi-stopwatch me-1"></i> @estimatedTime
+                    </span>
+                </div>
+                
+                <div class="p-3 rounded-3 mb-3 border" style="background-color: #fcfcfc;">
+                    <ul class="list-unstyled mb-0">
+                        @if(os.ServicosAExecutarList != null && os.ServicosAExecutarList.Any())
+                        {
+                            @foreach(var serv in os.ServicosAExecutarList)
+                            {
+                                <li class="mb-2 d-flex align-items-start last-child-mb-0">
+                                    <i class="bi @(isFinalizada ? "bi-check-circle-fill text-success" : "bi-circle text-muted") me-2 mt-1"></i>
+                                    <span class="@(isFinalizada ? "text-decoration-line-through text-muted" : "fw-medium")">@serv.Servico?.Nome</span>
+                                </li>
+                            }
+                        }
+                        else
+                        {
+                            <li class="text-muted small"><i class="bi bi-info-circle me-1"></i>Nenhum serviço listado</li>
+                        }
+                    </ul>
+                </div>
+
+                <div class="d-flex justify-content-start gap-2 mb-4">
+                    <button class="btn btn-sm btn-light border text-secondary fw-semibold rounded-pill px-3 shadow-sm" title="Solicitar Peça">
+                        <i class="bi bi-box-seam me-1"></i> Peças
+                    </button>
+                    <button class="btn btn-sm btn-light border text-secondary fw-semibold rounded-pill px-3 shadow-sm" title="Checklist / Notas" @onclick="() => AbrirModalNotas(os)">
+                        <i class="bi bi-card-checklist me-1"></i> Notas
+                    </button>
+                </div>
+
+                <div class="d-grid gap-2">
+                    @if(isPendente)
+                    {
+                        <button class="btn btn-success fw-bold py-2 shadow-sm rounded-3" @onclick="() => IniciarServico(os.Id)">
+                            <i class="bi bi-play-fill fs-5 me-1 align-middle"></i> Iniciar Serviço
+                        </button>
+                    }
+                    else if(isExecucao)
+                    {
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-warning fw-bold py-2 shadow-sm w-50 rounded-3 text-dark" @onclick="() => PausarServico(os.Id)">
+                                <i class="bi bi-pause-fill fs-5 align-middle"></i> Pausar
+                            </button>
+                            <button class="btn btn-primary fw-bold py-2 shadow-sm w-50 rounded-3" @onclick="() => ConcluirServico(os.Id)">
+                                <i class="bi bi-check2 fs-5 align-middle"></i> Concluir
+                            </button>
+                        </div>
+                    }
+                    else if(isFinalizada)
+                    {
+                        <button class="btn btn-outline-success fw-bold py-2 rounded-3" disabled>
+                            <i class="bi bi-check-all fs-5 me-1 align-middle"></i> Serviço Finalizado
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    };
+
+    private async Task IniciarServico(int id)
+    {
+        var os = await DbContext.OrdensServico.FindAsync(id);
+        if (os != null) 
+        {
+            os.Status = OrdemServicoStatus.EmAndamento;
+            await DbContext.SaveChangesAsync();
+            await CarregarOrdens();
+        }
+    }
+
+    private async Task PausarServico(int id)
+    {
+        var os = await DbContext.OrdensServico.FindAsync(id);
+        if (os != null) 
+        {
+            os.Status = OrdemServicoStatus.AguardandoPecas; // Pendente
+            await DbContext.SaveChangesAsync();
+            await CarregarOrdens();
+        }
+    }
+
+    private async Task ConcluirServico(int id)
+    {
+        var os = await DbContext.OrdensServico.FindAsync(id);
+        if (os != null) 
+        {
+            os.Status = OrdemServicoStatus.Concluida;
+            await DbContext.SaveChangesAsync();
+            await CarregarOrdens();
+        }
+    }
+
+    private void AbrirModalNotas(OrdemServico os)
+    {
+        osSelecionada = os;
+        exibirModalNotas = true;
+    }
+
+    private void FecharModalNotas()
+    {
+        osSelecionada = null;
+        exibirModalNotas = false;
+    }
+}

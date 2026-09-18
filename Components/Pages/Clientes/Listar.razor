@@ -14,7 +14,11 @@
 <div class="container-fluid px-4 mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <h3><i class="bi bi-people"></i> Clientes Registados</h3>
-        <div class="d-flex gap-2 align-items-center">
+        <div class="d-flex gap-2 align-items-center flex-wrap flex-md-nowrap w-100" style="max-width: 600px;">
+            <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" class="form-control border-start-0 ps-0 shadow-none" placeholder="Pesquisar cliente..." @bind="termoPesquisa" @bind:event="oninput" />
+            </div>
             <div class="btn-group" role="group" aria-label="Alternar visualização">
                 <button type="button" class="btn btn-outline-secondary @(!IsGridView ? "active" : "")" @onclick="() => ToggleView(false)">
                     <i class="bi bi-list-ul"></i>
@@ -23,7 +27,7 @@
                     <i class="bi bi-grid-fill"></i>
                 </button>
             </div>
-            <button class="btn btn-primary" @onclick="NovoCliente">
+            <button class="btn btn-primary text-nowrap" @onclick="NovoCliente">
                 <i class="bi bi-plus-lg"></i> Novo Cliente
             </button>
         </div>
@@ -50,7 +54,7 @@
         @if (IsGridView)
         {
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                @foreach (var cliente in clientes)
+                @foreach (var cliente in ClientesFiltrados!)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm border-0">
@@ -78,29 +82,29 @@
         }
         else
         {
-        <div class="card shadow-sm border-0">
+        <div class="card border-0 shadow-sm">
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                    <thead class="table-dark">
+                    <table class="table table-hover table-borderless align-middle mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <th>ID</th>
-                            <th>Nome</th>
-                            <th>CPF</th>
-                            <th>Telefone</th>
-                            <th class="text-end">Ações</th>
+                            <th width="5%" class="text-center">ID</th>
+                            <th width="40%" class="text-start">Nome</th>
+                            <th width="20%" class="text-start">CPF</th>
+                            <th width="20%" class="text-start">Telefone</th>
+                            <th width="15%" class="text-center">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var cliente in clientes)
+                        @foreach (var cliente in ClientesFiltrados!)
                         {
                             <tr>
-                                <td>@cliente.Id</td>
-                                <td><strong>@cliente.Nome</strong></td>
-                                <td>@FormatCpf(cliente.Cpf)</td>
-                                <td>@FormatTelefone(cliente.Telefone)</td>
+                                <td class="text-center">@cliente.Id</td>
+                                <td class="text-start"><strong>@cliente.Nome</strong></td>
+                                <td class="text-start">@FormatCpf(cliente.Cpf)</td>
+                                <td class="text-start">@FormatTelefone(cliente.Telefone)</td>
 
-                            <td class="text-end">
+                            <td class="text-center">
                                 @* O botão Editar vai enviar o Id do cliente pela barra de endereço *@
                                 <button class="btn btn-sm btn-outline-primary me-1" title="Editar" @onclick="() => IrParaEdicao(cliente.Id)">
                                     <i class="bi bi-pencil"></i>
@@ -150,6 +154,14 @@
 
 @code {
     private List<Cliente>? clientes;
+    private string termoPesquisa = "";
+    private IEnumerable<Cliente>? ClientesFiltrados => string.IsNullOrWhiteSpace(termoPesquisa) 
+        ? clientes 
+        : clientes?.Where(c => 
+            (c.Nome != null && c.Nome.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)) ||
+            (c.Cpf != null && c.Cpf.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)) ||
+            (c.Telefone != null && c.Telefone.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)));
+
     private Cliente _cliente = new Cliente();
     private bool IsGridView = false;
 
