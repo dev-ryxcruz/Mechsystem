@@ -84,6 +84,17 @@ namespace mechsystem.Models
         public int TempoTotalEstimadoMinutos =>
             ServicosAExecutarList != null ? ServicosAExecutarList.Sum(s => s.TempoTotalLinhaMinutos) : 0;
 
+        /// <summary>
+        /// Tempo total real gasto na execução (acumulado em minutos).
+        /// </summary>
+        [Display(Name = "Tempo Gasto (Minutos)")]
+        public int TempoGastoMinutos { get; set; } = 0;
+
+        /// <summary>
+        /// Marca quando a execução foi iniciada pela última vez, para cálculo de tempo.
+        /// </summary>
+        public DateTime? InicioUltimaExecucao { get; set; }
+
         // Descrições
         [Required(ErrorMessage = "O diagnóstico/problema relatado é obrigatório.")]
         [Display(Name = "Problema Relatado / Diagnóstico")]

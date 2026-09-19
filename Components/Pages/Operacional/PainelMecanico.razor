@@ -1,5 +1,6 @@
 @page "/operacional/painel"
 @rendermode InteractiveServer
+@implements IDisposable
 @using mechsystem.Data
 @using mechsystem.Models
 @using Microsoft.EntityFrameworkCore
@@ -19,9 +20,12 @@
     </div>
 
     <!-- Tabs for Mobile -->
-    <ul class="nav nav-pills nav-fill d-md-none mb-4 bg-white p-1 rounded shadow-sm" role="tablist">
+    <ul class="nav nav-pills nav-fill d-lg-none mb-4 bg-white p-1 rounded shadow-sm" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link rounded-pill fw-semibold @(ActiveTab == "pendentes" ? "active bg-warning text-dark shadow-sm" : "text-muted")" @onclick="@(() => ActiveTab = "pendentes")">Pendentes</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill fw-semibold @(ActiveTab == "pausadas" ? "active bg-secondary text-white shadow-sm" : "text-muted")" @onclick="@(() => ActiveTab = "pausadas")">Pausa</button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link rounded-pill fw-semibold @(ActiveTab == "execucao" ? "active bg-primary shadow-sm" : "text-muted")" @onclick="@(() => ActiveTab = "execucao")">Execução</button>
@@ -32,17 +36,38 @@
     </ul>
 
     <!-- Kanban Grid -->
-    <div class="row g-4">
+    <div class="row g-4 overflow-auto pb-2 flex-nowrap flex-lg-wrap">
         <!-- Coluna Pendentes -->
-        <div class="col-12 col-md-4 @(ActiveTab == "pendentes" ? "d-block" : "d-none d-md-block")">
-            <div class="d-flex align-items-center mb-3 d-none d-md-flex">
+        <div class="col-11 col-sm-8 col-md-6 col-lg-3 @(ActiveTab == "pendentes" ? "d-block" : "d-none d-lg-block")">
+            <div class="d-flex align-items-center mb-3 d-none d-lg-flex">
                 <h5 class="mb-0 fw-bold text-warning"><i class="bi bi-clock-history me-2"></i>Pendentes</h5>
-                <span class="badge bg-warning text-dark ms-auto rounded-pill px-2 py-1">@ordens.Count(o => o.Status == OrdemServicoStatus.Orcamento || o.Status == OrdemServicoStatus.AguardandoPecas)</span>
+                <span class="badge bg-warning text-dark ms-auto rounded-pill px-2 py-1">@ordens.Count(o => o.Status == OrdemServicoStatus.Orcamento)</span>
             </div>
             <div>
-                @if (ordens.Any(o => o.Status == OrdemServicoStatus.Orcamento || o.Status == OrdemServicoStatus.AguardandoPecas))
+                @if (ordens.Any(o => o.Status == OrdemServicoStatus.Orcamento))
                 {
-                    @foreach (var os in ordens.Where(o => o.Status == OrdemServicoStatus.Orcamento || o.Status == OrdemServicoStatus.AguardandoPecas))
+                    @foreach (var os in ordens.Where(o => o.Status == OrdemServicoStatus.Orcamento))
+                    {
+                        @RenderCard(os)
+                    }
+                }
+                else
+                {
+                    <div class="p-4 text-center text-muted border border-dashed rounded">Nenhum serviço nesta etapa <i class="bi bi-inbox ms-1"></i></div>
+                }
+            </div>
+        </div>
+
+        <!-- Coluna Pausadas -->
+        <div class="col-11 col-sm-8 col-md-6 col-lg-3 @(ActiveTab == "pausadas" ? "d-block" : "d-none d-lg-block")">
+            <div class="d-flex align-items-center mb-3 d-none d-lg-flex">
+                <h5 class="mb-0 fw-bold text-secondary"><i class="bi bi-pause-circle me-2"></i>Em Pausa</h5>
+                <span class="badge bg-secondary text-white ms-auto rounded-pill px-2 py-1">@ordens.Count(o => o.Status == OrdemServicoStatus.AguardandoPecas || o.Status == OrdemServicoStatus.Pausada)</span>
+            </div>
+            <div>
+                @if (ordens.Any(o => o.Status == OrdemServicoStatus.AguardandoPecas || o.Status == OrdemServicoStatus.Pausada))
+                {
+                    @foreach (var os in ordens.Where(o => o.Status == OrdemServicoStatus.AguardandoPecas || o.Status == OrdemServicoStatus.Pausada))
                     {
                         @RenderCard(os)
                     }
@@ -55,8 +80,8 @@
         </div>
         
         <!-- Coluna Em Execução -->
-        <div class="col-12 col-md-4 @(ActiveTab == "execucao" ? "d-block" : "d-none d-md-block")">
-            <div class="d-flex align-items-center mb-3 d-none d-md-flex">
+        <div class="col-11 col-sm-8 col-md-6 col-lg-3 @(ActiveTab == "execucao" ? "d-block" : "d-none d-lg-block")">
+            <div class="d-flex align-items-center mb-3 d-none d-lg-flex">
                 <h5 class="mb-0 fw-bold text-primary"><i class="bi bi-wrench-adjustable me-2"></i>Em Execução</h5>
                 <span class="badge bg-primary ms-auto rounded-pill px-2 py-1">@ordens.Count(o => o.Status == OrdemServicoStatus.EmAndamento)</span>
             </div>
@@ -76,8 +101,8 @@
         </div>
 
         <!-- Coluna Finalizadas -->
-        <div class="col-12 col-md-4 @(ActiveTab == "finalizadas" ? "d-block" : "d-none d-md-block")">
-            <div class="d-flex align-items-center mb-3 d-none d-md-flex">
+        <div class="col-11 col-sm-8 col-md-6 col-lg-3 @(ActiveTab == "finalizadas" ? "d-block" : "d-none d-lg-block")">
+            <div class="d-flex align-items-center mb-3 d-none d-lg-flex">
                 <h5 class="mb-0 fw-bold text-success"><i class="bi bi-check2-all me-2"></i>Finalizadas</h5>
                 <span class="badge bg-success ms-auto rounded-pill px-2 py-1">@ordens.Count(o => o.Status == OrdemServicoStatus.Concluida)</span>
             </div>
@@ -132,16 +157,208 @@
     </div>
 }
 
+<!-- Modal Reportar Problema -->
+@if (osReportar != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.6); z-index: 1055;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-danger text-white border-bottom-0 pb-3">
+                    <h5 class="modal-title fw-bold fs-4">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Reportar Problema
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="FecharModalReportar"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted mb-3">O.S. <strong>@osReportar.Veiculo?.Placa</strong> — Descreva o problema encontrado:</p>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Tipo do Problema</label>
+                        <select class="form-select form-select-lg" @bind="reportarTipo">
+                            <option value="">Selecione...</option>
+                            <option value="Falta de peça">Falta de peça</option>
+                            <option value="Ferramenta indisponível">Ferramenta indisponível</option>
+                            <option value="Problema no veículo">Problema adicional no veículo</option>
+                            <option value="Risco de segurança">Risco de segurança</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Descrição</label>
+                        <textarea class="form-control form-control-lg" rows="4" placeholder="Descreva o que está acontecendo..." @bind="reportarDescricao"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 pb-4 px-4 d-flex gap-2">
+                    <button type="button" class="btn btn-light fw-bold py-3 px-4 flex-fill rounded-3" @onclick="FecharModalReportar">Cancelar</button>
+                    <button type="button" class="btn btn-danger fw-bold py-3 px-4 flex-fill rounded-3"
+                            disabled="@(string.IsNullOrWhiteSpace(reportarTipo) || string.IsNullOrWhiteSpace(reportarDescricao))"
+                            @onclick="EnviarReporte">Enviar Reporte</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal Pedir Peça -->
+@if (osPedirPeca != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.6); z-index: 1055;">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white border-bottom-0 pb-3">
+                    <h5 class="modal-title fw-bold fs-4">
+                        <i class="bi bi-box-seam me-2"></i>Solicitar Peça
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="FecharModalPeca"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted mb-3">O.S. <strong>@osPedirPeca.Veiculo?.Placa</strong> — Selecione a peça necessária:</p>
+                    
+                    <div class="mb-3">
+                        <input type="text" class="form-control form-control-lg" placeholder="Buscar peça por nome ou SKU..." @bind="buscaPeca" @bind:event="oninput">
+                    </div>
+
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        @if (pecasDisponiveis != null)
+                        {
+                            var pecasFiltradas = string.IsNullOrWhiteSpace(buscaPeca)
+                                ? pecasDisponiveis
+                                : pecasDisponiveis.Where(p => p.Nome.Contains(buscaPeca, StringComparison.OrdinalIgnoreCase) || p.Sku.Contains(buscaPeca, StringComparison.OrdinalIgnoreCase)).ToList();
+                            
+                            @if (pecasFiltradas.Any())
+                            {
+                                @foreach (var peca in pecasFiltradas)
+                                {
+                                    <div class="d-flex align-items-center p-3 mb-2 border rounded-3 @(pecaSelecionadaId == peca.Id ? "border-primary bg-primary bg-opacity-10" : "")" style="cursor: pointer;" @onclick="() => pecaSelecionadaId = peca.Id">
+                                        <div class="flex-grow-1">
+                                            <span class="fw-bold fs-5">@peca.Nome</span>
+                                            <br>
+                                            <small class="text-muted">SKU: @peca.Sku &bull; Estoque: <span class="@(peca.AbaixoDoMinimo ? "text-danger fw-bold" : "text-success")">@peca.EstoqueAtual</span></small>
+                                        </div>
+                                        <span class="badge bg-light text-dark border px-3 py-2">R$ @peca.PrecoVenda.ToString("N2")</span>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center text-muted py-4">
+                                    <i class="bi bi-search fs-2 d-block mb-2"></i>
+                                    Nenhuma peça encontrada
+                                </div>
+                            }
+                        }
+                    </div>
+
+                    @if (pecaSelecionadaId > 0)
+                    {
+                        <div class="mt-3">
+                            <label class="form-label fw-bold text-muted small text-uppercase mb-1">Quantidade</label>
+                            <input type="number" class="form-control form-control-lg" min="1" @bind="pecaQuantidade">
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(pecaMensagem))
+                    {
+                        <div class="alert @(pecaMensagemSucesso ? "alert-success" : "alert-danger") mt-3 mb-0 fw-bold">
+                            <i class="bi @(pecaMensagemSucesso ? "bi-check-circle" : "bi-x-circle") me-1"></i> @pecaMensagem
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer border-top-0 pt-0 pb-4 px-4 d-flex gap-2">
+                    <button type="button" class="btn btn-light fw-bold py-3 px-4 flex-fill rounded-3" @onclick="FecharModalPeca">Fechar</button>
+                    <button type="button" class="btn btn-primary fw-bold py-3 px-4 flex-fill rounded-3"
+                            disabled="@(pecaSelecionadaId <= 0 || pecaQuantidade < 1)"
+                            @onclick="SolicitarPeca">Solicitar Peça</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal de Conclusão da OS -->
+@if (osParaConcluir != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.6); z-index: 1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-primary text-white border-bottom-0 pb-3">
+                    <h5 class="modal-title fw-bold fs-4">
+                        <i class="bi bi-list-check me-2"></i>Finalizar O.S.
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CancelarConclusao"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-muted mb-4 fs-5">Confirme as etapas abaixo para concluir o serviço na O.S. <strong>@osParaConcluir.Veiculo?.Placa</strong>:</p>
+                    
+                    <div class="form-check mb-4 d-flex align-items-center">
+                        <input class="form-check-input me-3 shadow-sm" type="checkbox" id="chkFluidos" style="width: 2rem; height: 2rem;" @bind="checklistFluidos">
+                        <label class="form-check-label fs-5 fw-medium text-dark" for="chkFluidos">Verificação de fluidos e freios</label>
+                    </div>
+                    
+                    <div class="form-check mb-4 d-flex align-items-center">
+                        <input class="form-check-input me-3 shadow-sm" type="checkbox" id="chkLimpeza" style="width: 2rem; height: 2rem;" @bind="checklistLimpeza">
+                        <label class="form-check-label fs-5 fw-medium text-dark" for="chkLimpeza">Limpeza da área de trabalho</label>
+                    </div>
+                    
+                    <div class="form-check mb-4 d-flex align-items-center">
+                        <input class="form-check-input me-3 shadow-sm" type="checkbox" id="chkFerramentas" style="width: 2rem; height: 2rem;" @bind="checklistFerramentas">
+                        <label class="form-check-label fs-5 fw-medium text-dark" for="chkFerramentas">Recolha de todas as ferramentas</label>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 pb-4 px-4 d-flex gap-2">
+                    <button type="button" class="btn btn-light fw-bold py-3 px-4 flex-fill rounded-3" @onclick="CancelarConclusao">Cancelar</button>
+                    <button type="button" class="btn btn-primary fw-bold py-3 px-4 flex-fill rounded-3" 
+                            disabled="@(!checklistFluidos || !checklistLimpeza || !checklistFerramentas)" 
+                            @onclick="ConfirmarConclusao">Confirmar Finalização</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private string ActiveTab = "pendentes";
     private List<OrdemServico> ordens = new();
     
     private OrdemServico? osSelecionada;
     private bool exibirModalNotas = false;
+    private System.Timers.Timer? _uiTimer;
+
+    // Modal de Conclusão Checklist
+    private OrdemServico? osParaConcluir = null;
+    private bool checklistFluidos = false;
+    private bool checklistLimpeza = false;
+    private bool checklistFerramentas = false;
+
+    // Modal Reportar Problema
+    private OrdemServico? osReportar = null;
+    private string reportarTipo = "";
+    private string reportarDescricao = "";
+
+    // Modal Pedir Peça
+    private OrdemServico? osPedirPeca = null;
+    private List<Peca>? pecasDisponiveis = null;
+    private string buscaPeca = "";
+    private int pecaSelecionadaId = 0;
+    private int pecaQuantidade = 1;
+    private string pecaMensagem = "";
+    private bool pecaMensagemSucesso = false;
 
     protected override async Task OnInitializedAsync()
     {
         await CarregarOrdens();
+        
+        // Atualiza a tela a cada 1 minuto para atualizar os cronômetros
+        _uiTimer = new System.Timers.Timer(60000);
+        _uiTimer.Elapsed += async (sender, e) => 
+        {
+            await InvokeAsync(StateHasChanged);
+        };
+        _uiTimer.Start();
+    }
+
+    public void Dispose()
+    {
+        _uiTimer?.Dispose();
     }
 
     private async Task CarregarOrdens()
@@ -184,14 +401,16 @@
 
     private RenderFragment<OrdemServico> RenderCard => os => __builder =>
     {
-        bool isPendente = os.Status == OrdemServicoStatus.Orcamento || os.Status == OrdemServicoStatus.AguardandoPecas;
+        bool isPendente = os.Status == OrdemServicoStatus.Orcamento;
+        bool isPausada = os.Status == OrdemServicoStatus.AguardandoPecas || os.Status == OrdemServicoStatus.Pausada;
         bool isExecucao = os.Status == OrdemServicoStatus.EmAndamento;
         bool isFinalizada = os.Status == OrdemServicoStatus.Concluida;
 
-        string borderClass = isPendente ? "border-warning" : (isExecucao ? "border-primary" : "border-success");
+        string borderClass = isPendente ? "border-warning" : (isPausada ? "border-secondary" : (isExecucao ? "border-primary" : "border-success"));
         
         int totalMinutes = os.ServicosAExecutarList?.Sum(s => s.TempoTotalLinhaMinutos) ?? 0;
         string estimatedTime = totalMinutes > 0 ? $"{totalMinutes / 60}h {totalMinutes % 60}m" : "--";
+        string tempoGasto = GetTempoGastoFormatado(os);
 
         <div class="card mb-4 shadow-sm border-0 border-start border-4 @borderClass rounded-3">
             <div class="card-body p-4">
@@ -200,20 +419,38 @@
                         <h4 class="card-title fw-bolder mb-0 text-uppercase" style="letter-spacing: 1px;">@os.Veiculo?.Placa</h4>
                         <small class="text-muted fw-semibold">@os.Veiculo?.Modelo</small>
                     </div>
-                    <span class="badge bg-light text-dark border px-3 py-2 fs-6">
-                        ⏱ @estimatedTime
-                    </span>
+                    <div class="text-end">
+                        @if (isExecucao || tempoGasto != "--")
+                        {
+                            <span class="badge @(isExecucao ? "bg-primary" : "bg-secondary") text-white border px-3 py-2 fs-6 mb-1 d-block" title="Tempo Gasto">
+                                <i class="bi @(isExecucao ? "bi-stopwatch" : "bi-clock-history") me-1"></i> @tempoGasto
+                            </span>
+                        }
+                        <span class="badge bg-light text-dark border px-3 py-2 fs-6 d-block" title="Tempo Estimado">
+                            <i class="bi bi-clock me-1"></i> Est: @estimatedTime
+                        </span>
+                    </div>
                 </div>
                 
-                <div class="p-3 rounded-3 mb-3 border" style="background-color: #fcfcfc;">
+                <div class="p-3 rounded-3 mb-4 border" style="background-color: #fcfcfc;">
                     <ul class="list-unstyled mb-0">
                         @if(os.ServicosAExecutarList != null && os.ServicosAExecutarList.Any())
                         {
                             @foreach(var serv in os.ServicosAExecutarList)
                             {
-                                <li class="mb-2 d-flex align-items-start last-child-mb-0">
-                                    <i class="bi @(isFinalizada ? "bi-check-circle-fill text-success" : "bi-circle text-muted") me-2 mt-1"></i>
-                                    <span class="@(isFinalizada ? "text-decoration-line-through text-muted" : "fw-medium")">@serv.Servico?.Nome</span>
+                                <li class="mb-3 d-flex align-items-start">
+                                    <input type="checkbox" class="form-check-input me-3 mt-1 shadow-sm" style="width: 1.8rem; height: 1.8rem;" checked="@isFinalizada">
+                                    <span class="fs-5 @(isFinalizada ? "text-decoration-line-through text-muted" : "fw-bold text-dark")">@serv.Servico?.Nome</span>
+                                </li>
+                            }
+                        }
+                        else if (!string.IsNullOrWhiteSpace(os.ServicoAExecutar))
+                        {
+                            @foreach (var linha in SepararServicosTexto(os.ServicoAExecutar))
+                            {
+                                <li class="mb-3 d-flex align-items-start">
+                                    <input type="checkbox" class="form-check-input me-3 mt-1 shadow-sm" style="width: 1.8rem; height: 1.8rem;" checked="@isFinalizada">
+                                    <span class="fs-5 @(isFinalizada ? "text-decoration-line-through text-muted" : "fw-bold text-dark")">@linha</span>
                                 </li>
                             }
                         }
@@ -224,37 +461,43 @@
                     </ul>
                 </div>
 
-                <div class="d-flex justify-content-between gap-2 mb-4">
-                    <button class="btn btn-light border flex-fill text-secondary fw-semibold rounded-pill px-3 py-2 shadow-sm" title="Solicitar Peça" @onclick="@(() => NavManager.NavigateTo($"/ordens-servico/{os.Id}"))">
-                        <i class="bi bi-box-seam me-1"></i> Peças
-                    </button>
-                    <button class="btn btn-light border flex-fill text-secondary fw-semibold rounded-pill px-3 py-2 shadow-sm" title="Checklist / Notas" @onclick="() => AbrirModalNotas(os)">
-                        <i class="bi bi-card-checklist me-1"></i> Notas
-                    </button>
-                </div>
+                <!-- Action Bar -->
+                @if (!isFinalizada)
+                {
+                    <div class="d-flex justify-content-between mb-3 gap-2">
+                        <button class="btn btn-light border flex-fill py-2 d-flex flex-column align-items-center rounded-3 shadow-sm" @onclick="() => PausarServico(os.Id)" disabled="@(!isExecucao)">
+                            <i class="bi bi-stopwatch fs-4 text-warning"></i>
+                            <span class="small fw-bold mt-1">Pausar Tempo</span>
+                        </button>
+                        <button class="btn btn-light border flex-fill py-2 d-flex flex-column align-items-center rounded-3 shadow-sm" @onclick="() => AbrirModalPeca(os)">
+                            <i class="bi bi-box-seam fs-4 text-primary"></i>
+                            <span class="small fw-bold mt-1">Pedir Peça</span>
+                        </button>
+                        <button class="btn btn-light border flex-fill py-2 d-flex flex-column align-items-center rounded-3 shadow-sm" @onclick="() => AbrirModalReportar(os)">
+                            <i class="bi bi-exclamation-triangle fs-4 text-danger"></i>
+                            <span class="small fw-bold mt-1">Reportar</span>
+                        </button>
+                    </div>
+                }
 
+                <!-- Main Actions -->
                 <div class="d-grid gap-2">
-                    @if(isPendente)
+                    @if(isPendente || isPausada)
                     {
-                        <button class="btn btn-success fw-bold py-2 shadow-sm rounded-3" @onclick="() => IniciarServico(os.Id)">
-                            <i class="bi bi-play-fill fs-5 me-1 align-middle"></i> Iniciar Serviço
+                        <button class="btn btn-success btn-lg fw-bold py-3 shadow-sm rounded-3 w-100" @onclick="() => IniciarServico(os.Id)">
+                            <i class="bi bi-play-fill fs-4 me-1 align-middle"></i> @(isPendente ? "INICIAR SERVIÇO" : "RETOMAR SERVIÇO")
                         </button>
                     }
                     else if(isExecucao)
                     {
-                        <div class="d-flex gap-2">
-                            <button class="btn btn-warning fw-bold py-2 shadow-sm w-50 rounded-3 text-dark" @onclick="() => PausarServico(os.Id)">
-                                <i class="bi bi-pause-fill fs-5 align-middle"></i> Pausar
-                            </button>
-                            <button class="btn btn-primary fw-bold py-2 shadow-sm w-50 rounded-3" @onclick="() => ConcluirServico(os.Id)">
-                                <i class="bi bi-check2 fs-5 align-middle"></i> Concluir
-                            </button>
-                        </div>
+                        <button class="btn btn-primary btn-lg fw-bold py-3 shadow-sm rounded-3 w-100" @onclick="() => PrepararConclusao(os)">
+                            <i class="bi bi-check2-all fs-4 me-1 align-middle"></i> CONCLUIR O.S.
+                        </button>
                     }
                     else if(isFinalizada)
                     {
-                        <button class="btn btn-outline-success fw-bold py-2 rounded-3" disabled>
-                            <i class="bi bi-check-all fs-5 me-1 align-middle"></i> Serviço Finalizado
+                        <button class="btn btn-outline-success btn-lg fw-bold py-3 rounded-3 w-100" disabled>
+                            <i class="bi bi-check-all fs-4 me-1 align-middle"></i> SERVIÇO FINALIZADO
                         </button>
                     }
                 </div>
@@ -268,6 +511,7 @@
         if (os != null) 
         {
             os.Status = OrdemServicoStatus.EmAndamento;
+            os.InicioUltimaExecucao = DateTime.Now;
             await DbContext.SaveChangesAsync();
             await CarregarOrdens();
         }
@@ -278,7 +522,12 @@
         var os = await DbContext.OrdensServico.FindAsync(id);
         if (os != null) 
         {
-            os.Status = OrdemServicoStatus.AguardandoPecas; // Pendente
+            os.Status = OrdemServicoStatus.Pausada;
+            if (os.InicioUltimaExecucao.HasValue)
+            {
+                os.TempoGastoMinutos += (int)Math.Round((DateTime.Now - os.InicioUltimaExecucao.Value).TotalMinutes);
+                os.InicioUltimaExecucao = null;
+            }
             await DbContext.SaveChangesAsync();
             await CarregarOrdens();
         }
@@ -290,9 +539,35 @@
         if (os != null) 
         {
             os.Status = OrdemServicoStatus.Concluida;
+            if (os.InicioUltimaExecucao.HasValue)
+            {
+                os.TempoGastoMinutos += (int)Math.Round((DateTime.Now - os.InicioUltimaExecucao.Value).TotalMinutes);
+                os.InicioUltimaExecucao = null;
+            }
             await DbContext.SaveChangesAsync();
             await CarregarOrdens();
         }
+    }
+
+    private string GetTempoGastoFormatado(OrdemServico os)
+    {
+        int totalMinutos = os.TempoGastoMinutos;
+        
+        if (os.Status == OrdemServicoStatus.EmAndamento && os.InicioUltimaExecucao.HasValue)
+        {
+            totalMinutos += (int)Math.Round((DateTime.Now - os.InicioUltimaExecucao.Value).TotalMinutes);
+        }
+
+        if (totalMinutos < 0) return "--";
+
+        int horas = totalMinutos / 60;
+        int minutos = totalMinutos % 60;
+
+        if (horas > 0)
+        {
+            return $"{horas}h {minutos:D2}m";
+        }
+        return $"{minutos}m";
     }
 
     private void AbrirModalNotas(OrdemServico os)
@@ -305,5 +580,145 @@
     {
         osSelecionada = null;
         exibirModalNotas = false;
+    }
+
+    // ── Reportar Problema ──
+    private void AbrirModalReportar(OrdemServico os)
+    {
+        osReportar = os;
+        reportarTipo = "";
+        reportarDescricao = "";
+    }
+
+    private void FecharModalReportar()
+    {
+        osReportar = null;
+    }
+
+    private async Task EnviarReporte()
+    {
+        if (osReportar != null && !string.IsNullOrWhiteSpace(reportarTipo) && !string.IsNullOrWhiteSpace(reportarDescricao))
+        {
+            // Salva o reporte como contato/nota na OS
+            var contato = new ContatoOS
+            {
+                OrdemServicoId = osReportar.Id,
+                Tipo = TipoContato.Outro,
+                Descricao = $"[{reportarTipo}] {reportarDescricao}",
+                RegistradoPor = "Mecânico",
+                DataContato = DateTime.Now
+            };
+            DbContext.ContatosOS.Add(contato);
+            await DbContext.SaveChangesAsync();
+            osReportar = null;
+        }
+    }
+
+    // ── Pedir Peça ──
+    private async Task AbrirModalPeca(OrdemServico os)
+    {
+        osPedirPeca = os;
+        buscaPeca = "";
+        pecaSelecionadaId = 0;
+        pecaQuantidade = 1;
+        pecaMensagem = "";
+        pecasDisponiveis = await DbContext.Pecas.Where(p => p.Ativo).OrderBy(p => p.Nome).ToListAsync();
+    }
+
+    private void FecharModalPeca()
+    {
+        osPedirPeca = null;
+    }
+
+    private async Task SolicitarPeca()
+    {
+        if (osPedirPeca == null || pecaSelecionadaId <= 0) return;
+
+        var peca = await DbContext.Pecas.FindAsync(pecaSelecionadaId);
+        if (peca == null || peca.EstoqueAtual < pecaQuantidade)
+        {
+            pecaMensagem = peca == null ? "Peça não encontrada." : $"Estoque insuficiente (disponível: {peca.EstoqueAtual}).";
+            pecaMensagemSucesso = false;
+            return;
+        }
+
+        // Verificar se já existe essa peça na OS
+        var existente = await DbContext.OrdemServicoPecas
+            .FirstOrDefaultAsync(op => op.OrdemServicoId == osPedirPeca.Id && op.PecaId == pecaSelecionadaId);
+
+        if (existente != null)
+        {
+            existente.Quantidade += pecaQuantidade;
+        }
+        else
+        {
+            var osPeca = new OrdemServicoPeca
+            {
+                OrdemServicoId = osPedirPeca.Id,
+                PecaId = pecaSelecionadaId,
+                Quantidade = pecaQuantidade,
+                PrecoBase = peca.PrecoVenda,
+                PrecoCustoSnapshot = peca.PrecoCusto,
+                ValorCobrado = peca.PrecoVenda
+            };
+            DbContext.OrdemServicoPecas.Add(osPeca);
+        }
+
+        // Baixar estoque
+        peca.EstoqueAtual -= pecaQuantidade;
+        var mov = new MovimentacaoEstoque
+        {
+            PecaId = pecaSelecionadaId,
+            Tipo = TipoMovimentacao.Saida,
+            Quantidade = pecaQuantidade,
+            Referencia = $"Solicitação Painel Mecânico - OS #{osPedirPeca.Id}",
+            DataHora = DateTime.Now,
+            UsuarioId = 1 // Padrão para operações do painel
+        };
+        DbContext.MovimentacoesEstoque.Add(mov);
+
+        await DbContext.SaveChangesAsync();
+        pecaMensagem = $"✅ {peca.Nome} (x{pecaQuantidade}) adicionada com sucesso!";
+        pecaMensagemSucesso = true;
+        pecaSelecionadaId = 0;
+        pecaQuantidade = 1;
+
+        // Recarregar peças para atualizar estoque na listagem
+        pecasDisponiveis = await DbContext.Pecas.Where(p => p.Ativo).OrderBy(p => p.Nome).ToListAsync();
+    }
+
+    // ── Conclusão ──
+    private void PrepararConclusao(OrdemServico os)
+    {
+        osParaConcluir = os;
+        checklistFluidos = false;
+        checklistLimpeza = false;
+        checklistFerramentas = false;
+    }
+
+    private void CancelarConclusao()
+    {
+        osParaConcluir = null;
+    }
+
+    private async Task ConfirmarConclusao()
+    {
+        if (osParaConcluir != null && checklistFluidos && checklistLimpeza && checklistFerramentas)
+        {
+            await ConcluirServico(osParaConcluir.Id);
+            osParaConcluir = null;
+        }
+    }
+
+    // ── Utilitários ──
+    private List<string> SepararServicosTexto(string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return new List<string>();
+        
+        return texto
+            .Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(l => l.TrimStart('-', ' ', '\t'))
+            .Where(l => !string.IsNullOrWhiteSpace(l))
+            .ToList();
     }
 }

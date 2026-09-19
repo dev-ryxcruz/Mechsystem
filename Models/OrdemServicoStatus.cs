@@ -17,6 +17,9 @@ namespace mechsystem.Models
         Concluida = 3,
 
         [Display(Name = "Cancelada")]
-        Cancelada = 4
+        Cancelada = 4,
+
+        [Display(Name = "Pausada")]
+        Pausada = 5
     }
 }
