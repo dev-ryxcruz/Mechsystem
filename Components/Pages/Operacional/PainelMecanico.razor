@@ -6,6 +6,7 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Administrador, Atendimento, Mecanico")]
 @inject AppDbContext DbContext
+@inject NavigationManager NavManager
 
 <PageTitle>Painel do Mecânico</PageTitle>
 
@@ -35,13 +36,20 @@
         <!-- Coluna Pendentes -->
         <div class="col-12 col-md-4 @(ActiveTab == "pendentes" ? "d-block" : "d-none d-md-block")">
             <div class="d-flex align-items-center mb-3 d-none d-md-flex">
-                <h5 class="mb-0 fw-bold text-secondary"><i class="bi bi-clock-history me-2"></i>Pendentes</h5>
-                <span class="badge bg-secondary ms-auto rounded-pill px-2 py-1">@ordens.Count(o => o.Status == OrdemServicoStatus.Orcamento || o.Status == OrdemServicoStatus.AguardandoPecas)</span>
+                <h5 class="mb-0 fw-bold text-warning"><i class="bi bi-clock-history me-2"></i>Pendentes</h5>
+                <span class="badge bg-warning text-dark ms-auto rounded-pill px-2 py-1">@ordens.Count(o => o.Status == OrdemServicoStatus.Orcamento || o.Status == OrdemServicoStatus.AguardandoPecas)</span>
             </div>
             <div>
-                @foreach (var os in ordens.Where(o => o.Status == OrdemServicoStatus.Orcamento || o.Status == OrdemServicoStatus.AguardandoPecas))
+                @if (ordens.Any(o => o.Status == OrdemServicoStatus.Orcamento || o.Status == OrdemServicoStatus.AguardandoPecas))
                 {
-                    @RenderCard(os)
+                    @foreach (var os in ordens.Where(o => o.Status == OrdemServicoStatus.Orcamento || o.Status == OrdemServicoStatus.AguardandoPecas))
+                    {
+                        @RenderCard(os)
+                    }
+                }
+                else
+                {
+                    <div class="p-4 text-center text-muted border border-dashed rounded">Nenhum serviço nesta etapa <i class="bi bi-inbox ms-1"></i></div>
                 }
             </div>
         </div>
@@ -53,9 +61,16 @@
                 <span class="badge bg-primary ms-auto rounded-pill px-2 py-1">@ordens.Count(o => o.Status == OrdemServicoStatus.EmAndamento)</span>
             </div>
             <div>
-                @foreach (var os in ordens.Where(o => o.Status == OrdemServicoStatus.EmAndamento))
+                @if (ordens.Any(o => o.Status == OrdemServicoStatus.EmAndamento))
                 {
-                    @RenderCard(os)
+                    @foreach (var os in ordens.Where(o => o.Status == OrdemServicoStatus.EmAndamento))
+                    {
+                        @RenderCard(os)
+                    }
+                }
+                else
+                {
+                    <div class="p-4 text-center text-muted border border-dashed rounded">Nenhum serviço nesta etapa <i class="bi bi-inbox ms-1"></i></div>
                 }
             </div>
         </div>
@@ -67,9 +82,16 @@
                 <span class="badge bg-success ms-auto rounded-pill px-2 py-1">@ordens.Count(o => o.Status == OrdemServicoStatus.Concluida)</span>
             </div>
             <div>
-                @foreach (var os in ordens.Where(o => o.Status == OrdemServicoStatus.Concluida))
+                @if (ordens.Any(o => o.Status == OrdemServicoStatus.Concluida))
                 {
-                    @RenderCard(os)
+                    @foreach (var os in ordens.Where(o => o.Status == OrdemServicoStatus.Concluida))
+                    {
+                        @RenderCard(os)
+                    }
+                }
+                else
+                {
+                    <div class="p-4 text-center text-muted border border-dashed rounded">Nenhum serviço nesta etapa <i class="bi bi-inbox ms-1"></i></div>
                 }
             </div>
         </div>
@@ -130,6 +152,34 @@
                 .ThenInclude(s => s.Servico)
             .Where(o => o.Status != OrdemServicoStatus.Cancelada)
             .ToListAsync();
+
+        if (ordens.Count == 0)
+        {
+            ordens = new List<OrdemServico>
+            {
+                new OrdemServico 
+                { 
+                    Id = 1, 
+                    Status = OrdemServicoStatus.Orcamento,
+                    Veiculo = new Veiculo { Placa = "ABC1234", Modelo = "Ford Ka" },
+                    ServicosAExecutarList = new List<OrdemServicoServico> 
+                    { 
+                        new OrdemServicoServico { Servico = new Servico { Nome = "Substituição das pastilhas" }, TempoEstimadoMinutosSnapshot = 60, Quantidade = 1 }
+                    }
+                },
+                new OrdemServico 
+                { 
+                    Id = 2, 
+                    Status = OrdemServicoStatus.Concluida,
+                    Veiculo = new Veiculo { Placa = "XYZ9876", Modelo = "Chevrolet Onix" },
+                    ServicosAExecutarList = new List<OrdemServicoServico> 
+                    { 
+                        new OrdemServicoServico { Servico = new Servico { Nome = "Alinhamento da direção" }, TempoEstimadoMinutosSnapshot = 45, Quantidade = 1 },
+                        new OrdemServicoServico { Servico = new Servico { Nome = "Balanceamento" }, TempoEstimadoMinutosSnapshot = 30, Quantidade = 1 }
+                    }
+                }
+            };
+        }
     }
 
     private RenderFragment<OrdemServico> RenderCard => os => __builder =>
@@ -139,7 +189,6 @@
         bool isFinalizada = os.Status == OrdemServicoStatus.Concluida;
 
         string borderClass = isPendente ? "border-warning" : (isExecucao ? "border-primary" : "border-success");
-        string urgencyClass = "bg-dark"; 
         
         int totalMinutes = os.ServicosAExecutarList?.Sum(s => s.TempoTotalLinhaMinutos) ?? 0;
         string estimatedTime = totalMinutes > 0 ? $"{totalMinutes / 60}h {totalMinutes % 60}m" : "--";
@@ -151,8 +200,8 @@
                         <h4 class="card-title fw-bolder mb-0 text-uppercase" style="letter-spacing: 1px;">@os.Veiculo?.Placa</h4>
                         <small class="text-muted fw-semibold">@os.Veiculo?.Modelo</small>
                     </div>
-                    <span class="badge @urgencyClass rounded-pill shadow-sm px-3 py-2">
-                        <i class="bi bi-stopwatch me-1"></i> @estimatedTime
+                    <span class="badge bg-light text-dark border px-3 py-2 fs-6">
+                        ⏱ @estimatedTime
                     </span>
                 </div>
                 
@@ -175,11 +224,11 @@
                     </ul>
                 </div>
 
-                <div class="d-flex justify-content-start gap-2 mb-4">
-                    <button class="btn btn-sm btn-light border text-secondary fw-semibold rounded-pill px-3 shadow-sm" title="Solicitar Peça">
+                <div class="d-flex justify-content-between gap-2 mb-4">
+                    <button class="btn btn-light border flex-fill text-secondary fw-semibold rounded-pill px-3 py-2 shadow-sm" title="Solicitar Peça" @onclick="@(() => NavManager.NavigateTo($"/ordens-servico/{os.Id}"))">
                         <i class="bi bi-box-seam me-1"></i> Peças
                     </button>
-                    <button class="btn btn-sm btn-light border text-secondary fw-semibold rounded-pill px-3 shadow-sm" title="Checklist / Notas" @onclick="() => AbrirModalNotas(os)">
+                    <button class="btn btn-light border flex-fill text-secondary fw-semibold rounded-pill px-3 py-2 shadow-sm" title="Checklist / Notas" @onclick="() => AbrirModalNotas(os)">
                         <i class="bi bi-card-checklist me-1"></i> Notas
                     </button>
                 </div>
