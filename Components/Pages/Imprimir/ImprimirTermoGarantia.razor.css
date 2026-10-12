@@ -1,0 +1,322 @@
+/* ─── Loading ─────────────────────────────────────────────────────────────── */
+.loading-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 80vh;
+    color: #6c757d;
+}
+
+/* ─── Toolbar (tela, oculta na impressão) ────────────────────────────────── */
+.print-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: #1e2329;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.btn-print {
+    background: #0d6efd;
+    color: #fff;
+    border: none;
+    border-radius: 0.4rem;
+    padding: 0.5rem 1.25rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: background 0.15s;
+}
+.btn-print:hover { background: #0b5ed7; }
+
+.btn-close-print {
+    background: transparent;
+    color: #adb5bd;
+    border: 1px solid #495057;
+    border-radius: 0.4rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: color 0.15s, border-color 0.15s;
+}
+.btn-close-print:hover { color: #fff; border-color: #adb5bd; }
+
+/* ─── Documento A4 ────────────────────────────────────────────────────────── */
+.doc-a4 {
+    background: #ffffff;
+    color: #1a1a1a;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 5rem auto 2rem;
+    padding: 15mm 18mm;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.15);
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.5;
+}
+
+/* ─── Cabeçalho ─────────────────────────────────────────────────────────── */
+.doc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.doc-oficina-nome {
+    font-size: 16pt;
+    font-weight: 800;
+    color: #1a1a1a;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.2rem;
+}
+.doc-oficina-info {
+    font-size: 9pt;
+    color: #555;
+    line-height: 1.6;
+}
+
+.doc-os-info {
+    text-align: right;
+    flex-shrink: 0;
+}
+.doc-os-titulo {
+    font-size: 9pt;
+    font-weight: 700;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+.doc-os-numero {
+    font-size: 20pt;
+    font-weight: 900;
+    color: #1a1a1a;
+    letter-spacing: -0.03em;
+    line-height: 1;
+}
+.doc-os-status {
+    font-size: 8pt;
+    font-weight: 700;
+    background: #1a1a1a;
+    color: #fff;
+    padding: 0.1rem 0.5rem;
+    border-radius: 3px;
+    display: inline-block;
+    margin-top: 0.2rem;
+    letter-spacing: 0.06em;
+}
+.doc-os-data {
+    font-size: 9pt;
+    color: #555;
+    margin-top: 0.3rem;
+}
+
+/* ─── Divisor ─────────────────────────────────────────────────────────────── */
+.doc-divider {
+    border: none;
+    border-top: 1.5px solid #1a1a1a;
+    margin: 0.6rem 0;
+}
+
+/* ─── Seções ──────────────────────────────────────────────────────────────── */
+.doc-section {
+    margin: 0.5rem 0 0.75rem;
+}
+
+.doc-section-title {
+    font-size: 7.5pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #555;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 0.2rem;
+    margin-bottom: 0.5rem;
+}
+
+/* ─── Grid de Campos ──────────────────────────────────────────────────────── */
+.doc-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem 1.5rem;
+}
+.doc-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.4rem 1.5rem;
+}
+.doc-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem 1rem;
+}
+
+.doc-field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.15rem;
+}
+.doc-field-full {
+    grid-column: 1 / -1;
+}
+
+.doc-label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.doc-value {
+    font-size: 10pt;
+    color: #1a1a1a;
+    font-weight: 500;
+}
+.doc-value.fw-bold { font-weight: 700; }
+
+.doc-text-box {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    font-size: 10pt;
+    color: #1a1a1a;
+    white-space: pre-wrap;
+    min-height: 2.5rem;
+}
+.mb-3 { margin-bottom: 0.75rem; }
+
+/* ─── Valores ─────────────────────────────────────────────────────────────── */
+.doc-valores-wrapper {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.doc-valores-table {
+    width: 55%;
+    border-collapse: collapse;
+    font-size: 10pt;
+}
+.doc-valores-table td {
+    padding: 0.3rem 0.6rem;
+    border: 1px solid #ddd;
+}
+.doc-valores-table tr:last-child td { border-top: 2px solid #1a1a1a; }
+.doc-total-row {
+    font-weight: 800;
+    font-size: 12pt;
+    background: #f1f3f5;
+}
+.text-end { text-align: right; }
+
+/* ─── Termo ───────────────────────────────────────────────────────────────── */
+.doc-termo-texto {
+    font-size: 9pt;
+    color: #444;
+    text-align: justify;
+    margin-bottom: 1.5rem;
+}
+
+.doc-assinaturas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 1rem;
+}
+.doc-assinatura-box { text-align: center; }
+.doc-assinatura-linha {
+    border-bottom: 1.5px solid #1a1a1a;
+    height: 40px;
+    margin-bottom: 0.3rem;
+}
+.doc-assinatura-nome { font-size: 9pt; font-weight: 600; }
+.doc-assinatura-label { font-size: 8pt; color: #666; }
+.doc-assinatura-data { font-size: 8pt; color: #666; margin-top: 0.2rem; }
+
+.doc-aprovado-box {
+    background: #d1e7dd;
+    border: 1px solid #a3cfbb;
+    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 9.5pt;
+    color: #0f5132;
+}
+.doc-aprovado-box i { font-size: 1.5rem; }
+
+/* ─── Rodapé ──────────────────────────────────────────────────────────────── */
+.doc-rodape {
+    margin-top: 2rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #ddd;
+    font-size: 8pt;
+    color: #888;
+    text-align: center;
+}
+
+/* ─── IMPRESSÃO (@media print) ───────────────────────────────────────────── */
+@media print {
+    @page {
+        size: A4;
+        margin: 15mm 18mm;
+    }
+
+    body {
+        background: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Esconder tudo exceto o documento */
+    .sidebar,
+    .top-row,
+    .navbar,
+    .print-toolbar,
+    .d-print-none {
+        display: none !important;
+    }
+
+    main, article, .page, .content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .doc-a4 {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        min-height: auto !important;
+    }
+
+    .doc-text-box {
+        background: #f8f9fa !important;
+        border: 1px solid #dee2e6 !important;
+    }
+
+    .doc-aprovado-box {
+        background: #d1e7dd !important;
+    }
+
+    .doc-total-row {
+        background: #f1f3f5 !important;
+    }
+}

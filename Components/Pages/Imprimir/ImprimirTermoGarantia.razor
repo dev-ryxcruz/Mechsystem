@@ -1,0 +1,203 @@
+@page "/imprimir/termo-garantia/{id:int}"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using mechsystem.Data
+@using mechsystem.Models
+@inject AppDbContext DbContext
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Nav
+
+<PageTitle>Termo de Garantia — OS Nº @Id.ToString("D4")</PageTitle>
+
+@if (os == null)
+{
+    <div class="loading-screen">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2">Preparando documento...</p>
+    </div>
+}
+else if (os.Status != OrdemServicoStatus.Concluida)
+{
+    <div class="container mt-5">
+        <div class="alert alert-warning text-center">
+            <h4>Operação não permitida</h4>
+            <p>O Termo de Garantia só pode ser emitido para Ordens de Serviço com status <strong>Concluída</strong>.</p>
+            <button class="btn btn-secondary" @onclick='() => Nav.NavigateTo($"/ordens-servico/{Id}")'>Voltar</button>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Toolbar — oculta na impressão -->
+    <div class="print-toolbar d-print-none">
+        <button class="btn-print" @onclick="Imprimir">
+            <i class="bi bi-printer-fill"></i> Imprimir / Salvar PDF
+        </button>
+        <button class="btn-close-print" @onclick='() => Nav.NavigateTo($"/ordens-servico/{Id}")'>
+            <i class="bi bi-x-lg"></i> Fechar
+        </button>
+    </div>
+
+    <!-- Documento A4 -->
+    <div class="doc-a4">
+
+        <!-- Cabeçalho -->
+        <div class="doc-header">
+            <div class="doc-oficina">
+                <div class="doc-oficina-nome">@(config?.NomeFantasia ?? "Oficina Mecânica")</div>
+                @if (!string.IsNullOrEmpty(config?.Cnpj))
+                {
+                    <div class="doc-oficina-info">CNPJ: @config.Cnpj</div>
+                }
+                @if (!string.IsNullOrEmpty(config?.Telefone))
+                {
+                    <div class="doc-oficina-info">Tel: @config.Telefone
+                        @if (!string.IsNullOrEmpty(config?.WhatsApp)) { <span> · WhatsApp: @config.WhatsApp</span> }
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(config?.EnderecoCompleto))
+                {
+                    <div class="doc-oficina-info">@config.EnderecoCompleto</div>
+                }
+            </div>
+            <div class="doc-os-info">
+                <div class="doc-os-titulo">
+                    TERMO DE GARANTIA
+                </div>
+                <div class="doc-os-numero">OS Nº @os.Id.ToString("D4")</div>
+                <div class="doc-os-data">Emissão: @DateTime.Now.ToString("dd/MM/yyyy")</div>
+            </div>
+        </div>
+
+        <div class="doc-divider"></div>
+
+        <div class="doc-section mt-4 mb-4 text-center">
+            <h3 class="fw-bold mb-3" style="font-size: 14pt;">CERTIFICADO DE GARANTIA DE MANUTENÇÃO</h3>
+            <p class="doc-termo-texto mx-auto" style="max-width: 90%; font-size: 10pt; line-height: 1.6; text-align: justify;">
+                A <strong>@(config?.NomeFantasia ?? "Oficina Mecânica")</strong> certifica que os serviços descritos abaixo foram executados
+                conforme os mais altos padrões de qualidade técnica e com a utilização de peças adequadas.
+                Este documento é o seu Termo de Garantia e deve ser apresentado em caso de solicitação de cobertura.
+            </p>
+        </div>
+
+        <!-- Dados do Cliente e Veículo -->
+        <div class="doc-section mb-4">
+            <div class="doc-section-title">REFERÊNCIA DOS SERVIÇOS</div>
+            <div class="doc-grid-2">
+                <div class="doc-field">
+                    <span class="doc-label">Cliente</span>
+                    <span class="doc-value">@os.Veiculo?.Cliente?.Nome</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">CPF</span>
+                    <span class="doc-value">@os.Veiculo?.Cliente?.Cpf</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Veículo</span>
+                    <span class="doc-value">@os.Veiculo?.Marca / @os.Veiculo?.Modelo - Placa: <strong class="ms-1">@os.Veiculo?.Placa</strong></span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Quilometragem (Na Saída)</span>
+                    <span class="doc-value">@os.Veiculo?.Quilometragem.ToString("N0") km</span>
+                </div>
+                <div class="doc-field">
+                    <span class="doc-label">Data de Conclusão / Entrega</span>
+                    <span class="doc-value">@(os.DataPrevisaoEntrega.ToString("dd/MM/yyyy"))</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="doc-section mb-4">
+            <div class="doc-section-title">COBERTURA DA GARANTIA LEGAL E CONTRATUAL</div>
+            <div class="doc-field doc-field-full mb-3">
+                <span class="doc-label">Prazo de Garantia</span>
+                <div class="doc-text-box" style="font-size: 11pt; font-weight: bold; background-color: #f1f3f5; color: #1a1a1a; padding: 1rem; text-align: center;">
+                    @(config?.GarantiaPadraoDias ?? 90) DIAS A PARTIR DA DATA DE ENTREGA DO VEÍCULO
+                </div>
+            </div>
+            
+            <p class="doc-termo-texto" style="font-size: 9pt; text-align: justify; margin-top: 1rem;">
+                <strong>CONDIÇÕES DA GARANTIA:</strong><br/>
+                1. Conforme estabelece o Código de Defesa do Consumidor (CDC) - Lei 8.078/1990, art. 26, inciso II e art. 50, 
+                   a oficina assegura a garantia legal sobre os serviços de reparação e peças substituídas pelo prazo supramencionado.<br/><br/>
+                2. A garantia cobre exclusivamente falhas relativas à mão de obra dos serviços executados e 
+                   defeitos de fabricação das peças fornecidas por nossa oficina, descritas na respectiva Ordem de Serviço.<br/><br/>
+                3. A garantia <strong>perderá a validade</strong> nas seguintes situações:<br/>
+                   &nbsp;&nbsp;&nbsp;&nbsp;a) Desgaste natural das peças decorrente do uso regular do veículo;<br/>
+                   &nbsp;&nbsp;&nbsp;&nbsp;b) Mau uso, negligência ou sobrecarga do veículo em desacordo com as especificações do fabricante;<br/>
+                   &nbsp;&nbsp;&nbsp;&nbsp;c) Manutenção, reparo ou violação de componentes realizados por terceiros após a retirada do veículo desta oficina;<br/>
+                   &nbsp;&nbsp;&nbsp;&nbsp;d) Danos decorrentes de acidentes, intempéries ou uso de combustível adulterado;<br/>
+                   &nbsp;&nbsp;&nbsp;&nbsp;e) Peças fornecidas pelo próprio cliente (a oficina garante apenas a mão de obra nesses casos, caso não haja falha pré-existente na peça).<br/><br/>
+                4. Para acionar a garantia, é imprescindível a apresentação deste Termo de Garantia juntamente com a via original da Ordem de Serviço ou Nota Fiscal.
+            </p>
+        </div>
+
+        <div class="doc-divider"></div>
+
+        <!-- Termo de Assinatura -->
+        <div class="doc-section doc-termo" style="margin-top: 3rem;">
+            <div class="doc-assinaturas">
+                <div class="doc-assinatura-box">
+                    <div class="doc-assinatura-linha"></div>
+                    <div class="doc-assinatura-nome">@(config?.NomeFantasia ?? "Oficina Mecânica")</div>
+                    <div class="doc-assinatura-label">Responsável Técnico</div>
+                    <div class="doc-assinatura-data">Data: _____ / _____ / __________</div>
+                </div>
+                <div class="doc-assinatura-box">
+                    <div class="doc-assinatura-linha"></div>
+                    <div class="doc-assinatura-nome">@os.Veiculo?.Cliente?.Nome</div>
+                    <div class="doc-assinatura-label">Recebedor / Cliente</div>
+                    <div class="doc-assinatura-data">Data: _____ / _____ / __________</div>
+                </div>
+            </div>
+            
+            <p class="text-center mt-4" style="font-size: 8pt; color: #666;">
+                Declaro ter recebido o veículo nas condições descritas, acompanhado deste Termo de Garantia, estando ciente das regras de cobertura.
+            </p>
+        </div>
+
+        <!-- Rodapé -->
+        @if (!string.IsNullOrEmpty(config?.MensagemRodape))
+        {
+            <div class="doc-rodape">@config.MensagemRodape</div>
+        }
+        else
+        {
+            <div class="doc-rodape">
+                @(config?.NomeFantasia ?? "Mechsystem") · @(config?.Telefone ?? "") · Documento gerado em @DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+            </div>
+        }
+
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private OrdemServico? os;
+    private Configuracao? config;
+
+    protected override async Task OnInitializedAsync()
+    {
+        os = await DbContext.OrdensServico
+            .Include(o => o.Veiculo)
+                .ThenInclude(v => v!.Cliente)
+            .FirstOrDefaultAsync(o => o.Id == Id);
+
+        config = await DbContext.Configuracoes.FirstOrDefaultAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && os != null && os.Status == OrdemServicoStatus.Concluida)
+        {
+            await Task.Delay(300);
+            await JSRuntime.InvokeVoidAsync("window.print");
+        }
+    }
+
+    private async Task Imprimir()
+    {
+        await JSRuntime.InvokeVoidAsync("window.print");
+    }
+}

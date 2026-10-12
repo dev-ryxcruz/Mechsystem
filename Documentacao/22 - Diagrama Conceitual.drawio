@@ -1,0 +1,211 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="mer-conceitual" name="Modelo Conceitual">
+<mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1200" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+    <mxCell id="title" parent="1" value="MECHSYSTEM — Diagrama Entidade-Relacionamento Conceitual" style="text;html=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=1;fontSize=16;" vertex="1">
+      <mxGeometry x="35" y="5" width="600" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="legend" parent="1" value="Legenda:  * identificador   |   - atributo   |   (mín,máx) cardinalidade&#xa;Retângulo com losango = entidade associativa" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;fontSize=11;" vertex="1">
+      <mxGeometry x="35" y="290" width="330" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="USUARIO" parent="1" value="USUARIO" style="whiteSpace=wrap;html=1;align=center;fontStyle=1;" vertex="1">
+      <mxGeometry x="35" y="60" width="150" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="REALIZA" parent="1" value="REALIZA" style="shape=rhombus;whiteSpace=wrap;html=1;align=center;fontSize=11;" vertex="1">
+      <mxGeometry x="270" y="48" width="120" height="64" as="geometry" />
+    </mxCell>
+    <mxCell id="MOVIMENTACAO" parent="1" value="MOVIMENTACAO_ESTOQUE" style="whiteSpace=wrap;html=1;align=center;fontStyle=1;" vertex="1">
+      <mxGeometry x="455" y="60" width="190" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="SOFRE" parent="1" value="SOFRE" style="shape=rhombus;whiteSpace=wrap;html=1;align=center;fontSize=11;" vertex="1">
+      <mxGeometry x="710" y="48" width="120" height="64" as="geometry" />
+    </mxCell>
+    <mxCell id="PECA" parent="1" value="PECA" style="whiteSpace=wrap;html=1;align=center;fontStyle=1;" vertex="1">
+      <mxGeometry x="915" y="60" width="150" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="SERVICO" parent="1" value="SERVICO" style="whiteSpace=wrap;html=1;align=center;fontStyle=1;" vertex="1">
+      <mxGeometry x="1375" y="60" width="150" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="CONSOME_rect" parent="1" value="ITEM_PECA_OS" style="whiteSpace=wrap;html=1;align=center;fontStyle=1;verticalLabelPosition=bottom;verticalAlign=top;labelBackgroundColor=default;" vertex="1">
+      <mxGeometry x="895" y="290" width="190" height="80" as="geometry" />
+    </mxCell>
+    <mxCell id="CONSOME" parent="1" value="CONSOME" style="shape=rhombus;whiteSpace=wrap;html=1;align=center;fontSize=11;" vertex="1">
+      <mxGeometry x="895" y="290" width="190" height="80" as="geometry" />
+    </mxCell>
+    <mxCell id="EXECUTA_rect" parent="1" value="ITEM_SERVICO_OS" style="whiteSpace=wrap;html=1;align=center;fontStyle=1;verticalLabelPosition=bottom;verticalAlign=top;labelBackgroundColor=default;" vertex="1">
+      <mxGeometry x="1355" y="290" width="190" height="80" as="geometry" />
+    </mxCell>
+    <mxCell id="EXECUTA" parent="1" value="EXECUTA" style="shape=rhombus;whiteSpace=wrap;html=1;align=center;fontSize=11;" vertex="1">
+      <mxGeometry x="1355" y="290" width="190" height="80" as="geometry" />
+    </mxCell>
+    <mxCell id="CLIENTE" parent="1" value="CLIENTE" style="whiteSpace=wrap;html=1;align=center;fontStyle=1;" vertex="1">
+      <mxGeometry x="265" y="540" width="150" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="POSSUI" parent="1" value="POSSUI" style="shape=rhombus;whiteSpace=wrap;html=1;align=center;fontSize=11;" vertex="1">
+      <mxGeometry x="500" y="528" width="120" height="64" as="geometry" />
+    </mxCell>
+    <mxCell id="VEICULO" parent="1" value="VEICULO" style="whiteSpace=wrap;html=1;align=center;fontStyle=1;" vertex="1">
+      <mxGeometry x="705" y="540" width="150" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="ATENDIDO" parent="1" value="ATENDIDO EM" style="shape=rhombus;whiteSpace=wrap;html=1;align=center;fontSize=11;" vertex="1">
+      <mxGeometry x="940" y="528" width="120" height="64" as="geometry" />
+    </mxCell>
+    <mxCell id="OS" parent="1" value="ORDEM_SERVICO" style="whiteSpace=wrap;html=1;align=center;fontStyle=1;" vertex="1">
+      <mxGeometry x="1145" y="540" width="150" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="TEM" parent="1" value="TEM" style="shape=rhombus;whiteSpace=wrap;html=1;align=center;fontSize=11;" vertex="1">
+      <mxGeometry x="1380" y="468" width="120" height="64" as="geometry" />
+    </mxCell>
+    <mxCell id="VISTORIA" parent="1" value="VISTORIA" style="whiteSpace=wrap;html=1;align=center;fontStyle=1;" vertex="1">
+      <mxGeometry x="1575" y="480" width="150" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="REGISTRA" parent="1" value="REGISTRA" style="shape=rhombus;whiteSpace=wrap;html=1;align=center;fontSize=11;" vertex="1">
+      <mxGeometry x="1380" y="588" width="120" height="64" as="geometry" />
+    </mxCell>
+    <mxCell id="CONTATO" parent="1" value="CONTATO_OS" style="whiteSpace=wrap;html=1;align=center;fontStyle=1;" vertex="1">
+      <mxGeometry x="1575" y="600" width="150" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="CONFIG" parent="1" value="CONFIGURACAO" style="whiteSpace=wrap;html=1;align=center;fontStyle=1;" vertex="1">
+      <mxGeometry x="25" y="830" width="170" height="40" as="geometry" />
+    </mxCell>
+    <mxCell id="e_2" parent="1" source="CLIENTE" target="POSSUI" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_3" parent="1" value="(0,n)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="417" y="537" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_4" parent="1" source="VEICULO" target="POSSUI" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_5" parent="1" value="(1,1)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="659" y="537" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_6" parent="1" source="VEICULO" target="ATENDIDO" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_7" parent="1" value="(0,n)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="857" y="537" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_8" parent="1" source="OS" target="ATENDIDO" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_9" parent="1" value="(1,1)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="1099" y="537" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_10" parent="1" source="OS" target="TEM" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_11" parent="1" value="(0,1)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="1291" y="511" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_12" parent="1" source="VISTORIA" target="TEM" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_13" parent="1" value="(1,1)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="1529" y="477" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_14" parent="1" source="OS" target="REGISTRA" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_15" parent="1" value="(0,n)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="1298" y="564" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_16" parent="1" source="CONTATO" target="REGISTRA" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_17" parent="1" value="(1,1)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="1529" y="597" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_18" parent="1" source="OS" target="CONSOME" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_19" parent="1" value="(0,n)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="1170" y="504" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_20" parent="1" source="PECA" target="CONSOME" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_21" parent="1" value="(0,n)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="981" y="114" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_22" parent="1" source="OS" target="EXECUTA" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_23" parent="1" value="(0,n)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="1226" y="504" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_24" parent="1" source="SERVICO" target="EXECUTA" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_25" parent="1" value="(0,n)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="1441" y="114" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_26" parent="1" source="PECA" target="SOFRE" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_27" parent="1" value="(0,n)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="869" y="57" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_28" parent="1" source="MOVIMENTACAO" target="SOFRE" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_29" parent="1" value="(1,1)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="647" y="57" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_30" parent="1" source="USUARIO" target="REALIZA" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_31" parent="1" value="(0,n)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="187" y="57" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="e_32" parent="1" source="MOVIMENTACAO" target="REALIZA" style="endArrow=none;html=1;rounded=0;" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="card_33" parent="1" value="(1,1)" style="text;html=1;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontStyle=0;" vertex="1">
+      <mxGeometry x="409" y="57" width="44" height="20" as="geometry" />
+    </mxCell>
+    <mxCell id="USUARIO_attrs" parent="1" value="* ID&#xa;- Username (único)&#xa;- Senha_hash&#xa;- Nome_completo&#xa;- Perfil&#xa;- Ativo&#xa;- Data_criacao" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;" vertex="1">
+      <mxGeometry x="35" y="105" width="150" height="115" as="geometry" />
+    </mxCell>
+    <mxCell id="MOVIMENTACAO_attrs" parent="1" value="* ID&#xa;- Tipo&#xa;- Quantidade&#xa;- Data_hora&#xa;- Referencia" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;" vertex="1">
+      <mxGeometry x="455" y="105" width="150" height="85" as="geometry" />
+    </mxCell>
+    <mxCell id="PECA_attrs" parent="1" value="* ID&#xa;- SKU (único)&#xa;- Nome&#xa;- Marca&#xa;- Preco_custo&#xa;- Preco_venda&#xa;- Estoque_atual&#xa;- Estoque_minimo&#xa;- Localizacao&#xa;- Ativo" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;" vertex="1">
+      <mxGeometry x="1075" y="60" width="150" height="160" as="geometry" />
+    </mxCell>
+    <mxCell id="SERVICO_attrs" parent="1" value="* ID&#xa;- Nome&#xa;- Descricao&#xa;- Valor_padrao&#xa;- Tempo_estimado_minutos" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;" vertex="1">
+      <mxGeometry x="1535" y="60" width="190" height="85" as="geometry" />
+    </mxCell>
+    <mxCell id="CONSOME_attrs" parent="1" value="* OS + PECA&#xa;- Quantidade&#xa;- Preco_base&#xa;- Valor_cobrado&#xa;- Preco_custo_snapshot" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;" vertex="1">
+      <mxGeometry x="690" y="295" width="195" height="85" as="geometry" />
+    </mxCell>
+    <mxCell id="EXECUTA_attrs" parent="1" value="* OS + SERVICO&#xa;- Quantidade&#xa;- Preco_base&#xa;- Valor_cobrado&#xa;- Tempo_estimado_snapshot" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;" vertex="1">
+      <mxGeometry x="1555" y="295" width="200" height="85" as="geometry" />
+    </mxCell>
+    <mxCell id="CLIENTE_attrs" parent="1" value="* ID&#xa;- Nome&#xa;- CPF (único)&#xa;- Email&#xa;- Telefone&#xa;- Endereco&#xa;- Ativo" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;" vertex="1">
+      <mxGeometry x="265" y="585" width="150" height="115" as="geometry" />
+    </mxCell>
+    <mxCell id="VEICULO_attrs" parent="1" value="* ID&#xa;- Placa (único)&#xa;- Marca&#xa;- Modelo&#xa;- Cor&#xa;- Ano&#xa;- Quilometragem" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;" vertex="1">
+      <mxGeometry x="705" y="585" width="150" height="115" as="geometry" />
+    </mxCell>
+    <mxCell id="OS_attrs" parent="1" value="* ID&#xa;- Data_emissao&#xa;- Data_previsao_inicio&#xa;- Data_previsao_entrega&#xa;- Problema_relatado&#xa;- Status&#xa;- Valor_mao_de_obra&#xa;- Valor_pecas&#xa;- Valor_desconto&#xa;- Tempo_gasto_minutos&#xa;- Autorizado_por&#xa;- Meio_autorizacao&#xa;- Data_autorizacao&#xa;- Token_acompanhamento&#xa;- Valor_total (derivado)" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;" vertex="1">
+      <mxGeometry x="1145" y="598" width="175" height="235" as="geometry" />
+    </mxCell>
+    <mxCell id="VISTORIA_attrs" parent="1" value="* ID&#xa;- Status&#xa;- Nivel_combustivel&#xa;- Quilometragem_entrada&#xa;- Tem_estepe&#xa;- Tem_macaco&#xa;- Tem_radio&#xa;- Tem_triangulo&#xa;- Tem_chave_roda&#xa;- Avarias_json&#xa;- Observacoes&#xa;- Data_vistoria" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;" vertex="1">
+      <mxGeometry x="1735" y="455" width="180" height="190" as="geometry" />
+    </mxCell>
+    <mxCell id="CONTATO_attrs" parent="1" value="* ID&#xa;- Data_contato&#xa;- Tipo&#xa;- Descricao&#xa;- Registrado_por" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;" vertex="1">
+      <mxGeometry x="1575" y="645" width="150" height="85" as="geometry" />
+    </mxCell>
+    <mxCell id="CONFIG_attrs" parent="1" value="* ID&#xa;- Nome_fantasia&#xa;- Cnpj&#xa;- Telefone&#xa;- Whatsapp&#xa;- Email&#xa;- Endereco_completo&#xa;- Mensagem_rodape&#xa;- Validade_orcamento_dias&#xa;- Garantia_padrao_dias&#xa;- Obrigar_vistoria_para_os&#xa;- Simbolo_moeda&#xa;- Taxa_mao_de_obra" style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;" vertex="1">
+      <mxGeometry x="25" y="875" width="190" height="205" as="geometry" />
+    </mxCell>
+    <mxCell id="config_note" parent="1" value="Sem relacionamentos: registro único de parâmetros globais da oficina." style="text;html=0;whiteSpace=wrap;align=left;verticalAlign=top;strokeColor=none;fillColor=none;spacingLeft=4;fontSize=12;fontStyle=2;fontSize=11;" vertex="1">
+      <mxGeometry x="205" y="840" width="200" height="40" as="geometry" />
+    </mxCell>
+  </root>
+</mxGraphModel>
+  </diagram>
+</mxfile>

@@ -44,6 +44,12 @@ else
                         <i class="bi bi-file-earmark-check me-1"></i> Imprimir Vistoria
                     </a>
                 }
+                @if (os.Status == OrdemServicoStatus.Concluida)
+                {
+                    <a href="/imprimir/termo-garantia/@os.Id" target="_blank" class="btn btn-info text-white fw-bold">
+                        <i class="bi bi-shield-check me-1"></i> Termo de Garantia
+                    </a>
+                }
             </AuthorizeView>
         </div>
         <div class="d-flex gap-2">
