@@ -378,7 +378,7 @@
 
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();
 
-        var inicio = new DateTime(selectedYear, selectedMonth, 1);
+        var inicio = new DateTime(selectedYear, selectedMonth, 1, 0, 0, 0, DateTimeKind.Utc);
         var fim = inicio.AddMonths(1);
 
         // OS do período

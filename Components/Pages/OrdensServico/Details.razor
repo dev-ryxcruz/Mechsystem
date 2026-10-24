@@ -316,7 +316,7 @@ else
                                                     else { <i class="bi bi-chat text-info me-1"></i> }
                                                     @contato.Tipo
                                                 </h6>
-                                                <small class="text-muted">@contato.DataContato.ToString("dd/MM/yyyy HH:mm")</small>
+                                                <small class="text-muted">@contato.DataContato.ToBrasiliaTime().ToString("dd/MM/yyyy HH:mm")</small>
                                             </div>
                                             <p class="mb-1 text-dark" style="font-size: 0.9rem;">@contato.Descricao</p>
                                             <small class="text-muted" style="font-size: 0.75rem;">Por: @contato.RegistradoPor</small>
@@ -381,7 +381,7 @@ else
                 {
                     <div class="alert alert-success mt-3 mb-0 text-center">
                         <i class="bi bi-shield-check me-2"></i><strong>Orçamento Aprovado</strong><br />
-                        <span class="small">Autorizado por: @(os.AutorizadoPor ?? os.Veiculo?.Cliente?.Nome) no dia @(os.DataAutorizacao?.ToString("dd/MM/yyyy HH:mm")) via @(os.MeioAutorizacao)</span>
+                        <span class="small">Autorizado por: @(os.AutorizadoPor ?? os.Veiculo?.Cliente?.Nome) no dia @(os.DataAutorizacao.ToBrasiliaTime()?.ToString("dd/MM/yyyy HH:mm")) via @(os.MeioAutorizacao)</span>
                     </div>
                 }
             </div>
@@ -754,7 +754,7 @@ else
             Tipo = novoContatoTipo,
             Descricao = novoContatoDescricao,
             RegistradoPor = nomeUsuario,
-            DataContato = DateTime.Now
+            DataContato = DateTime.UtcNow
         };
 
         DbContext.ContatosOS.Add(contato);

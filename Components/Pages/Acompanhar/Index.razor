@@ -110,9 +110,10 @@
                     </div>
                     <div class="col-sm-6">
                         @{
-                            var diasAtraso = (DateTime.Now.Date - os.DataPrevisaoEntrega.Date).Days;
+                            var hojeBrasilia = DateTimeExtensions.TodayBrasilia();
+                            var diasAtraso = (hojeBrasilia - os.DataPrevisaoEntrega.Date).Days;
                             bool isAtrasado = diasAtraso > 0 && os.Status != OrdemServicoStatus.Concluida && os.Status != OrdemServicoStatus.Cancelada;
-                            var diasRestantes = (os.DataPrevisaoEntrega.Date - DateTime.Now.Date).Days;
+                            var diasRestantes = (os.DataPrevisaoEntrega.Date - hojeBrasilia).Days;
                         }
                         <div class="info-box @(isAtrasado ? "border-danger bg-danger bg-opacity-10" : "")">
                             <div class="info-icon @(isAtrasado ? "text-danger" : "text-primary")"><i class="bi bi-calendar-check"></i></div>

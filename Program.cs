@@ -8,8 +8,6 @@ using mechsystem.Services;
 using mechsystem.Endpoints;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
-AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
-
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))

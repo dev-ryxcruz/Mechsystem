@@ -152,7 +152,7 @@ namespace mechsystem.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("DataContato")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_contato");
 
                     b.Property<string>("Descricao")
@@ -192,7 +192,7 @@ namespace mechsystem.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("DataHora")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_hora");
 
                     b.Property<int>("PecaId")
@@ -242,23 +242,23 @@ namespace mechsystem.Migrations
                         .HasColumnName("autorizado_por");
 
                     b.Property<DateTime?>("DataAutorizacao")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_autorizacao");
 
                     b.Property<DateTime?>("DataConclusao")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_conclusao");
 
                     b.Property<DateTime>("DataEmissao")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_emissao");
 
                     b.Property<DateTime>("DataPrevisaoEntrega")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_previsao_entrega");
 
                     b.Property<DateTime?>("DataPrevisaoInicio")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_previsao_inicio");
 
                     b.Property<string>("DescricaoProblemaRelatado")
@@ -267,7 +267,7 @@ namespace mechsystem.Migrations
                         .HasColumnName("descricao_problema_relatado");
 
                     b.Property<DateTime?>("InicioUltimaExecucao")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("inicio_ultima_execucao");
 
                     b.Property<string>("MeioAutorizacao")
@@ -524,7 +524,7 @@ namespace mechsystem.Migrations
                         .HasColumnName("ativo");
 
                     b.Property<DateTime>("DataCriacao")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_criacao");
 
                     b.Property<string>("NomeCompleto")
@@ -636,7 +636,7 @@ namespace mechsystem.Migrations
                         .HasColumnName("avarias_json");
 
                     b.Property<DateTime>("DataVistoria")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_vistoria");
 
                     b.Property<int>("NivelCombustivel")

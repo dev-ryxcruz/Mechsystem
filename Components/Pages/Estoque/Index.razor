@@ -190,7 +190,7 @@
                             @foreach (var mov in historico)
                             {
                                 <tr>
-                                    <td><small>@mov.DataHora.ToLocalTime().ToString("dd/MM/yy HH:mm")</small></td>
+                                    <td><small>@mov.DataHora.ToBrasiliaTime().ToString("dd/MM/yy HH:mm")</small></td>
                                     <td>
                                         @switch(mov.Tipo)
                                         {

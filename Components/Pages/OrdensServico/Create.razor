@@ -374,8 +374,8 @@
     protected override async Task OnInitializedAsync()
     {
         os ??= new();
-        os.DataEmissao = DateTime.Today;
-        os.DataPrevisaoEntrega = DateTime.Today.AddDays(5); // Default 5 days delivery
+        os.DataEmissao = DateTime.UtcNow.Date;
+        os.DataPrevisaoEntrega = DateTime.UtcNow.Date.AddDays(5); // Default 5 days delivery
         
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();
         
@@ -403,6 +403,10 @@
         }
 
         os.Status = OrdemServicoStatus.Orcamento;
+        if (string.IsNullOrWhiteSpace(os.TokenAcompanhamento))
+        {
+            os.TokenAcompanhamento = Guid.NewGuid().ToString("N");
+        }
 
         DbContext.OrdensServico.Add(os);
         await DbContext.SaveChangesAsync();
@@ -471,7 +475,7 @@
 
             // Avançar para passo 2
             novoVeiculo.ClienteId = novoCliente.Id;
-            novoVeiculo.Ano = DateTime.Today.Year;
+            novoVeiculo.Ano = DateTime.UtcNow.Year;
             passoWizard = 2;
         }
         catch (Exception ex)

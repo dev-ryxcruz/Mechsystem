@@ -554,7 +554,8 @@
         
         if (os.Status == OrdemServicoStatus.EmAndamento && os.InicioUltimaExecucao.HasValue)
         {
-            totalMinutos += (int)Math.Round((DateTime.Now - os.InicioUltimaExecucao.Value).TotalMinutes);
+            var inicioUtc = DateTime.SpecifyKind(os.InicioUltimaExecucao.Value, DateTimeKind.Utc);
+            totalMinutos += (int)Math.Round((DateTime.UtcNow - inicioUtc).TotalMinutes);
         }
 
         if (totalMinutos < 0) return "--";
@@ -609,7 +610,7 @@
                     Tipo = TipoContato.Outro,
                     Descricao = $"[{reportarTipo}] {reportarDescricao}",
                     RegistradoPor = "Mecânico",
-                    DataContato = DateTime.Now
+                    DataContato = DateTime.UtcNow
                 };
                 DbContext.ContatosOS.Add(contato);
                 await DbContext.SaveChangesAsync();

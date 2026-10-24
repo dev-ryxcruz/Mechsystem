@@ -94,13 +94,13 @@ public class OrdemServicoService
             }
 
             os.Status = OrdemServicoStatus.EmAndamento;
-            os.DataAutorizacao = DateTime.Now;
+            os.DataAutorizacao = DateTime.UtcNow;
             os.AutorizadoPor = autorizadoPor;
             os.MeioAutorizacao = meioAutorizacao;
 
             if (!os.DataPrevisaoInicio.HasValue)
             {
-                os.DataPrevisaoInicio = DateTime.Today;
+                os.DataPrevisaoInicio = DateTime.UtcNow.Date;
             }
 
             await _db.SaveChangesAsync();
@@ -122,7 +122,7 @@ public class OrdemServicoService
         {
             if (!os.InicioUltimaExecucao.HasValue)
             {
-                os.InicioUltimaExecucao = DateTime.Now;
+                os.InicioUltimaExecucao = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
             }
             return;
@@ -131,7 +131,7 @@ public class OrdemServicoService
         ValidarTransicao(os.Status, OrdemServicoStatus.EmAndamento);
 
         os.Status = OrdemServicoStatus.EmAndamento;
-        os.InicioUltimaExecucao = DateTime.Now;
+        os.InicioUltimaExecucao = DateTime.UtcNow;
         await _db.SaveChangesAsync();
     }
 
@@ -371,7 +371,8 @@ public class OrdemServicoService
     {
         if (os.InicioUltimaExecucao.HasValue)
         {
-            var minutos = (int)Math.Round((DateTime.Now - os.InicioUltimaExecucao.Value).TotalMinutes);
+            var inicioUtc = DateTime.SpecifyKind(os.InicioUltimaExecucao.Value, DateTimeKind.Utc);
+            var minutos = (int)Math.Round((DateTime.UtcNow - inicioUtc).TotalMinutes);
             if (minutos > 0)
             {
                 os.TempoGastoMinutos += minutos;

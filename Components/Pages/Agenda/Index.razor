@@ -139,14 +139,14 @@
         carregando = true;
         StateHasChanged();
 
-        var inicio = new DateTime(anoSelecionado, mesSelecionado, 1);
-        var fim = inicio.AddMonths(1).AddDays(-1);
+        var inicio = new DateTime(anoSelecionado, mesSelecionado, 1, 0, 0, 0, DateTimeKind.Utc);
+        var fimExclusivo = inicio.AddMonths(1);
 
         // Buscar OS com previsão de entrega no mês
         var lista = await DbContext.OrdensServico
             .Include(o => o.Veiculo)
                 .ThenInclude(v => v!.Cliente)
-            .Where(o => o.DataPrevisaoEntrega.Date >= inicio && o.DataPrevisaoEntrega.Date <= fim)
+            .Where(o => o.DataPrevisaoEntrega >= inicio && o.DataPrevisaoEntrega < fimExclusivo)
             .OrderBy(o => o.DataPrevisaoEntrega)
             .ToListAsync();
 

@@ -14,7 +14,7 @@ namespace mechsystem.Models
         // Datas
         [Required]
         [Display(Name = "Data de Emissão")]
-        public DateTime DataEmissao { get; set; } = DateTime.Now;
+        public DateTime DataEmissao { get; set; } = DateTime.UtcNow;
 
         [Display(Name = "Previsão de Início")]
         public DateTime? DataPrevisaoInicio { get; set; }
@@ -138,7 +138,7 @@ namespace mechsystem.Models
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (DataPrevisaoEntrega < DataEmissao.Date)
+            if (DataPrevisaoEntrega.Date < DataEmissao.Date)
             {
                 yield return new ValidationResult(
                     "A data de previsão de entrega não pode ser anterior à data de emissão.",
@@ -146,5 +146,49 @@ namespace mechsystem.Models
                 );
             }
         }
+    }
+
+    public static class DateTimeExtensions
+    {
+        private static readonly TimeZoneInfo BrasiliaTimeZone = ObterTimeZoneBrasilia();
+
+        private static TimeZoneInfo ObterTimeZoneBrasilia()
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+            }
+            catch
+            {
+                try
+                {
+                    return TimeZoneInfo.FindSystemTimeZoneById("E. South America Standard Time");
+                }
+                catch
+                {
+                    return TimeZoneInfo.Local;
+                }
+            }
+        }
+
+        public static DateTime ToBrasiliaTime(this DateTime dateTime)
+        {
+            if (dateTime.Kind == DateTimeKind.Local)
+            {
+                return TimeZoneInfo.ConvertTime(dateTime, BrasiliaTimeZone);
+            }
+
+            var utc = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+            return TimeZoneInfo.ConvertTimeFromUtc(utc, BrasiliaTimeZone);
+        }
+
+        public static DateTime? ToBrasiliaTime(this DateTime? dateTime)
+        {
+            return dateTime.HasValue ? dateTime.Value.ToBrasiliaTime() : null;
+        }
+
+        public static DateTime NowBrasilia() => DateTime.UtcNow.ToBrasiliaTime();
+
+        public static DateTime TodayBrasilia() => DateTime.UtcNow.ToBrasiliaTime().Date;
     }
 }

@@ -219,7 +219,7 @@ else
                     <div>
                         <strong>ORÇAMENTO APROVADO</strong><br />
                         <span>Autorizado por: <strong>@(os.AutorizadoPor ?? os.Veiculo?.Cliente?.Nome)</strong></span><br />
-                        <span>Meio: @os.MeioAutorizacao · Data: @(os.DataAutorizacao?.ToString("dd/MM/yyyy HH:mm"))</span>
+                        <span>Meio: @os.MeioAutorizacao · Data: @(os.DataAutorizacao.ToBrasiliaTime()?.ToString("dd/MM/yyyy HH:mm"))</span>
                     </div>
                 </div>
             }
@@ -233,7 +233,7 @@ else
         else
         {
             <div class="doc-rodape">
-                @(config?.NomeFantasia ?? "Mechsystem") · @(config?.Telefone ?? "") · Documento gerado em @DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                @(config?.NomeFantasia ?? "Mechsystem") · @(config?.Telefone ?? "") · Documento gerado em @DateTimeExtensions.NowBrasilia().ToString("dd/MM/yyyy HH:mm")
             </div>
         }
 

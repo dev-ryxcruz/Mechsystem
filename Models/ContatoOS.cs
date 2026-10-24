@@ -10,7 +10,7 @@ namespace mechsystem.Models
         public OrdemServico? OrdemServico { get; set; }
         
         [Display(Name = "Data do Contato")]
-        public DateTime DataContato { get; set; } = DateTime.Now;
+        public DateTime DataContato { get; set; } = DateTime.UtcNow;
         
         [Required(ErrorMessage = "O tipo de contato é obrigatório.")]
         public TipoContato Tipo { get; set; }
