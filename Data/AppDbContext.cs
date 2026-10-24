@@ -34,6 +34,25 @@ namespace mechsystem.Data
                 );
 
             modelBuilder.Entity<Cliente>()
+                .HasIndex(c => c.Cpf)
+                .IsUnique();
+
+            modelBuilder.Entity<Veiculo>()
+                .Property(v => v.Placa)
+                .HasConversion(
+                    v => string.IsNullOrEmpty(v) ? v : v.Replace("-", "").Trim().ToUpperInvariant(),
+                    v => v
+                );
+
+            modelBuilder.Entity<Veiculo>()
+                .HasIndex(v => v.Placa)
+                .IsUnique();
+
+            modelBuilder.Entity<OrdemServico>()
+                .HasIndex(o => o.TokenAcompanhamento)
+                .IsUnique();
+
+            modelBuilder.Entity<Cliente>()
                 .Property(c => c.Telefone)
                 .HasConversion(
                     v => string.IsNullOrEmpty(v) ? v : new string(v.Where(char.IsDigit).ToArray()),

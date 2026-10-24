@@ -62,6 +62,10 @@ namespace mechsystem.Migrations
                     b.HasKey("Id")
                         .HasName("pk_clientes");
 
+                    b.HasIndex("Cpf")
+                        .IsUnique()
+                        .HasDatabaseName("ix_clientes_cpf");
+
                     b.ToTable("clientes", (string)null);
                 });
 
@@ -304,6 +308,10 @@ namespace mechsystem.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_ordens_servico");
+
+                    b.HasIndex("TokenAcompanhamento")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ordens_servico_token_acompanhamento");
 
                     b.HasIndex("VeiculoId")
                         .HasDatabaseName("ix_ordens_servico_veiculo_id");
@@ -606,6 +614,10 @@ namespace mechsystem.Migrations
 
                     b.HasIndex("ClienteId")
                         .HasDatabaseName("ix_veiculos_cliente_id");
+
+                    b.HasIndex("Placa")
+                        .IsUnique()
+                        .HasDatabaseName("ix_veiculos_placa");
 
                     b.ToTable("veiculos", (string)null);
                 });

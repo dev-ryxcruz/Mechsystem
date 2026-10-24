@@ -26,14 +26,35 @@ namespace mechsystem.Repositories
 
         public async Task Salvar(Cliente cliente)
         {
+            cliente.Cpf = NormalizarCpf(cliente.Cpf);
+
+            if (await _context.Clientes.IgnoreQueryFilters().AnyAsync(c => c.Cpf == cliente.Cpf))
+            {
+                throw new InvalidOperationException("Já existe um cliente cadastrado com este CPF.");
+            }
+
             _context.Clientes.Add(cliente);
             await _context.SaveChangesAsync();
         }
 
         public async Task Atualizar(Cliente cliente)
         {
+            cliente.Cpf = NormalizarCpf(cliente.Cpf);
+
+            if (await _context.Clientes.IgnoreQueryFilters().AnyAsync(c => c.Cpf == cliente.Cpf && c.Id != cliente.Id))
+            {
+                throw new InvalidOperationException("Já existe outro cliente cadastrado com este CPF.");
+            }
+
             _context.Clientes.Update(cliente);
             await _context.SaveChangesAsync();
+        }
+
+        private static string NormalizarCpf(string? cpf)
+        {
+            return string.IsNullOrEmpty(cpf)
+                ? string.Empty
+                : new string(cpf.Where(char.IsDigit).ToArray());
         }
 
         public async Task Deletar(int id)
