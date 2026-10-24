@@ -448,6 +448,12 @@ namespace mechsystem.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("sku");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_pecas");
 

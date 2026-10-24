@@ -49,6 +49,9 @@ namespace mechsystem.Models
 
         public bool Ativo { get; set; } = true;
 
+        [Timestamp]
+        public uint Version { get; set; }
+
         // Navigation
         public ICollection<MovimentacaoEstoque> Movimentacoes { get; set; } = new List<MovimentacaoEstoque>();
 

@@ -63,8 +63,9 @@ namespace mechsystem.Data
 
             modelBuilder.Entity<Usuario>().HasIndex(u => u.Username).IsUnique();
 
-            // Peca: SKU único
+            // Peca: SKU único e controle de concorrência otimista (PostgreSQL xmin)
             modelBuilder.Entity<Peca>().HasIndex(p => p.Sku).IsUnique();
+            modelBuilder.Entity<Peca>().Property(p => p.Version).IsRowVersion();
 
             // MovimentacaoEstoque: FKs
             modelBuilder.Entity<MovimentacaoEstoque>()

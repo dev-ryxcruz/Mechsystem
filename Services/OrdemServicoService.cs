@@ -59,43 +59,46 @@ public class OrdemServicoService
 
     public async Task AprovarOSAsync(int osId, string? autorizadoPor, string? meioAutorizacao, int usuarioId)
     {
-        var os = await _db.OrdensServico
-            .Include(o => o.Vistoria)
-            .Include(o => o.PecasUtilizadas)
-            .FirstOrDefaultAsync(o => o.Id == osId)
-            ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
-
-        if (os.Status != OrdemServicoStatus.Orcamento)
+        await ExecutarEmTransacaoAsync(async () =>
         {
-            throw new InvalidOperationException(
-                $"Apenas O.S. em Orçamento podem ser aprovadas (status atual: '{os.Status}').");
-        }
+            var os = await _db.OrdensServico
+                .Include(o => o.Vistoria)
+                .Include(o => o.PecasUtilizadas)
+                .FirstOrDefaultAsync(o => o.Id == osId)
+                ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
-        ValidarTransicao(os.Status, OrdemServicoStatus.EmAndamento);
+            if (os.Status != OrdemServicoStatus.Orcamento)
+            {
+                throw new InvalidOperationException(
+                    $"Apenas O.S. em Orçamento podem ser aprovadas (status atual: '{os.Status}').");
+            }
 
-        var config = await _db.Configuracoes.FirstOrDefaultAsync();
-        if (config != null && config.ObrigarVistoriaParaOS && os.Vistoria == null)
-        {
-            throw new InvalidOperationException(
-                "Para aprovar este orçamento, as configurações da Oficina exigem a realização da Vistoria de Entrada. Realize a Vistoria na O.S. primeiro.");
-        }
+            ValidarTransicao(os.Status, OrdemServicoStatus.EmAndamento);
 
-        os.Status = OrdemServicoStatus.EmAndamento;
-        os.DataAutorizacao = DateTime.Now;
-        os.AutorizadoPor = autorizadoPor;
-        os.MeioAutorizacao = meioAutorizacao;
+            var config = await _db.Configuracoes.FirstOrDefaultAsync();
+            if (config != null && config.ObrigarVistoriaParaOS && os.Vistoria == null)
+            {
+                throw new InvalidOperationException(
+                    "Para aprovar este orçamento, as configurações da Oficina exigem a realização da Vistoria de Entrada. Realize a Vistoria na O.S. primeiro.");
+            }
 
-        if (!os.DataPrevisaoInicio.HasValue)
-        {
-            os.DataPrevisaoInicio = DateTime.Today;
-        }
+            if (os.PecasUtilizadas.Any())
+            {
+                await _estoqueService.BaixarPecasDaOS(os.Id, usuarioId);
+            }
 
-        await _db.SaveChangesAsync();
+            os.Status = OrdemServicoStatus.EmAndamento;
+            os.DataAutorizacao = DateTime.Now;
+            os.AutorizadoPor = autorizadoPor;
+            os.MeioAutorizacao = meioAutorizacao;
 
-        if (os.PecasUtilizadas.Any())
-        {
-            await _estoqueService.BaixarPecasDaOS(os.Id, usuarioId);
-        }
+            if (!os.DataPrevisaoInicio.HasValue)
+            {
+                os.DataPrevisaoInicio = DateTime.Today;
+            }
+
+            await _db.SaveChangesAsync();
+        });
     }
 
     public async Task IniciarOuRetomarServicoAsync(int osId)
@@ -164,22 +167,25 @@ public class OrdemServicoService
 
     public async Task CancelarOSAsync(int osId, int usuarioId)
     {
-        var os = await _db.OrdensServico
-            .Include(o => o.PecasUtilizadas)
-            .FirstOrDefaultAsync(o => o.Id == osId)
-            ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
-
-        var statusAnterior = os.Status;
-        ValidarTransicao(statusAnterior, OrdemServicoStatus.Cancelada);
-
-        if (EstaComEstoqueBaixado(statusAnterior) && os.PecasUtilizadas.Any())
+        await ExecutarEmTransacaoAsync(async () =>
         {
-            await _estoqueService.EstornarPecasDaOS(os.Id, usuarioId);
-        }
+            var os = await _db.OrdensServico
+                .Include(o => o.PecasUtilizadas)
+                .FirstOrDefaultAsync(o => o.Id == osId)
+                ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
-        AcumularTempoExecucao(os);
-        os.Status = OrdemServicoStatus.Cancelada;
-        await _db.SaveChangesAsync();
+            var statusAnterior = os.Status;
+            ValidarTransicao(statusAnterior, OrdemServicoStatus.Cancelada);
+
+            if (EstaComEstoqueBaixado(statusAnterior) && os.PecasUtilizadas.Any())
+            {
+                await _estoqueService.EstornarPecasDaOS(os.Id, usuarioId);
+            }
+
+            AcumularTempoExecucao(os);
+            os.Status = OrdemServicoStatus.Cancelada;
+            await _db.SaveChangesAsync();
+        });
     }
 
     public static bool EstaComEstoqueBaixado(OrdemServicoStatus status)
@@ -196,79 +202,125 @@ public class OrdemServicoService
             throw new InvalidOperationException("A quantidade deve ser maior que zero.");
         }
 
-        var os = await _db.OrdensServico
-            .Include(o => o.PecasUtilizadas)
-            .FirstOrDefaultAsync(o => o.Id == osId)
-            ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
-
-        if (os.Status == OrdemServicoStatus.Concluida || os.Status == OrdemServicoStatus.Cancelada)
+        await ExecutarEmTransacaoAsync(async () =>
         {
-            throw new InvalidOperationException($"Não é permitido adicionar peças a uma O.S. com status '{os.Status}'.");
-        }
+            var os = await _db.OrdensServico
+                .Include(o => o.PecasUtilizadas)
+                .FirstOrDefaultAsync(o => o.Id == osId)
+                ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
-        var peca = await _db.Pecas.FindAsync(pecaId)
-            ?? throw new InvalidOperationException("Peça não encontrada.");
-
-        decimal cobrado = valorCobrado ?? peca.PrecoVenda;
-
-        if (EstaComEstoqueBaixado(os.Status))
-        {
-            await _estoqueService.BaixarPecaIndividualDaOSAsync(os.Id, peca.Id, quantidade, usuarioId);
-        }
-
-        var existente = os.PecasUtilizadas.FirstOrDefault(p => p.PecaId == pecaId);
-        if (existente != null)
-        {
-            existente.Quantidade += quantidade;
-            if (valorCobrado.HasValue)
+            if (os.Status == OrdemServicoStatus.Concluida || os.Status == OrdemServicoStatus.Cancelada)
             {
-                existente.ValorCobrado = valorCobrado.Value;
+                throw new InvalidOperationException($"Não é permitido adicionar peças a uma O.S. com status '{os.Status}'.");
             }
-        }
-        else
-        {
-            var osPeca = new OrdemServicoPeca
-            {
-                OrdemServicoId = os.Id,
-                PecaId = peca.Id,
-                Quantidade = quantidade,
-                PrecoBase = peca.PrecoVenda,
-                ValorCobrado = cobrado,
-                PrecoCustoSnapshot = peca.PrecoCusto
-            };
-            _db.OrdemServicoPecas.Add(osPeca);
-            os.PecasUtilizadas.Add(osPeca);
-        }
 
-        os.ValorPecas = os.PecasUtilizadas.Sum(p => p.Subtotal);
-        await _db.SaveChangesAsync();
+            var peca = await _db.Pecas.FindAsync(pecaId)
+                ?? throw new InvalidOperationException("Peça não encontrada.");
+
+            decimal cobrado = valorCobrado ?? peca.PrecoVenda;
+
+            if (EstaComEstoqueBaixado(os.Status))
+            {
+                await _estoqueService.BaixarPecaIndividualDaOSAsync(os.Id, peca.Id, quantidade, usuarioId);
+            }
+
+            var existente = os.PecasUtilizadas.FirstOrDefault(p => p.PecaId == pecaId);
+            if (existente != null)
+            {
+                existente.Quantidade += quantidade;
+                if (valorCobrado.HasValue)
+                {
+                    existente.ValorCobrado = valorCobrado.Value;
+                }
+            }
+            else
+            {
+                var osPeca = new OrdemServicoPeca
+                {
+                    OrdemServicoId = os.Id,
+                    PecaId = peca.Id,
+                    Quantidade = quantidade,
+                    PrecoBase = peca.PrecoVenda,
+                    ValorCobrado = cobrado,
+                    PrecoCustoSnapshot = peca.PrecoCusto
+                };
+                _db.OrdemServicoPecas.Add(osPeca);
+                os.PecasUtilizadas.Add(osPeca);
+            }
+
+            os.ValorPecas = os.PecasUtilizadas.Sum(p => p.Subtotal);
+            await _db.SaveChangesAsync();
+        });
     }
 
     public async Task RemoverPecaAsync(int osId, int osPecaId, int usuarioId)
     {
-        var os = await _db.OrdensServico
-            .Include(o => o.PecasUtilizadas)
-            .FirstOrDefaultAsync(o => o.Id == osId)
-            ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
-
-        if (os.Status == OrdemServicoStatus.Concluida || os.Status == OrdemServicoStatus.Cancelada)
+        await ExecutarEmTransacaoAsync(async () =>
         {
-            throw new InvalidOperationException($"Não é permitido remover peças de uma O.S. com status '{os.Status}'.");
-        }
+            var os = await _db.OrdensServico
+                .Include(o => o.PecasUtilizadas)
+                .FirstOrDefaultAsync(o => o.Id == osId)
+                ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
-        var item = os.PecasUtilizadas.FirstOrDefault(p => p.Id == osPecaId)
-            ?? throw new InvalidOperationException("Peça vinculada não encontrada nesta O.S.");
+            if (os.Status == OrdemServicoStatus.Concluida || os.Status == OrdemServicoStatus.Cancelada)
+            {
+                throw new InvalidOperationException($"Não é permitido remover peças de uma O.S. com status '{os.Status}'.");
+            }
 
-        if (EstaComEstoqueBaixado(os.Status))
+            var item = os.PecasUtilizadas.FirstOrDefault(p => p.Id == osPecaId)
+                ?? throw new InvalidOperationException("Peça vinculada não encontrada nesta O.S.");
+
+            if (EstaComEstoqueBaixado(os.Status))
+            {
+                await _estoqueService.EstornarPecaIndividualDaOSAsync(os.Id, item.PecaId, item.Quantidade, usuarioId);
+            }
+
+            os.PecasUtilizadas.Remove(item);
+            _db.OrdemServicoPecas.Remove(item);
+
+            os.ValorPecas = os.PecasUtilizadas.Any() ? os.PecasUtilizadas.Sum(p => p.Subtotal) : 0;
+            await _db.SaveChangesAsync();
+        });
+    }
+
+    private async Task ExecutarEmTransacaoAsync(Func<Task> acao)
+    {
+        var possuiTransacaoExterna = _db.Database.CurrentTransaction != null;
+        var eRelacional = _db.Database.IsRelational();
+        await using var transacao = (!possuiTransacaoExterna && eRelacional)
+            ? await _db.Database.BeginTransactionAsync()
+            : null;
+
+        try
         {
-            await _estoqueService.EstornarPecaIndividualDaOSAsync(os.Id, item.PecaId, item.Quantidade, usuarioId);
+            await acao();
+
+            if (transacao != null)
+            {
+                await transacao.CommitAsync();
+            }
         }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            if (transacao != null)
+            {
+                await transacao.RollbackAsync();
+            }
+            _db.ChangeTracker.Clear();
 
-        os.PecasUtilizadas.Remove(item);
-        _db.OrdemServicoPecas.Remove(item);
-
-        os.ValorPecas = os.PecasUtilizadas.Any() ? os.PecasUtilizadas.Sum(p => p.Subtotal) : 0;
-        await _db.SaveChangesAsync();
+            throw new InvalidOperationException(
+                "Conflito de concorrência: o estoque ou a O.S. foi alterada simultaneamente por outro usuário. Atualize a página e tente novamente.",
+                ex);
+        }
+        catch
+        {
+            if (transacao != null)
+            {
+                await transacao.RollbackAsync();
+            }
+            _db.ChangeTracker.Clear();
+            throw;
+        }
     }
 
     private static void AcumularTempoExecucao(OrdemServico os)
