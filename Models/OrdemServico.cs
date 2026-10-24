@@ -191,4 +191,27 @@ namespace mechsystem.Models
 
         public static DateTime TodayBrasilia() => DateTime.UtcNow.ToBrasiliaTime().Date;
     }
+
+    public static class DomainErrorHelper
+    {
+        public static string ObterMensagemSegura(
+            Exception ex,
+            Microsoft.Extensions.Logging.ILogger? logger,
+            string mensagemPadrao = "Ocorreu um erro interno ao processar a solicitação. Tente novamente.")
+        {
+            if (ex is InvalidOperationException || ex is UnauthorizedAccessException || ex is ArgumentException)
+            {
+                return ex.Message;
+            }
+
+            if (ex is Microsoft.EntityFrameworkCore.DbUpdateException dbEx &&
+                dbEx.InnerException?.Message.Contains("ix_pecas_sku", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return "Já existe uma peça cadastrada com este código SKU.";
+            }
+
+            logger?.LogError(ex, "Erro inesperado: {MensagemPadrao}", mensagemPadrao);
+            return mensagemPadrao;
+        }
+    }
 }

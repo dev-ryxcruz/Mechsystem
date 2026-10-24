@@ -480,7 +480,7 @@
         }
         catch (Exception ex)
         {
-            erroWizard = $"Erro ao salvar cliente: {ex.Message}";
+            erroWizard = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível salvar o cliente. Verifique os dados informados.");
         }
         finally
         {
@@ -514,11 +514,13 @@
         }
         catch (Exception ex)
         {
-            erroWizard = $"Erro ao salvar veículo: {ex.Message}";
+            erroWizard = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível salvar o veículo. Verifique os dados informados.");
         }
         finally
         {
             salvandoWizard = false;
         }
     }
+
+    [Inject] private ILogger<Create> Logger { get; set; } = default!;
 }

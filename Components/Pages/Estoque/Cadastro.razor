@@ -180,8 +180,10 @@
         }
         catch (Exception ex)
         {
-            erroMensagem = ex.InnerException?.Message ?? ex.Message;
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível salvar a peça no estoque.");
         }
     }
+
+    [Inject] private ILogger<Cadastro> Logger { get; set; } = default!;
 }
 

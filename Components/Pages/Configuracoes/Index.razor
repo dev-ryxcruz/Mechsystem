@@ -271,6 +271,8 @@ else
 }
 
 @code {
+    [Inject] private ILogger<Index> Logger { get; set; } = default!;
+
     private Configuracao? config;
     private bool isLoading = true;
     private bool isSaving = false;
@@ -287,7 +289,7 @@ else
         catch (Exception ex)
         {
             errorMessage = "Erro ao carregar configurações.";
-            Console.WriteLine(ex);
+            Logger.LogError(ex, "Erro ao carregar configurações do sistema.");
         }
         finally
         {
@@ -313,7 +315,7 @@ else
         catch (Exception ex)
         {
             errorMessage = "Erro ao salvar as configurações. Tente novamente.";
-            Console.WriteLine(ex);
+            Logger.LogError(ex, "Erro ao salvar configurações do sistema.");
         }
         finally
         {

@@ -90,7 +90,9 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Erro ao salvar o serviço: {ex.Message}";
+            errorMessage = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível salvar o serviço. Tente novamente.");
         }
     }
+
+    [Inject] private ILogger<Cadastro> Logger { get; set; } = default!;
 }

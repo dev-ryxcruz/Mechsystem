@@ -223,7 +223,9 @@
         }
         catch (Exception ex)
         {
-            erroMensagem = ex.Message;
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível registrar o ajuste de estoque.");
         }
     }
+
+    [Inject] private ILogger<Ajuste> Logger { get; set; } = default!;
 }

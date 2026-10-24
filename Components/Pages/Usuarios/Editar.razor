@@ -223,7 +223,7 @@ else
         catch (Exception ex)
         {
             errorMessage = "Erro ao atualizar o usuário.";
-            Console.WriteLine(ex);
+            Logger.LogError(ex, "Erro ao atualizar usuário Id={UsuarioId}.", Id);
         }
         finally
         {
@@ -247,13 +247,16 @@ else
         {
             errorMessage = ex.Message;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             errorMessage = "Não foi possível redefinir a senha. Tente novamente.";
+            Logger.LogError(ex, "Erro ao redefinir senha do usuário Id={UsuarioId}.", Id);
         }
         finally
         {
             isSubmittingPassword = false;
         }
     }
+
+    [Inject] private ILogger<Editar> Logger { get; set; } = default!;
 }

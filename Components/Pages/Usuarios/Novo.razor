@@ -154,11 +154,13 @@
         catch (Exception ex)
         {
             errorMessage = "Ocorreu um erro ao salvar o usuário. Tente novamente.";
-            Console.WriteLine(ex);
+            Logger.LogError(ex, "Erro ao criar novo usuário {Username}.", model.Username);
         }
         finally
         {
             isSubmitting = false;
         }
     }
+
+    [Inject] private ILogger<Novo> Logger { get; set; } = default!;
 }

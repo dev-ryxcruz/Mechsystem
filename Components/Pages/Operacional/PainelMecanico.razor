@@ -503,6 +503,8 @@
         </div>
     };
 
+    [Inject] private ILogger<PainelMecanico> Logger { get; set; } = default!;
+
     private async Task IniciarServico(int id)
     {
         try
@@ -514,7 +516,7 @@
         }
         catch (Exception ex)
         {
-            erroOperacional = ex.Message;
+            erroOperacional = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível iniciar ou retomar o serviço.");
         }
     }
 
@@ -529,7 +531,7 @@
         }
         catch (Exception ex)
         {
-            erroOperacional = ex.Message;
+            erroOperacional = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível pausar o serviço.");
         }
     }
 
@@ -544,7 +546,7 @@
         }
         catch (Exception ex)
         {
-            erroOperacional = ex.Message;
+            erroOperacional = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível concluir o serviço.");
         }
     }
 
@@ -625,7 +627,7 @@
             }
             catch (Exception ex)
             {
-                erroOperacional = ex.Message;
+                erroOperacional = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível registrar o reporte na O.S.");
             }
         }
     }
@@ -695,7 +697,7 @@
         }
         catch (Exception ex)
         {
-            pecaMensagem = ex.Message;
+            pecaMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível requisitar a peça para a O.S.");
             pecaMensagemSucesso = false;
         }
     }
