@@ -789,15 +789,16 @@
         // 2. Faturamento e Ticket Médio (OS Concluídas no período)
         var queryConc = DbContext.OrdensServico
             .Include(o => o.PecasUtilizadas)
+            .Include(o => o.ServicosAExecutarList)
             .Where(o => o.Status == OrdemServicoStatus.Concluida);
-        if (filtroInicio != null) queryConc = queryConc.Where(o => o.DataAutorizacao >= filtroInicio);
-        if (filtroFim != null) queryConc = queryConc.Where(o => o.DataAutorizacao < filtroFim);
+        if (filtroInicio != null) queryConc = queryConc.Where(o => o.DataConclusao >= filtroInicio);
+        if (filtroFim != null) queryConc = queryConc.Where(o => o.DataConclusao < filtroFim);
         var osConcluidas = await queryConc.ToListAsync();
             
         totalOSConcluidasMes = osConcluidas.Count;
-        faturamentoMaoDeObra = osConcluidas.Sum(o => o.ValorMaoDeObra);
+        faturamentoMaoDeObra = osConcluidas.Sum(o => o.ValorMaoDeObraEfetivo);
         faturamentoPecas = osConcluidas.Sum(o => o.ValorPecasEfetivo);
-        faturamentoMes = faturamentoMaoDeObra + faturamentoPecas;
+        faturamentoMes = osConcluidas.Sum(o => o.ValorTotal);
         ticketMedio = totalOSConcluidasMes > 0 ? faturamentoMes / totalOSConcluidasMes : 0;
 
         // 3. Previsão de Caixa (Em Andamento — sempre real-time)

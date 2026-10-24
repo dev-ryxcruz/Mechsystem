@@ -241,6 +241,10 @@ namespace mechsystem.Migrations
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("data_autorizacao");
 
+                    b.Property<DateTime?>("DataConclusao")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("data_conclusao");
+
                     b.Property<DateTime>("DataEmissao")
                         .HasColumnType("timestamp without time zone")
                         .HasColumnName("data_emissao");

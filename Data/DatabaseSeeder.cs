@@ -123,6 +123,7 @@ public static class DatabaseSeeder
             DataPrevisaoInicio = agora.AddDays(-5),
             DataPrevisaoEntrega = agora.AddDays(-4),
             DataAutorizacao = agora.AddDays(-5).AddHours(1),
+            DataConclusao = agora.AddDays(-4),
             AutorizadoPor = cliente1.Nome,
             MeioAutorizacao = "Assinatura Presencial",
             DescricaoProblemaRelatado = "Revisão periódica de 60.000 km e barulho ao frear.",

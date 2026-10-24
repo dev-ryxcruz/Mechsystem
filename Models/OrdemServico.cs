@@ -117,6 +117,9 @@ namespace mechsystem.Models
         [Display(Name = "Data da Autorização")]
         public DateTime? DataAutorizacao { get; set; }
 
+        [Display(Name = "Data da Conclusão")]
+        public DateTime? DataConclusao { get; set; }
+
         [Display(Name = "Validade do Orçamento")]
         public DateTime GetValidadeOrcamento(int validadeDias) => DataEmissao.AddDays(validadeDias);
 

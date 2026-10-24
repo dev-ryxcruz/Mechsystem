@@ -168,6 +168,7 @@ public class OrdemServicoService
 
         AcumularTempoExecucao(os);
         os.Status = OrdemServicoStatus.Concluida;
+        os.DataConclusao = DateTime.UtcNow;
         await _db.SaveChangesAsync();
     }
 

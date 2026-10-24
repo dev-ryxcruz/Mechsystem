@@ -117,8 +117,8 @@ namespace mechsystem.Services
                 .Include(op => op.OrdemServico)
                 .Where(op => op.OrdemServico != null
                     && op.OrdemServico.Status == OrdemServicoStatus.Concluida
-                    && op.OrdemServico.DataAutorizacao >= inicio
-                    && op.OrdemServico.DataAutorizacao <= fim)
+                    && op.OrdemServico.DataConclusao >= inicio
+                    && op.OrdemServico.DataConclusao < fim)
                 .ToListAsync();
 
             var receitaPecas = pecasOS.Sum(op => op.Quantidade * op.ValorCobrado);
