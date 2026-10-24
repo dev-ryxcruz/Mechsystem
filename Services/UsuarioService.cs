@@ -35,8 +35,45 @@ public class UsuarioService
         return await query.AnyAsync();
     }
 
+    private static readonly HashSet<string> SenhasFracasProibidas = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "admin123",
+        "12345678",
+        "123456789",
+        "password",
+        "password123",
+        "senha123",
+        "qwerty123",
+        "11111111",
+        "00000000",
+        "mechsystem"
+    };
+
+    public static void ValidarPoliticaSenha(string password, string? username = null)
+    {
+        if (string.IsNullOrWhiteSpace(password) || password.Trim().Length < 8)
+        {
+            throw new InvalidOperationException("A senha deve conter pelo menos 8 caracteres.");
+        }
+
+        var senhaLimpa = password.Trim();
+
+        if (!string.IsNullOrWhiteSpace(username) &&
+            string.Equals(senhaLimpa, username.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("A senha não pode ser igual ao nome de usuário.");
+        }
+
+        if (SenhasFracasProibidas.Contains(senhaLimpa))
+        {
+            throw new InvalidOperationException("A senha informada é muito fraca ou comum. Escolha uma senha mais segura.");
+        }
+    }
+
     public async Task CreateUsuarioAsync(Usuario usuario, string password)
     {
+        ValidarPoliticaSenha(password, usuario.Username);
+
         usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
         usuario.DataCriacao = DateTime.UtcNow;
 
@@ -52,12 +89,13 @@ public class UsuarioService
 
     public async Task UpdatePasswordAsync(int userId, string newPassword)
     {
-        var user = await _context.Usuarios.FindAsync(userId);
-        if (user != null)
-        {
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
-            _context.Usuarios.Update(user);
-            await _context.SaveChangesAsync();
-        }
+        var user = await _context.Usuarios.FindAsync(userId)
+            ?? throw new InvalidOperationException("Usuário não encontrado.");
+
+        ValidarPoliticaSenha(newPassword, user.Username);
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        _context.Usuarios.Update(user);
+        await _context.SaveChangesAsync();
     }
 }

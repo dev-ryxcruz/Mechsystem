@@ -108,7 +108,7 @@
         public string Username { get; set; } = "";
 
         [Required(ErrorMessage = "A Senha é obrigatória")]
-        [MinLength(6, ErrorMessage = "A Senha deve ter pelo menos 6 caracteres")]
+        [MinLength(8, ErrorMessage = "A Senha deve ter pelo menos 8 caracteres")]
         public string Password { get; set; } = "";
 
         [Required(ErrorMessage = "A Confirmação de Senha é obrigatória")]
@@ -128,6 +128,8 @@
 
         try
         {
+            UsuarioService.ValidarPoliticaSenha(model.Password, model.Username);
+
             if (await UsuarioService.IsUsernameTakenAsync(model.Username))
             {
                 errorMessage = "Este nome de usuário já está em uso. Por favor, escolha outro.";
@@ -144,6 +146,10 @@
 
             await UsuarioService.CreateUsuarioAsync(novoUsuario, model.Password);
             NavigationManager.NavigateTo("/usuarios");
+        }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
         }
         catch (Exception ex)
         {

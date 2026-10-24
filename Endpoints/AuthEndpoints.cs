@@ -48,7 +48,7 @@ namespace mechsystem.Endpoints
                     });
 
                 return Results.Redirect("/");
-            }).AllowAnonymous();
+            }).AllowAnonymous().RequireRateLimiting("login");
 
             app.MapPost("/api/auth/logout", async (HttpContext context) =>
             {
