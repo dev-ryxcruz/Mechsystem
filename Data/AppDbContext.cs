@@ -135,16 +135,6 @@ namespace mechsystem.Data
                 .WithMany()
                 .HasForeignKey(os => os.ServicoId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            modelBuilder.Entity<Usuario>().HasData(new Usuario
-            {
-                Id = 1,
-                Username = "admin",
-                PasswordHash = "$2a$11$uegyC1YafmGAkp2uMJmfje/iz6TbLTTiqJgps2rWvCNQFzymrQTza",
-                NomeCompleto = "Administrador",
-                Ativo = true,
-                DataCriacao = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            });
         }
     }
 

@@ -79,28 +79,50 @@ app.MapRazorComponents<App>()
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
+    var startupLogger = loggerFactory.CreateLogger("AdminBootstrap");
+
     await db.Database.MigrateAsync();
 
     var resetAdmin = args.Contains("--reset-admin");
     var admin = await db.Usuarios.FirstOrDefaultAsync(u => u.Username == "admin");
+    var configuredAdminPassword = builder.Configuration["Admin:InitialPassword"];
+
+    static string GerarSenhaForteAleatoria()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
+        return System.Security.Cryptography.RandomNumberGenerator.GetString(chars, 16);
+    }
 
     if (admin == null)
     {
-        // Create default admin
+        var senhaInicial = !string.IsNullOrWhiteSpace(configuredAdminPassword)
+            ? configuredAdminPassword
+            : GerarSenhaForteAleatoria();
+
         db.Usuarios.Add(new mechsystem.Models.Usuario
         {
             Username = "admin",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(senhaInicial),
             NomeCompleto = "Administrador",
             Ativo = true,
-            Perfil = mechsystem.Models.PerfilUsuario.Administrador
+            Perfil = mechsystem.Models.PerfilUsuario.Administrador,
+            DataCriacao = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
-        Console.WriteLine(">>> Usuário admin criado. Senha: admin123");
+
+        if (string.IsNullOrWhiteSpace(configuredAdminPassword))
+        {
+            startupLogger.LogWarning("Usuário 'admin' criado no primeiro boot. Senha temporária gerada automaticamente (altere imediatamente): {SenhaInicial}", senhaInicial);
+        }
+        else
+        {
+            startupLogger.LogInformation("Usuário 'admin' criado utilizando a configuração Admin:InitialPassword.");
+        }
     }
     else
     {
-        // Força que o admin original sempre tenha Perfil Administrador pós-migração
+        // Garante que o admin original sempre tenha Perfil Administrador
         var mudou = false;
         if (admin.Perfil != mechsystem.Models.PerfilUsuario.Administrador)
         {
@@ -108,12 +130,28 @@ using (var scope = app.Services.CreateScope())
             mudou = true;
         }
 
-        if (resetAdmin)
+        // Se o admin veio da migration histórica inicial (hash legado), rotaciona a senha no primeiro boot
+        const string legacySeedHashPrefix = "$2a$11$uegyC1YafmGAkp2uMJmfje/";
+        var possuiHashLegado = admin.PasswordHash != null && admin.PasswordHash.StartsWith(legacySeedHashPrefix, StringComparison.Ordinal);
+
+        if (resetAdmin || possuiHashLegado)
         {
-            admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123");
+            var novaSenha = !string.IsNullOrWhiteSpace(configuredAdminPassword)
+                ? configuredAdminPassword
+                : GerarSenhaForteAleatoria();
+
+            admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(novaSenha);
             admin.Ativo = true;
             mudou = true;
-            Console.WriteLine(">>> Senha do admin resetada para: admin123");
+
+            if (string.IsNullOrWhiteSpace(configuredAdminPassword))
+            {
+                startupLogger.LogWarning("Senha inicial/temporária do usuário 'admin' gerada (altere imediatamente): {NovaSenha}", novaSenha);
+            }
+            else
+            {
+                startupLogger.LogInformation("Senha do usuário 'admin' definida utilizando Admin:InitialPassword.");
+            }
         }
 
         if (mudou)
@@ -125,8 +163,8 @@ using (var scope = app.Services.CreateScope())
     // Popula dados de demonstração apenas se solicitado via flag --seed-demo
     if (args.Contains("--seed-demo"))
     {
-        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseSeeder");
-        await mechsystem.Data.DatabaseSeeder.SeedAsync(db, logger);
+        var seederLogger = loggerFactory.CreateLogger("DatabaseSeeder");
+        await mechsystem.Data.DatabaseSeeder.SeedAsync(db, seederLogger);
     }
 }
 
