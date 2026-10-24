@@ -39,7 +39,7 @@ namespace mechsystem.Services
 
         /// <summary>
         /// Estorno automático quando a OS é Cancelada.
-        /// Devolve ao estoque todas as peças que foram baixadas.
+        /// Devolve ao estoque o saldo líquido de peças que estavam alocadas na OS.
         /// </summary>
         public async Task EstornarPecasDaOS(int ordemServicoId, int usuarioId)
         {
@@ -57,6 +57,33 @@ namespace mechsystem.Services
                     usuarioId
                 );
             }
+        }
+
+        /// <summary>
+        /// Baixa imediata ao adicionar peça em uma OS já aprovada.
+        /// </summary>
+        public async Task BaixarPecaIndividualDaOSAsync(int ordemServicoId, int pecaId, int quantidade, int usuarioId)
+        {
+            await _pecaRepo.RegistrarSaidaAsync(
+                pecaId,
+                quantidade,
+                $"Adição de peça na OS #{ordemServicoId.ToString("D4")}",
+                usuarioId
+            );
+        }
+
+        /// <summary>
+        /// Estorno imediato ao remover peça de uma OS já aprovada.
+        /// </summary>
+        public async Task EstornarPecaIndividualDaOSAsync(int ordemServicoId, int pecaId, int quantidade, int usuarioId)
+        {
+            await _pecaRepo.RegistrarEntradaAsync(
+                pecaId,
+                quantidade,
+                null,
+                $"[ESTORNO] Remoção de peça da OS #{ordemServicoId.ToString("D4")}",
+                usuarioId
+            );
         }
 
         /// <summary>

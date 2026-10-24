@@ -156,7 +156,7 @@ else
                 <h5 class="fw-bold mb-0">
                     <i class="bi bi-box-seam me-2"></i>Peças Utilizadas
                 </h5>
-                @if (os.Status == OrdemServicoStatus.Orcamento || os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.AguardandoPecas)
+                @if (os.Status == OrdemServicoStatus.Orcamento || OrdemServicoService.EstaComEstoqueBaixado(os.Status))
                 {
                     <AuthorizeView Roles="Administrador, Atendimento">
                         <Authorized>
@@ -180,7 +180,7 @@ else
                                 <th class="text-end">Preço Base</th>
                                 <th class="text-end">Valor Cobrado</th>
                                 <th class="text-end">Subtotal</th>
-                                @if (os.Status == OrdemServicoStatus.Orcamento || os.Status == OrdemServicoStatus.EmAndamento)
+                                @if (os.Status == OrdemServicoStatus.Orcamento || OrdemServicoService.EstaComEstoqueBaixado(os.Status))
                                 {
                                     <th class="text-center d-print-none" style="width: 60px;">Ação</th>
                                 }
@@ -202,7 +202,7 @@ else
                                     <td class="text-end text-muted">@item.PrecoBase.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
                                     <td class="text-end @(item.TemDescontoAbaixoDoMinimo ? "text-danger fw-bold" : "")">@item.ValorCobrado.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
                                     <td class="text-end fw-bold">@item.Subtotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
-                                    @if (os.Status == OrdemServicoStatus.Orcamento || os.Status == OrdemServicoStatus.EmAndamento)
+                                    @if (os.Status == OrdemServicoStatus.Orcamento || OrdemServicoService.EstaComEstoqueBaixado(os.Status))
                                     {
                                         <td class="text-center d-print-none">
                                             <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoverPecaOS(item.Id)" title="Remover">
@@ -945,41 +945,9 @@ else
         try
         {
             erroPeca = null;
-            var peca = await PecaRepository.GetByIdAsync(pecaSelecionadaId);
-            if (peca == null) { erroPeca = "Peça não encontrada."; return; }
-
-            // Verificar se já existe essa peça na OS
-            var existente = os.PecasUtilizadas?.FirstOrDefault(p => p.PecaId == pecaSelecionadaId);
-            if (existente != null)
-            {
-                existente.Quantidade += qtdPecaAdicionar;
-            }
-            else
-            {
-                var osPeca = new OrdemServicoPeca
-                {
-                    OrdemServicoId = os.Id,
-                    PecaId = peca.Id,
-                    Quantidade = qtdPecaAdicionar,
-                    PrecoBase = peca.PrecoVenda,
-                    ValorCobrado = valorCobradoModal,
-                    PrecoCustoSnapshot = peca.PrecoCusto
-                };
-                DbContext.OrdemServicoPecas.Add(osPeca);
-            }
-
-            await DbContext.SaveChangesAsync();
-
-            // Reload para obter os dados frescos e recalcular
+            var usuarioId = await GetUsuarioIdAtual();
+            await OrdemServicoService.AdicionarPecaAsync(os.Id, pecaSelecionadaId, qtdPecaAdicionar, valorCobradoModal, usuarioId);
             await LoadData();
-
-            // Sincronizar ValorPecas manual com a soma calculada (graceful degradation)
-            if (os != null && os.PecasUtilizadas != null && os.PecasUtilizadas.Any())
-            {
-                os.ValorPecas = os.PecasUtilizadas.Sum(p => p.Subtotal);
-                await DbContext.SaveChangesAsync();
-            }
-
             mostrarModalPeca = false;
         }
         catch (Exception ex)
@@ -992,19 +960,16 @@ else
     {
         if (os == null) return;
 
-        var item = await DbContext.OrdemServicoPecas.FindAsync(osPecaId);
-        if (item != null)
+        try
         {
-            DbContext.OrdemServicoPecas.Remove(item);
-            await DbContext.SaveChangesAsync();
-
-            // Reload e recalcular
+            erroMensagem = null;
+            var usuarioId = await GetUsuarioIdAtual();
+            await OrdemServicoService.RemoverPecaAsync(os.Id, osPecaId, usuarioId);
             await LoadData();
-            if (os != null)
-            {
-                os.ValorPecas = os.PecasUtilizadas?.Any() == true ? os.PecasUtilizadas.Sum(p => p.Subtotal) : 0;
-                await DbContext.SaveChangesAsync();
-            }
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = ex.Message;
         }
     }
 

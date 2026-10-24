@@ -172,13 +172,102 @@ public class OrdemServicoService
         var statusAnterior = os.Status;
         ValidarTransicao(statusAnterior, OrdemServicoStatus.Cancelada);
 
-        if (statusAnterior != OrdemServicoStatus.Orcamento && os.PecasUtilizadas.Any())
+        if (EstaComEstoqueBaixado(statusAnterior) && os.PecasUtilizadas.Any())
         {
             await _estoqueService.EstornarPecasDaOS(os.Id, usuarioId);
         }
 
         AcumularTempoExecucao(os);
         os.Status = OrdemServicoStatus.Cancelada;
+        await _db.SaveChangesAsync();
+    }
+
+    public static bool EstaComEstoqueBaixado(OrdemServicoStatus status)
+    {
+        return status == OrdemServicoStatus.EmAndamento
+            || status == OrdemServicoStatus.Pausada
+            || status == OrdemServicoStatus.AguardandoPecas;
+    }
+
+    public async Task AdicionarPecaAsync(int osId, int pecaId, int quantidade, decimal? valorCobrado, int usuarioId)
+    {
+        if (quantidade <= 0)
+        {
+            throw new InvalidOperationException("A quantidade deve ser maior que zero.");
+        }
+
+        var os = await _db.OrdensServico
+            .Include(o => o.PecasUtilizadas)
+            .FirstOrDefaultAsync(o => o.Id == osId)
+            ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
+
+        if (os.Status == OrdemServicoStatus.Concluida || os.Status == OrdemServicoStatus.Cancelada)
+        {
+            throw new InvalidOperationException($"Não é permitido adicionar peças a uma O.S. com status '{os.Status}'.");
+        }
+
+        var peca = await _db.Pecas.FindAsync(pecaId)
+            ?? throw new InvalidOperationException("Peça não encontrada.");
+
+        decimal cobrado = valorCobrado ?? peca.PrecoVenda;
+
+        if (EstaComEstoqueBaixado(os.Status))
+        {
+            await _estoqueService.BaixarPecaIndividualDaOSAsync(os.Id, peca.Id, quantidade, usuarioId);
+        }
+
+        var existente = os.PecasUtilizadas.FirstOrDefault(p => p.PecaId == pecaId);
+        if (existente != null)
+        {
+            existente.Quantidade += quantidade;
+            if (valorCobrado.HasValue)
+            {
+                existente.ValorCobrado = valorCobrado.Value;
+            }
+        }
+        else
+        {
+            var osPeca = new OrdemServicoPeca
+            {
+                OrdemServicoId = os.Id,
+                PecaId = peca.Id,
+                Quantidade = quantidade,
+                PrecoBase = peca.PrecoVenda,
+                ValorCobrado = cobrado,
+                PrecoCustoSnapshot = peca.PrecoCusto
+            };
+            _db.OrdemServicoPecas.Add(osPeca);
+            os.PecasUtilizadas.Add(osPeca);
+        }
+
+        os.ValorPecas = os.PecasUtilizadas.Sum(p => p.Subtotal);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task RemoverPecaAsync(int osId, int osPecaId, int usuarioId)
+    {
+        var os = await _db.OrdensServico
+            .Include(o => o.PecasUtilizadas)
+            .FirstOrDefaultAsync(o => o.Id == osId)
+            ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
+
+        if (os.Status == OrdemServicoStatus.Concluida || os.Status == OrdemServicoStatus.Cancelada)
+        {
+            throw new InvalidOperationException($"Não é permitido remover peças de uma O.S. com status '{os.Status}'.");
+        }
+
+        var item = os.PecasUtilizadas.FirstOrDefault(p => p.Id == osPecaId)
+            ?? throw new InvalidOperationException("Peça vinculada não encontrada nesta O.S.");
+
+        if (EstaComEstoqueBaixado(os.Status))
+        {
+            await _estoqueService.EstornarPecaIndividualDaOSAsync(os.Id, item.PecaId, item.Quantidade, usuarioId);
+        }
+
+        os.PecasUtilizadas.Remove(item);
+        _db.OrdemServicoPecas.Remove(item);
+
+        os.ValorPecas = os.PecasUtilizadas.Any() ? os.PecasUtilizadas.Sum(p => p.Subtotal) : 0;
         await _db.SaveChangesAsync();
     }
 

@@ -6,9 +6,11 @@
 @using mechsystem.Services
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 @attribute [Authorize(Roles = "Administrador, Atendimento, Mecanico")]
 @inject AppDbContext DbContext
 @inject OrdemServicoService OrdemServicoService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavManager
 
 <PageTitle>Painel do Mecânico</PageTitle>
@@ -639,61 +641,44 @@
         osPedirPeca = null;
     }
 
+    private async Task<int> GetUsuarioIdAtual()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var userIdClaim = authState.User.FindFirst(ClaimTypes.NameIdentifier);
+        return userIdClaim != null && int.TryParse(userIdClaim.Value, out var id) ? id : 1;
+    }
+
     private async Task SolicitarPeca()
     {
-        if (osPedirPeca == null || pecaSelecionadaId <= 0) return;
+        if (osPedirPeca == null || pecaSelecionadaId <= 0 || pecaQuantidade <= 0) return;
 
-        var peca = await DbContext.Pecas.FindAsync(pecaSelecionadaId);
-        if (peca == null || peca.EstoqueAtual < pecaQuantidade)
+        try
         {
-            pecaMensagem = peca == null ? "Peça não encontrada." : $"Estoque insuficiente (disponível: {peca.EstoqueAtual}).";
-            pecaMensagemSucesso = false;
-            return;
-        }
-
-        // Verificar se já existe essa peça na OS
-        var existente = await DbContext.OrdemServicoPecas
-            .FirstOrDefaultAsync(op => op.OrdemServicoId == osPedirPeca.Id && op.PecaId == pecaSelecionadaId);
-
-        if (existente != null)
-        {
-            existente.Quantidade += pecaQuantidade;
-        }
-        else
-        {
-            var osPeca = new OrdemServicoPeca
+            var peca = await DbContext.Pecas.FindAsync(pecaSelecionadaId);
+            if (peca == null)
             {
-                OrdemServicoId = osPedirPeca.Id,
-                PecaId = pecaSelecionadaId,
-                Quantidade = pecaQuantidade,
-                PrecoBase = peca.PrecoVenda,
-                PrecoCustoSnapshot = peca.PrecoCusto,
-                ValorCobrado = peca.PrecoVenda
-            };
-            DbContext.OrdemServicoPecas.Add(osPeca);
+                pecaMensagem = "Peça não encontrada.";
+                pecaMensagemSucesso = false;
+                return;
+            }
+
+            var usuarioId = await GetUsuarioIdAtual();
+            await OrdemServicoService.AdicionarPecaAsync(osPedirPeca.Id, pecaSelecionadaId, pecaQuantidade, null, usuarioId);
+
+            pecaMensagem = $"✅ {peca.Nome} (x{pecaQuantidade}) adicionada com sucesso!";
+            pecaMensagemSucesso = true;
+            pecaSelecionadaId = 0;
+            pecaQuantidade = 1;
+
+            // Recarregar peças para atualizar estoque na listagem
+            pecasDisponiveis = await DbContext.Pecas.Where(p => p.Ativo).OrderBy(p => p.Nome).ToListAsync();
+            await CarregarOrdens();
         }
-
-        // Baixar estoque
-        peca.EstoqueAtual -= pecaQuantidade;
-        var mov = new MovimentacaoEstoque
+        catch (Exception ex)
         {
-            PecaId = pecaSelecionadaId,
-            Tipo = TipoMovimentacao.Saida,
-            Quantidade = pecaQuantidade,
-            Referencia = $"Solicitação Painel Mecânico - OS #{osPedirPeca.Id}",
-            DataHora = DateTime.Now,
-            UsuarioId = 1 // Padrão para operações do painel
-        };
-        DbContext.MovimentacoesEstoque.Add(mov);
-
-        await DbContext.SaveChangesAsync();
-        pecaMensagem = $"✅ {peca.Nome} (x{pecaQuantidade}) adicionada com sucesso!";
-        pecaMensagemSucesso = true;
-        pecaSelecionadaId = 0;
-        pecaQuantidade = 1;
-
-        // Recarregar peças para atualizar estoque na listagem
-        pecasDisponiveis = await DbContext.Pecas.Where(p => p.Ativo).OrderBy(p => p.Nome).ToListAsync();
+            pecaMensagem = ex.Message;
+            pecaMensagemSucesso = false;
+        }
     }
 
     // ── Conclusão ──
