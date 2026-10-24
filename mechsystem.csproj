@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -17,6 +17,13 @@
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Include="QRCoder" Version="1.8.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="mechsystem.Tests/**" />
+    <Content Remove="mechsystem.Tests/**" />
+    <EmbeddedResource Remove="mechsystem.Tests/**" />
+    <None Remove="mechsystem.Tests/**" />
   </ItemGroup>
 
 </Project>

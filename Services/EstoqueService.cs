@@ -23,8 +23,21 @@ namespace mechsystem.Services
         public async Task BaixarPecasDaOS(int ordemServicoId, int usuarioId)
         {
             var pecasOS = await _context.OrdemServicoPecas
+                .Include(op => op.Peca)
                 .Where(op => op.OrdemServicoId == ordemServicoId)
                 .ToListAsync();
+
+            foreach (var item in pecasOS)
+            {
+                var peca = item.Peca ?? await _context.Pecas.FindAsync(item.PecaId)
+                    ?? throw new InvalidOperationException($"Peça ID {item.PecaId} não encontrada.");
+
+                if (peca.EstoqueAtual < item.Quantidade)
+                {
+                    throw new InvalidOperationException(
+                        $"Estoque insuficiente para '{peca.Nome}' (SKU: {peca.Sku}). Disponível: {peca.EstoqueAtual}, Solicitado: {item.Quantidade}.");
+                }
+            }
 
             foreach (var item in pecasOS)
             {
