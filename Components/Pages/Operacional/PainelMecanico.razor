@@ -508,7 +508,8 @@
         try
         {
             erroOperacional = null;
-            await OrdemServicoService.IniciarOuRetomarServicoAsync(id);
+            var (_, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.IniciarOuRetomarServicoAsync(id, perfil);
             await CarregarOrdens();
         }
         catch (Exception ex)
@@ -522,7 +523,8 @@
         try
         {
             erroOperacional = null;
-            await OrdemServicoService.PausarServicoAsync(id);
+            var (_, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.PausarServicoAsync(id, perfil);
             await CarregarOrdens();
         }
         catch (Exception ex)
@@ -536,7 +538,8 @@
         try
         {
             erroOperacional = null;
-            await OrdemServicoService.ConcluirOSAsync(id);
+            var (_, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.ConcluirOSAsync(id, perfil);
             await CarregarOrdens();
         }
         catch (Exception ex)
@@ -598,6 +601,7 @@
             try
             {
                 erroOperacional = null;
+                var (_, perfil) = await GetUsuarioContextoAtual();
                 // Salva o reporte como contato/nota na OS
                 var contato = new ContatoOS
                 {
@@ -612,7 +616,7 @@
 
                 if (reportarTipo == "Falta de peça" && osReportar.Status == OrdemServicoStatus.EmAndamento)
                 {
-                    await OrdemServicoService.AguardarPecasAsync(osReportar.Id);
+                    await OrdemServicoService.AguardarPecasAsync(osReportar.Id, perfil);
                     await CarregarOrdens();
                 }
 
@@ -641,11 +645,25 @@
         osPedirPeca = null;
     }
 
-    private async Task<int> GetUsuarioIdAtual()
+    private async Task<(int usuarioId, PerfilUsuario perfil)> GetUsuarioContextoAtual()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var userIdClaim = authState.User.FindFirst(ClaimTypes.NameIdentifier);
-        return userIdClaim != null && int.TryParse(userIdClaim.Value, out var id) ? id : 1;
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            throw new UnauthorizedAccessException("Usuário não autenticado.");
+        }
+
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        int usuarioId = userIdClaim != null && int.TryParse(userIdClaim.Value, out var id) ? id : 1;
+
+        var roleClaim = user.FindFirst(ClaimTypes.Role)?.Value;
+        if (!Enum.TryParse<PerfilUsuario>(roleClaim, out var perfil))
+        {
+            throw new UnauthorizedAccessException("Perfil de usuário inválido.");
+        }
+
+        return (usuarioId, perfil);
     }
 
     private async Task SolicitarPeca()
@@ -662,8 +680,8 @@
                 return;
             }
 
-            var usuarioId = await GetUsuarioIdAtual();
-            await OrdemServicoService.AdicionarPecaAsync(osPedirPeca.Id, pecaSelecionadaId, pecaQuantidade, null, usuarioId);
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.AdicionarPecaAsync(osPedirPeca.Id, pecaSelecionadaId, pecaQuantidade, null, usuarioId, perfil);
 
             pecaMensagem = $"✅ {peca.Nome} (x{pecaQuantidade}) adicionada com sucesso!";
             pecaMensagemSucesso = true;

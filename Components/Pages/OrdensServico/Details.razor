@@ -92,12 +92,16 @@ else
                     <i class="bi bi-flag me-1"></i> Concluir Serviço
                 </button>
             }
-            @if (OrdemServicoService.PodeTransicionar(os.Status, OrdemServicoStatus.Cancelada))
-            {
-                <button class="btn btn-outline-danger" @onclick="AbrirModalCancelamento">
-                    <i class="bi bi-x-circle me-1"></i> Cancelar OS
-                </button>
-            }
+            <AuthorizeView Roles="Administrador, Atendimento">
+                <Authorized>
+                    @if (OrdemServicoService.PodeTransicionar(os.Status, OrdemServicoStatus.Cancelada))
+                    {
+                        <button class="btn btn-outline-danger" @onclick="AbrirModalCancelamento">
+                            <i class="bi bi-x-circle me-1"></i> Cancelar OS
+                        </button>
+                    }
+                </Authorized>
+            </AuthorizeView>
         </div>
     </div>
 
@@ -205,9 +209,13 @@ else
                                     @if (os.Status == OrdemServicoStatus.Orcamento || OrdemServicoService.EstaComEstoqueBaixado(os.Status))
                                     {
                                         <td class="text-center d-print-none">
-                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoverPecaOS(item.Id)" title="Remover">
-                                                <i class="bi bi-x-lg"></i>
-                                            </button>
+                                            <AuthorizeView Roles="Administrador, Atendimento">
+                                                <Authorized>
+                                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoverPecaOS(item.Id)" title="Remover">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                </Authorized>
+                                            </AuthorizeView>
                                         </td>
                                     }
                                 </tr>
@@ -775,28 +783,42 @@ else
         mostrarModalAprovacao = false;
     }
 
-    private async Task<int> GetUsuarioIdAtual()
+    private async Task<(int usuarioId, PerfilUsuario perfil)> GetUsuarioContextoAtual()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var userIdClaim = authState.User.FindFirst(ClaimTypes.NameIdentifier);
-        return userIdClaim != null ? int.Parse(userIdClaim.Value) : 1;
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            throw new UnauthorizedAccessException("Usuário não autenticado.");
+        }
+
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        int usuarioId = userIdClaim != null && int.TryParse(userIdClaim.Value, out var id) ? id : 1;
+
+        var roleClaim = user.FindFirst(ClaimTypes.Role)?.Value;
+        if (!Enum.TryParse<PerfilUsuario>(roleClaim, out var perfil))
+        {
+            throw new UnauthorizedAccessException("Perfil de usuário inválido.");
+        }
+
+        return (usuarioId, perfil);
     }
 
     private async Task AprovarOS()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        if (!authState.User.IsInRole("Administrador") && !authState.User.IsInRole("Atendimento"))
-        {
-            return;
-        }
-
         if (os != null)
         {
             try
             {
                 erroMensagem = null;
-                var usuarioId = await GetUsuarioIdAtual();
-                await OrdemServicoService.AprovarOSAsync(os.Id, autorizadoPor, meioAutorizacao, usuarioId);
+                var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+                if (perfil != PerfilUsuario.Administrador && perfil != PerfilUsuario.Atendimento)
+                {
+                    erroMensagem = "Apenas Administradores e Atendimento possuem permissão para aprovar ordens de serviço.";
+                    return;
+                }
+
+                await OrdemServicoService.AprovarOSAsync(os.Id, autorizadoPor, meioAutorizacao, usuarioId, perfil);
                 await LoadData();
 
                 mostrarModalAprovacao = false;
@@ -820,7 +842,8 @@ else
         try
         {
             erroMensagem = null;
-            await OrdemServicoService.PausarServicoAsync(os.Id);
+            var (_, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.PausarServicoAsync(os.Id, perfil);
             await LoadData();
         }
         catch (Exception ex)
@@ -835,7 +858,8 @@ else
         try
         {
             erroMensagem = null;
-            await OrdemServicoService.AguardarPecasAsync(os.Id);
+            var (_, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.AguardarPecasAsync(os.Id, perfil);
             await LoadData();
         }
         catch (Exception ex)
@@ -850,7 +874,8 @@ else
         try
         {
             erroMensagem = null;
-            await OrdemServicoService.IniciarOuRetomarServicoAsync(os.Id);
+            var (_, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.IniciarOuRetomarServicoAsync(os.Id, perfil);
             await LoadData();
         }
         catch (Exception ex)
@@ -865,7 +890,8 @@ else
         try
         {
             erroMensagem = null;
-            await OrdemServicoService.ConcluirOSAsync(os.Id);
+            var (_, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.ConcluirOSAsync(os.Id, perfil);
             await LoadData();
         }
         catch (Exception ex)
@@ -894,8 +920,14 @@ else
             try
             {
                 erroMensagem = null;
-                var usuarioId = await GetUsuarioIdAtual();
-                await OrdemServicoService.CancelarOSAsync(os.Id, usuarioId);
+                var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+                if (perfil != PerfilUsuario.Administrador && perfil != PerfilUsuario.Atendimento)
+                {
+                    erroMensagem = "Apenas Administradores e Atendimento possuem permissão para cancelar ordens de serviço.";
+                    return;
+                }
+
+                await OrdemServicoService.CancelarOSAsync(os.Id, usuarioId, perfil);
                 await LoadData();
                 mostrarModalCancelamento = false;
             }
@@ -945,8 +977,14 @@ else
         try
         {
             erroPeca = null;
-            var usuarioId = await GetUsuarioIdAtual();
-            await OrdemServicoService.AdicionarPecaAsync(os.Id, pecaSelecionadaId, qtdPecaAdicionar, valorCobradoModal, usuarioId);
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            if (perfil != PerfilUsuario.Administrador && perfil != PerfilUsuario.Atendimento)
+            {
+                erroPeca = "Apenas Administradores e Atendimento possuem permissão para adicionar peças nesta tela.";
+                return;
+            }
+
+            await OrdemServicoService.AdicionarPecaAsync(os.Id, pecaSelecionadaId, qtdPecaAdicionar, valorCobradoModal, usuarioId, perfil);
             await LoadData();
             mostrarModalPeca = false;
         }
@@ -963,8 +1001,14 @@ else
         try
         {
             erroMensagem = null;
-            var usuarioId = await GetUsuarioIdAtual();
-            await OrdemServicoService.RemoverPecaAsync(os.Id, osPecaId, usuarioId);
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            if (perfil != PerfilUsuario.Administrador && perfil != PerfilUsuario.Atendimento)
+            {
+                erroMensagem = "Apenas Administradores e Atendimento possuem permissão para remover peças da ordem de serviço.";
+                return;
+            }
+
+            await OrdemServicoService.RemoverPecaAsync(os.Id, osPecaId, usuarioId, perfil);
             await LoadData();
         }
         catch (Exception ex)

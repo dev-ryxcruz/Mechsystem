@@ -57,8 +57,14 @@ public class OrdemServicoService
         }
     }
 
-    public async Task AprovarOSAsync(int osId, string? autorizadoPor, string? meioAutorizacao, int usuarioId)
+    public async Task AprovarOSAsync(int osId, string? autorizadoPor, string? meioAutorizacao, int usuarioId, PerfilUsuario? perfilUsuario = null)
     {
+        var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
+        if (perfil.HasValue && perfil.Value != PerfilUsuario.Administrador && perfil.Value != PerfilUsuario.Atendimento)
+        {
+            throw new UnauthorizedAccessException("Apenas Administradores e Atendimento possuem permissão para aprovar ordens de serviço.");
+        }
+
         await ExecutarEmTransacaoAsync(async () =>
         {
             var os = await _db.OrdensServico
@@ -101,7 +107,7 @@ public class OrdemServicoService
         });
     }
 
-    public async Task IniciarOuRetomarServicoAsync(int osId)
+    public async Task IniciarOuRetomarServicoAsync(int osId, PerfilUsuario? perfilUsuario = null)
     {
         var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
             ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
@@ -129,7 +135,7 @@ public class OrdemServicoService
         await _db.SaveChangesAsync();
     }
 
-    public async Task PausarServicoAsync(int osId)
+    public async Task PausarServicoAsync(int osId, PerfilUsuario? perfilUsuario = null)
     {
         var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
             ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
@@ -141,7 +147,7 @@ public class OrdemServicoService
         await _db.SaveChangesAsync();
     }
 
-    public async Task AguardarPecasAsync(int osId)
+    public async Task AguardarPecasAsync(int osId, PerfilUsuario? perfilUsuario = null)
     {
         var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
             ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
@@ -153,7 +159,7 @@ public class OrdemServicoService
         await _db.SaveChangesAsync();
     }
 
-    public async Task ConcluirOSAsync(int osId)
+    public async Task ConcluirOSAsync(int osId, PerfilUsuario? perfilUsuario = null)
     {
         var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
             ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
@@ -165,8 +171,14 @@ public class OrdemServicoService
         await _db.SaveChangesAsync();
     }
 
-    public async Task CancelarOSAsync(int osId, int usuarioId)
+    public async Task CancelarOSAsync(int osId, int usuarioId, PerfilUsuario? perfilUsuario = null)
     {
+        var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
+        if (perfil.HasValue && perfil.Value != PerfilUsuario.Administrador && perfil.Value != PerfilUsuario.Atendimento)
+        {
+            throw new UnauthorizedAccessException("Apenas Administradores e Atendimento possuem permissão para cancelar ordens de serviço.");
+        }
+
         await ExecutarEmTransacaoAsync(async () =>
         {
             var os = await _db.OrdensServico
@@ -195,12 +207,14 @@ public class OrdemServicoService
             || status == OrdemServicoStatus.AguardandoPecas;
     }
 
-    public async Task AdicionarPecaAsync(int osId, int pecaId, int quantidade, decimal? valorCobrado, int usuarioId)
+    public async Task AdicionarPecaAsync(int osId, int pecaId, int quantidade, decimal? valorCobrado, int usuarioId, PerfilUsuario? perfilUsuario = null)
     {
         if (quantidade <= 0)
         {
             throw new InvalidOperationException("A quantidade deve ser maior que zero.");
         }
+
+        var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
 
         await ExecutarEmTransacaoAsync(async () =>
         {
@@ -218,6 +232,15 @@ public class OrdemServicoService
                 ?? throw new InvalidOperationException("Peça não encontrada.");
 
             decimal cobrado = valorCobrado ?? peca.PrecoVenda;
+            if (cobrado < 0)
+            {
+                throw new InvalidOperationException("O valor cobrado não pode ser negativo.");
+            }
+
+            if (cobrado < peca.PrecoVenda && perfil != PerfilUsuario.Administrador)
+            {
+                throw new UnauthorizedAccessException("Apenas Administradores podem aplicar desconto abaixo do preço base sugerido.");
+            }
 
             if (EstaComEstoqueBaixado(os.Status))
             {
@@ -253,8 +276,14 @@ public class OrdemServicoService
         });
     }
 
-    public async Task RemoverPecaAsync(int osId, int osPecaId, int usuarioId)
+    public async Task RemoverPecaAsync(int osId, int osPecaId, int usuarioId, PerfilUsuario? perfilUsuario = null)
     {
+        var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
+        if (perfil.HasValue && perfil.Value != PerfilUsuario.Administrador && perfil.Value != PerfilUsuario.Atendimento)
+        {
+            throw new UnauthorizedAccessException("Apenas Administradores e Atendimento possuem permissão para remover peças da ordem de serviço.");
+        }
+
         await ExecutarEmTransacaoAsync(async () =>
         {
             var os = await _db.OrdensServico
@@ -281,6 +310,20 @@ public class OrdemServicoService
             os.ValorPecas = os.PecasUtilizadas.Any() ? os.PecasUtilizadas.Sum(p => p.Subtotal) : 0;
             await _db.SaveChangesAsync();
         });
+    }
+
+    private async Task<PerfilUsuario?> ObterPerfilAsync(int usuarioId, PerfilUsuario? perfilInformado)
+    {
+        if (perfilInformado.HasValue)
+        {
+            return perfilInformado.Value;
+        }
+
+        return await _db.Usuarios
+            .AsNoTracking()
+            .Where(u => u.Id == usuarioId)
+            .Select(u => (PerfilUsuario?)u.Perfil)
+            .FirstOrDefaultAsync();
     }
 
     private async Task ExecutarEmTransacaoAsync(Func<Task> acao)
