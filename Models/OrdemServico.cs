@@ -133,7 +133,7 @@ namespace mechsystem.Models
         public ICollection<OrdemServicoServico> ServicosAExecutarList { get; set; } = new List<OrdemServicoServico>();
 
         // Comunicação com Cliente
-        public string? TokenAcompanhamento { get; set; }
+        public string? TokenAcompanhamento { get; set; } = Guid.NewGuid().ToString("N");
         public ICollection<ContatoOS> Contatos { get; set; } = new List<ContatoOS>();
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
