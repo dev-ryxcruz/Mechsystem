@@ -124,8 +124,12 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    // Popula dados de teste
-    await mechsystem.Data.DatabaseSeeder.SeedAsync(db);
+    // Popula dados de demonstração apenas se solicitado via flag --seed-demo
+    if (args.Contains("--seed-demo"))
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseSeeder");
+        await mechsystem.Data.DatabaseSeeder.SeedAsync(db, logger);
+    }
 }
 
 app.Run();
