@@ -29,6 +29,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<UsuarioService>();
 builder.Services.AddScoped<ConfiguracaoService>();
 builder.Services.AddScoped<EstoqueService>();
+builder.Services.AddScoped<OrdemServicoService>();
 
 // Authentication via Cookies
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

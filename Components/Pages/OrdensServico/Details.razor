@@ -13,6 +13,7 @@
 @inject IJSRuntime JSRuntime
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject EstoqueService EstoqueService
+@inject OrdemServicoService OrdemServicoService
 @inject IPecaRepository PecaRepository
 
 <PageTitle>Ordem de Serviço Nº @Id.ToString("D4")</PageTitle>
@@ -73,13 +74,25 @@ else
                 </Authorized>
             </AuthorizeView>
 
-            @if (os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.AguardandoPecas)
+            @if (os.Status == OrdemServicoStatus.Pausada || os.Status == OrdemServicoStatus.AguardandoPecas)
             {
+                <button class="btn btn-success" @onclick="RetomarOS">
+                    <i class="bi bi-play-fill me-1"></i> Retomar Serviço
+                </button>
+            }
+            @if (os.Status == OrdemServicoStatus.EmAndamento)
+            {
+                <button class="btn btn-outline-warning text-dark" @onclick="PausarOS">
+                    <i class="bi bi-pause-fill me-1"></i> Pausar
+                </button>
+                <button class="btn btn-outline-secondary" @onclick="AguardarPecasOS">
+                    <i class="bi bi-hourglass-split me-1"></i> Aguardar Peças
+                </button>
                 <button class="btn btn-primary" @onclick="ConcluirOS">
                     <i class="bi bi-flag me-1"></i> Concluir Serviço
                 </button>
             }
-            @if (os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.AguardandoPecas || os.Status == OrdemServicoStatus.Orcamento)
+            @if (OrdemServicoService.PodeTransicionar(os.Status, OrdemServicoStatus.Cancelada))
             {
                 <button class="btn btn-outline-danger" @onclick="AbrirModalCancelamento">
                     <i class="bi bi-x-circle me-1"></i> Cancelar OS
@@ -87,6 +100,11 @@ else
             }
         </div>
     </div>
+
+    @if (!string.IsNullOrEmpty(erroMensagem) && !mostrarModalAprovacao && !mostrarModalCancelamento)
+    {
+        <div class="alert alert-danger d-print-none mb-3">@erroMensagem</div>
+    }
 
     <!-- OS Document View -->
     <div class="card shadow-sm os-document">
@@ -772,40 +790,19 @@ else
             return;
         }
 
-        if (config != null && config.ObrigarVistoriaParaOS && os?.Vistoria == null)
-        {
-            erroMensagem = "Para aprovar este orçamento, as configurações da Oficina exigem a realização da Vistoria de Entrada. Cancele e realize a Vistoria na O.S. primeiro.";
-            return;
-        }
-
         if (os != null)
         {
-            try 
+            try
             {
                 erroMensagem = null;
-                os.Status = OrdemServicoStatus.EmAndamento;
-                os.DataAutorizacao = DateTime.Now;
-                os.AutorizadoPor = autorizadoPor;
-                os.MeioAutorizacao = meioAutorizacao;
-                
-                if (!os.DataPrevisaoInicio.HasValue)
-                {
-                    os.DataPrevisaoInicio = DateTime.Today;
-                }
-
-                await DbContext.SaveChangesAsync();
-
-                // 🔑 BAIXA AUTOMÁTICA DO ESTOQUE
-                if (os.PecasUtilizadas.Any())
-                {
-                    var usuarioId = await GetUsuarioIdAtual();
-                    await EstoqueService.BaixarPecasDaOS(os.Id, usuarioId);
-                }
+                var usuarioId = await GetUsuarioIdAtual();
+                await OrdemServicoService.AprovarOSAsync(os.Id, autorizadoPor, meioAutorizacao, usuarioId);
+                await LoadData();
 
                 mostrarModalAprovacao = false;
 
                 // Se aprovação presencial, abrir impressão automaticamente para assinatura do cliente
-                if (meioAutorizacao == "Assinatura Presencial")
+                if (meioAutorizacao == "Assinatura Presencial" && os != null)
                 {
                     await JSRuntime.InvokeVoidAsync("window.open", $"/imprimir/os/{os.Id}", "_blank");
                 }
@@ -817,12 +814,63 @@ else
         }
     }
 
+    private async Task PausarOS()
+    {
+        if (os == null) return;
+        try
+        {
+            erroMensagem = null;
+            await OrdemServicoService.PausarServicoAsync(os.Id);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = ex.Message;
+        }
+    }
+
+    private async Task AguardarPecasOS()
+    {
+        if (os == null) return;
+        try
+        {
+            erroMensagem = null;
+            await OrdemServicoService.AguardarPecasAsync(os.Id);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = ex.Message;
+        }
+    }
+
+    private async Task RetomarOS()
+    {
+        if (os == null) return;
+        try
+        {
+            erroMensagem = null;
+            await OrdemServicoService.IniciarOuRetomarServicoAsync(os.Id);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = ex.Message;
+        }
+    }
+
     private async Task ConcluirOS()
     {
-        if (os != null)
+        if (os == null) return;
+        try
         {
-            os.Status = OrdemServicoStatus.Concluida;
-            await DbContext.SaveChangesAsync();
+            erroMensagem = null;
+            await OrdemServicoService.ConcluirOSAsync(os.Id);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = ex.Message;
         }
     }
 
@@ -846,16 +894,9 @@ else
             try
             {
                 erroMensagem = null;
-
-                // 🔑 ESTORNO AUTOMÁTICO DO ESTOQUE (só se já foi aprovada/baixada)
-                if (os.Status != OrdemServicoStatus.Orcamento && os.PecasUtilizadas.Any())
-                {
-                    var usuarioId = await GetUsuarioIdAtual();
-                    await EstoqueService.EstornarPecasDaOS(os.Id, usuarioId);
-                }
-
-                os.Status = OrdemServicoStatus.Cancelada;
-                await DbContext.SaveChangesAsync();
+                var usuarioId = await GetUsuarioIdAtual();
+                await OrdemServicoService.CancelarOSAsync(os.Id, usuarioId);
+                await LoadData();
                 mostrarModalCancelamento = false;
             }
             catch (Exception ex)
