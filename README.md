@@ -1,98 +1,118 @@
 # MechSystem 🚀
 
-**MechSystem** é uma aplicação web moderna e abrangente, projetada especificamente para oficinas mecânicas. Desenvolvida com **.NET 10** e **Blazor Server**, ela oferece uma plataforma robusta e responsiva para gerenciar clientes, veículos, serviços e em geral, o fluxo de trabalho operacional de forma eficiente.
+**MechSystem** é uma aplicação web moderna para gestão operacional e financeira de oficinas mecânicas, desenvolvida com **.NET 10**, **Blazor Server** e **PostgreSQL**.
 
 ## 🌟 Principais Funcionalidades
 
-* **Autenticação e Autorização**: Sistema de login seguro com controle de acesso baseado em perfis (Administrador, etc.), utilizando `BCrypt.Net-Next` e autenticação baseada em Cookies.
-* **Dashboard Estratégico (Business Intelligence)**: Painel de alta performance com indicadores operacionais e financeiros cruciais para a oficina, incluindo:
-  * Distribuição de Receitas (Mão de obra vs. Peças).
-  * Ticket Médio.
-  * Funil de Serviços.
-  * Análise de participação de mercado por marca de veículo.
-  * Rastreamento de idade da frota.
-* **Gestão de Ordens de Serviço (OS)**: Acompanhamento completo do ciclo de vida da OS, desde a criação até o encerramento, automatizando processos de negócio.
-* **Fluxos de Vistoria Obrigatórios**: Garantia de que as inspeções vitais dos veículos sejam realizadas e devidamente documentadas no sistema.
-* **Catálogo de Serviços Integrado**: Catálogo pré-definido no processo de criação da OS para facilitar o cálculo automático de custos de mão de obra e documentação.
-* **Cadastros (Repositórios)**: Gerenciamento estruturado de banco de dados de clientes e seus respectivos veículos.
-* **Módulo de Configurações do Sistema**: Customização das opções e preferências globais da aplicação para se adequar a necessidades específicas.
-* **UI/UX Moderna**: Layout limpo, premium e responsivo (usando CSS Nativo), com navegação dinâmica (sidebar) e transições suaves, utilizando identidade visual de marca focada na cor primária `#ff751f`.
+* **Autenticação, Autorização e Segurança**:
+  * Controle de acesso baseado em três perfis (`Administrador`, `Atendimento` e `Mecanico`), com revalidação automática de sessão (`OnValidatePrincipal`).
+  * Senhas com hash `BCrypt.Net-Next`, política mínima de complexidade e proteção contra força bruta (*Rate Limiting*) no endpoint de login.
+* **Gestão de Ordens de Serviço (O.S.)**:
+  * Máquina de estados centralizada (`EmOrcamento` → `Aprovada` → `EmExecucao` ⇄ `Pausada` → `Concluida`, além de `Cancelada`) validada no servidor.
+  * Checklist obrigatório de vistoria de entrada, catálogo de serviços e vínculo de peças com validação de desconto por perfil.
+  * Rastreamento público da O.S. sem necessidade de login (`/acompanhar/{token}`) com **QR Code gerado localmente** via `QRCoder`.
+* **Controle de Estoque e Movimentações**:
+  * Baixa e estorno de estoque unificados e transacionais vinculados ao ciclo de vida da O.S., prevenindo baixa duplicada ou saldo negativo.
+  * Controle de concorrência otimista via token `xmin` do PostgreSQL na entidade `Peca`.
+  * Histórico auditável de entradas, saídas, ajustes e estornos (`MovimentacaoEstoque`).
+* **Painel do Mecânico**:
+  * Visão dedicada para a oficina iniciar, pausar (informando motivo) e finalizar a execução técnica de O.S. aprovadas.
+* **Dashboard Estratégico e Financeiro**:
+  * Indicadores de faturamento real filtrados por `DataConclusao`, margem de lucro líquido real (descontando custo de aquisição das peças e impostos configuráveis), ticket médio e funil operacional.
+* **Cadastros Base**:
+  * Gestão de Clientes (CPF/CNPJ único normalizado, exclusão lógica), Veículos (placa única normalizada), Catálogo de Serviços, Peças e Usuários.
 
 ## 🛠️ Tecnologias Utilizadas
 
-* **Framework de Backend/Frontend**: .NET 10, ASP.NET Core Blazor Web App (Interactive Server Mode).
-* **Linguagem**: C# 
-* **ORM**: Entity Framework Core 10
-* **Banco de Dados**: SQLite (nativo da aplicação, arquivo `Mechsystem.db`) e preparado para PostgreSQL (`Npgsql.EntityFrameworkCore.PostgreSQL`).
-* **Estilização**: CSS Nativo moderno.
-* **Segurança**: Autenticação com Cookies e encriptação de senhas com BCrypt.
+* **Backend / Frontend**: .NET 10, ASP.NET Core Blazor Web App (Interactive Server Mode)
+* **Linguagem**: C#
+* **ORM & Banco de Dados**: Entity Framework Core 10 + **PostgreSQL** (`Npgsql.EntityFrameworkCore.PostgreSQL`)
+* **Geração de QR Code**: `QRCoder` (geração local em memória, sem envio de URLs a terceiros)
+* **Segurança**: Cookie Authentication + `BCrypt.Net-Next` + ASP.NET Core Rate Limiting
+* **Testes Automatizados**: xUnit, EF Core InMemory e Testcontainers / PostgreSQL
 
 ## ⚙️ Pré-requisitos
 
-Para rodar este projeto, você precisará ter instalado na sua máquina:
-
-* [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) ou superior.
-* Git
+* **Com Docker**: [Docker](https://www.docker.com/) e Docker Compose.
+* **Sem Docker (Execução Local)**:
+  * [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+  * [PostgreSQL 16+](https://www.postgresql.org/)
 
 ## 🚀 Como Rodar o Projeto
 
-Siga os passos abaixo para testar ou desenvolver na aplicação localmente:
+### Opção 1: Com Docker Compose (Recomendado)
 
-1. **Clone o repositório**:
+1. **Suba o banco PostgreSQL e a aplicação**:
    ```bash
-   git clone https://github.com/seu-usuario/MechSystem.git
-   cd MechSystem
+   docker compose up -d --build
    ```
+2. Acesse em `http://localhost:8080`.
+3. As migrações do EF Core são aplicadas automaticamente na inicialização.
 
-2. **Restaure as dependências do projeto**:
+### Opção 2: Execução Local (Sem Docker)
+
+1. **Configure a string de conexão PostgreSQL** em `appsettings.Development.json`, User Secrets ou variável de ambiente:
+   ```bash
+   dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=mechsystem;Username=postgres;Password=sua_senha"
+   ```
+2. **Restaure os pacotes e inicie a aplicação**:
    ```bash
    dotnet restore
+   dotnet run
    ```
 
-3. **Inicie a aplicação (Hot Reload habilitado)**:
+## 🔐 Configuração da Senha Inicial do Administrador
+
+O sistema **não utiliza senhas fixas hardcoded** no código-fonte. Na primeira inicialização (quando o usuário `admin` ainda não existe ou possui hash legado):
+
+1. Você pode definir a senha inicial via configuração (`Admin:InitialPassword`) ou variável de ambiente (`Admin__InitialPassword`):
    ```bash
-   dotnet watch run
+   dotnet user-secrets set "Admin:InitialPassword" "SuaSenhaForte@2026"
    ```
-   > **Nota**: O banco de dados (`Mechsystem.db`) via SQLite será criado e migrado automaticamente na primeira vez que a aplicação for executada.
+2. Caso `Admin:InitialPassword` não seja informada, o sistema **gera automaticamente uma senha aleatória criptograficamente segura de 16 caracteres** e a exibe **uma única vez** no log de inicialização (`ILogger`).
 
-## 🔐 Credenciais Padrão (Admin)
-
-No primeiro acesso, o sistema cria automaticamente um usuário administrador padrão para gerenciar a oficina.
-
-* **Username**: `admin`
-* **Senha**: `admin123`
-
-Se em algum momento for necessário redefinir a senha do admin para a padrão, basta rodar a flag:
+Para redefinir a senha do usuário `admin` a qualquer momento:
 ```bash
 dotnet run -- --reset-admin
 ```
 
+## 🧪 Populando Dados de Demonstração (`--seed-demo`)
+
+O banco não é populado automaticamente com dados fictícios em produção. Para carregar o conjunto realista e idempotente de demonstração (clientes, veículos, peças, movimentações e O.S. em múltiplos estados):
+
+* **Localmente**:
+  ```bash
+  dotnet run -- --seed-demo
+  ```
+* **Com Docker Compose**:
+  ```bash
+  docker compose run --rm app --seed-demo
+  ```
+
+## ✅ Executando os Testes Automatizados
+
+O repositório possui a suíte `mechsystem.Tests` cobrindo transições de estado da O.S., regras de estoque, bloqueio de desconto por perfil, cálculo de margem/totais e atomicidade transacional no PostgreSQL:
+
+```bash
+dotnet test --verbosity normal
+```
+
 ## 📁 Estrutura do Projeto
 
-* `/Components`: Componentes UI do Blazor Server (Páginas, Layouts e componentes compartilhados como a Sidebar).
-* `/Data`: Configurações do Entity Framework (`AppDbContext`), banco de dados.
-* `/Endpoints`: Minimal APIs para fluxos específicos, como o Login/Logout integrado ao Cookie Scheme.
-* `/Interfaces`: Contratos e abstrações para injeção de dependências.
-* `/Models`: Entidades de domínio (Usuario, Cliente, Veiculo, Servico, OS, Configuracao, etc.).
-* `/Repositories`: Camada de acesso a dados e consultas ao DB.
-* `/Services`: Lógica de negócios.
-* `/wwwroot`: Assets estáticos, imagens, logos e folhas de estilo CSS globais (`app.css`, etc.).
-
-## 🤝 Como Contribuir
-
-Contribuições são muito bem-vindas! Se você deseja colaborar:
-1. Faça um Fork do projeto.
-2. Crie uma branch para a sua feature (`git checkout -b feature/NovaFuncionalidade`).
-3. Commit suas mudanças (`git commit -m 'Adiciona a NovaFuncionalidade'`).
-4. Faça o Push para a branch (`git push origin feature/NovaFuncionalidade`).
-5. Abra um Pull Request.
+* `/Components`: Componentes e páginas Blazor Server (`Pages/OrdensServico`, `Pages/PainelMecanico`, `Pages/Acompanhar`, `Pages/Estoque`, etc.).
+* `/Data`: `AppDbContext` (com conversão automática de `DateTime` para UTC) e `DatabaseSeeder`.
+* `/Endpoints`: Minimal APIs de autenticação (`/api/auth/login` com rate limiting e `/api/auth/logout`).
+* `/Models`: Entidades de domínio (`OrdemServico`, `Peca` com token `xmin`, `MovimentacaoEstoque`, `Cliente`, `Veiculo`, `Usuario`, etc.).
+* `/Repositories`: Repositórios de acesso a dados.
+* `/Services`: Camada de regras de negócio (`OrdemServicoService`, `EstoqueService`, `UsuarioService`, `DomainErrorHelper`, `DateTimeExtensions`).
+* `/mechsystem.Tests`: Projeto xUnit de testes unitários e de integração.
+* `/Documentacao`: Documentação técnica de arquitetura, regras de negócio, LGPD e relatório de estabilização.
 
 ---
 
 ## 👨‍💻 Autor
 
-Desenvolvido com dedicação por **Ryan Cristian**.
-Este projeto reflete o meu foco em criar soluções de software escaláveis e interfaces modernas.
+Desenvolvido por **Ryan Cristian**.
 
-*   [LinkedIn](https://www.linkedin.com/in/ryan-cristian-a0889324b)
-*   [Portfólio (GitHub)](https://github.com/dev-ryxcruz)
+* [LinkedIn](https://www.linkedin.com/in/ryan-cristian-a0889324b)
+* [Portfólio (GitHub)](https://github.com/dev-ryxcruz)
