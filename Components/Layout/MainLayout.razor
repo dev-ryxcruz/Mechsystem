@@ -21,8 +21,8 @@
                         <span>@(context.User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value ?? context.User.Identity?.Name ?? "Usuário")</span>
                     </div>
                     <form method="post" action="/api/auth/logout" class="ms-auto">
-                        <button type="submit" class="btn btn-link text-decoration-none p-0 d-flex align-items-center gap-1" style="color: var(--text-on-dark-muted); font-size: 0.85rem;">
-                            <i class="bi bi-box-arrow-right" style="font-size: 1rem;"></i>
+                        <button type="submit" class="btn btn-link text-decoration-none p-0 d-flex align-items-center gap-1 btn-logout">
+                            <i class="bi bi-box-arrow-right btn-logout-icon" aria-hidden="true"></i>
                             Sair
                         </button>
                     </form>

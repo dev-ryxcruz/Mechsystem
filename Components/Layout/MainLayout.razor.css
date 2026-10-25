@@ -112,6 +112,21 @@ main {
         font-size: 0.95rem;
     }
 
+    .top-row ::deep .btn-logout {
+        color: #4b5563;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .top-row ::deep .btn-logout:hover,
+    .top-row ::deep .btn-logout:focus-visible {
+        color: var(--accent);
+    }
+
+    .top-row ::deep .btn-logout-icon {
+        font-size: 1rem;
+    }
+
 /* ==============================================
    MOBILE
    ============================================== */
