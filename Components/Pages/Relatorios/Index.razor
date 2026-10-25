@@ -28,7 +28,7 @@
                     }
                 </select>
                 <select class="form-select form-select-sm" style="width: auto;" @bind="selectedYear" @bind:after="CarregarDados">
-                    @for (int y = DateTime.Today.Year - 2; y <= DateTime.Today.Year + 1; y++)
+                    @for (int y = DateTimeExtensions.TodayBrasilia().Year - 2; y <= DateTimeExtensions.TodayBrasilia().Year + 1; y++)
                     {
                         <option value="@y">@y</option>
                     }
@@ -357,8 +357,8 @@
 
 @code {
     private System.Globalization.CultureInfo ptBR = new("pt-BR");
-    private int selectedMonth = DateTime.Today.Month;
-    private int selectedYear = DateTime.Today.Year;
+    private int selectedMonth = DateTimeExtensions.TodayBrasilia().Month;
+    private int selectedYear = DateTimeExtensions.TodayBrasilia().Year;
     private bool carregando = false;
     private int abaAtiva = 0;
 
@@ -381,18 +381,25 @@
         var inicio = new DateTime(selectedYear, selectedMonth, 1, 0, 0, 0, DateTimeKind.Utc);
         var fim = inicio.AddMonths(1);
 
-        // OS do período
+        // OS emitidas no período (funil comercial)
         var osPeriodo = await DbContext.OrdensServico
             .Include(o => o.PecasUtilizadas)
             .Where(o => o.DataEmissao >= inicio && o.DataEmissao < fim)
             .ToListAsync();
 
-        var osConcluidas = osPeriodo.Where(o => o.Status == OrdemServicoStatus.Concluida).ToList();
-        var faturamento = osConcluidas.Sum(o => o.ValorMaoDeObra + o.ValorPecasEfetivo);
+        // OS concluídas no período (competência de conclusão, alinhado com Home.razor e EstoqueService)
+        var osConcluidas = await DbContext.OrdensServico
+            .Include(o => o.PecasUtilizadas)
+            .Include(o => o.ServicosAExecutarList)
+            .Where(o => o.Status == OrdemServicoStatus.Concluida && o.DataConclusao >= inicio && o.DataConclusao < fim)
+            .ToListAsync();
+
+        var faturamento = osConcluidas.Sum(o => o.ValorTotal);
         var ticketMedio = osConcluidas.Count > 0 ? faturamento / osConcluidas.Count : 0;
 
         int totalAprovadas = osPeriodo.Count(o =>
             o.Status == OrdemServicoStatus.EmAndamento ||
+            o.Status == OrdemServicoStatus.Pausada ||
             o.Status == OrdemServicoStatus.AguardandoPecas ||
             o.Status == OrdemServicoStatus.Concluida);
         int totalCanceladas = osPeriodo.Count(o => o.Status == OrdemServicoStatus.Cancelada);
@@ -413,7 +420,7 @@
         var totalMov = await DbContext.MovimentacoesEstoque.CountAsync();
 
         // Financeiro
-        var faturamentoMDO = osConcluidas.Sum(o => o.ValorMaoDeObra);
+        var faturamentoMDO = osConcluidas.Sum(o => o.ValorMaoDeObraEfetivo);
         var faturamentoPecas = osConcluidas.Sum(o => o.ValorPecasEfetivo);
         var (lucro, _) = await EstoqueService.GetMargemLucroRealAsync(inicio, fim);
 

@@ -191,7 +191,10 @@
 
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             var userIdClaim = authState.User.FindFirst(ClaimTypes.NameIdentifier);
-            int usuarioId = userIdClaim != null ? int.Parse(userIdClaim.Value) : 1;
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var usuarioId))
+            {
+                throw new UnauthorizedAccessException("Identificador de usuário inválido.");
+            }
 
             await PecaRepository.RegistrarEntradaAsync(
                 pecaSelecionadaId,

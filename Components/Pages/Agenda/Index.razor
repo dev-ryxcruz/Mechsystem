@@ -3,6 +3,7 @@
 @using Microsoft.EntityFrameworkCore
 @using mechsystem.Data
 @using mechsystem.Models
+@using mechsystem.Services
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @inject AppDbContext DbContext
@@ -67,7 +68,7 @@
             <!-- Células dos dias -->
             @foreach (var cell in celulas)
             {
-                var isHoje = cell.Data.HasValue && cell.Data.Value.Date == DateTime.Today;
+                var isHoje = cell.Data.HasValue && cell.Data.Value.Date == DateTimeExtensions.TodayBrasilia();
                 var isOutroMes = cell.Data.HasValue && cell.Data.Value.Month != mesSelecionado;
                 var temOS = cell.Data.HasValue && osPorDia.ContainsKey(cell.Data.Value.Date);
 
@@ -115,8 +116,8 @@
 </div>
 
 @code {
-    private int mesSelecionado = DateTime.Today.Month;
-    private int anoSelecionado = DateTime.Today.Year;
+    private int mesSelecionado = DateTimeExtensions.TodayBrasilia().Month;
+    private int anoSelecionado = DateTimeExtensions.TodayBrasilia().Year;
     private bool carregando = true;
 
     private Dictionary<DateTime, List<OrdemServico>> osPorDia = new();
@@ -187,11 +188,11 @@
 
     private void GerarResumo(List<OrdemServico> lista)
     {
-        var hoje = DateTime.Today;
+        var hoje = DateTimeExtensions.TodayBrasilia();
         resumoMes = new List<ResumoItem>
         {
             new() { Label = "Orçamentos", Total = lista.Count(o => o.Status == OrdemServicoStatus.Orcamento), CssClass = "resumo-orcamento" },
-            new() { Label = "Em Andamento", Total = lista.Count(o => o.Status == OrdemServicoStatus.EmAndamento || o.Status == OrdemServicoStatus.AguardandoPecas), CssClass = "resumo-andamento" },
+            new() { Label = "Em Andamento", Total = lista.Count(o => o.Status == OrdemServicoStatus.EmAndamento || o.Status == OrdemServicoStatus.Pausada || o.Status == OrdemServicoStatus.AguardandoPecas), CssClass = "resumo-andamento" },
             new() { Label = "Atrasadas", Total = lista.Count(o => o.DataPrevisaoEntrega.Date < hoje && o.Status != OrdemServicoStatus.Concluida && o.Status != OrdemServicoStatus.Cancelada), CssClass = "resumo-atrasado" },
             new() { Label = "Concluídas", Total = lista.Count(o => o.Status == OrdemServicoStatus.Concluida), CssClass = "resumo-concluida" },
         };
@@ -201,8 +202,8 @@
     {
         if (os.Status == OrdemServicoStatus.Concluida) return "chip-concluida";
         if (os.Status == OrdemServicoStatus.Cancelada) return "chip-cancelada";
-        if (os.DataPrevisaoEntrega.Date < DateTime.Today) return "chip-atrasado";
-        if (os.Status == OrdemServicoStatus.EmAndamento) return "chip-andamento";
+        if (os.DataPrevisaoEntrega.Date < DateTimeExtensions.TodayBrasilia()) return "chip-atrasado";
+        if (os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.Pausada) return "chip-andamento";
         if (os.Status == OrdemServicoStatus.AguardandoPecas) return "chip-pecas";
         return "chip-orcamento";
     }
@@ -223,8 +224,8 @@
 
     private async Task IrParaHoje()
     {
-        mesSelecionado = DateTime.Today.Month;
-        anoSelecionado = DateTime.Today.Year;
+        mesSelecionado = DateTimeExtensions.TodayBrasilia().Month;
+        anoSelecionado = DateTimeExtensions.TodayBrasilia().Year;
         await CarregarAgenda();
     }
 

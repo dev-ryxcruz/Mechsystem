@@ -724,13 +724,6 @@ else
         if (os != null)
         {
             autorizadoPor = os.Veiculo?.Cliente?.Nome ?? "";
-
-            // Gerar token se não existir
-            if (string.IsNullOrEmpty(os.TokenAcompanhamento))
-            {
-                os.TokenAcompanhamento = Guid.NewGuid().ToString("N");
-                await DbContext.SaveChangesAsync();
-            }
         }
         
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();
@@ -797,7 +790,10 @@ else
         }
 
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
-        int usuarioId = userIdClaim != null && int.TryParse(userIdClaim.Value, out var id) ? id : 1;
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var usuarioId))
+        {
+            throw new UnauthorizedAccessException("Identificador de usuário inválido.");
+        }
 
         var roleClaim = user.FindFirst(ClaimTypes.Role)?.Value;
         if (!Enum.TryParse<PerfilUsuario>(roleClaim, out var perfil))
@@ -848,8 +844,8 @@ else
         try
         {
             erroMensagem = null;
-            var (_, perfil) = await GetUsuarioContextoAtual();
-            await OrdemServicoService.PausarServicoAsync(os.Id, perfil);
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.PausarServicoAsync(os.Id, perfil, usuarioId);
             await LoadData();
         }
         catch (Exception ex)
@@ -864,8 +860,8 @@ else
         try
         {
             erroMensagem = null;
-            var (_, perfil) = await GetUsuarioContextoAtual();
-            await OrdemServicoService.AguardarPecasAsync(os.Id, perfil);
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.AguardarPecasAsync(os.Id, perfil, usuarioId);
             await LoadData();
         }
         catch (Exception ex)
@@ -880,8 +876,8 @@ else
         try
         {
             erroMensagem = null;
-            var (_, perfil) = await GetUsuarioContextoAtual();
-            await OrdemServicoService.IniciarOuRetomarServicoAsync(os.Id, perfil);
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.IniciarOuRetomarServicoAsync(os.Id, perfil, usuarioId);
             await LoadData();
         }
         catch (Exception ex)
@@ -896,8 +892,8 @@ else
         try
         {
             erroMensagem = null;
-            var (_, perfil) = await GetUsuarioContextoAtual();
-            await OrdemServicoService.ConcluirOSAsync(os.Id, perfil);
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.ConcluirOSAsync(os.Id, perfil, usuarioId);
             await LoadData();
         }
         catch (Exception ex)

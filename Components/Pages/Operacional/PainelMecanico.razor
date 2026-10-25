@@ -510,8 +510,8 @@
         try
         {
             erroOperacional = null;
-            var (_, perfil) = await GetUsuarioContextoAtual();
-            await OrdemServicoService.IniciarOuRetomarServicoAsync(id, perfil);
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.IniciarOuRetomarServicoAsync(id, perfil, usuarioId);
             await CarregarOrdens();
         }
         catch (Exception ex)
@@ -525,8 +525,8 @@
         try
         {
             erroOperacional = null;
-            var (_, perfil) = await GetUsuarioContextoAtual();
-            await OrdemServicoService.PausarServicoAsync(id, perfil);
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.PausarServicoAsync(id, perfil, usuarioId);
             await CarregarOrdens();
         }
         catch (Exception ex)
@@ -540,8 +540,8 @@
         try
         {
             erroOperacional = null;
-            var (_, perfil) = await GetUsuarioContextoAtual();
-            await OrdemServicoService.ConcluirOSAsync(id, perfil);
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.ConcluirOSAsync(id, perfil, usuarioId);
             await CarregarOrdens();
         }
         catch (Exception ex)
@@ -604,7 +604,7 @@
             try
             {
                 erroOperacional = null;
-                var (_, perfil) = await GetUsuarioContextoAtual();
+                var (usuarioId, perfil) = await GetUsuarioContextoAtual();
                 // Salva o reporte como contato/nota na OS
                 var contato = new ContatoOS
                 {
@@ -619,7 +619,7 @@
 
                 if (reportarTipo == "Falta de peça" && osReportar.Status == OrdemServicoStatus.EmAndamento)
                 {
-                    await OrdemServicoService.AguardarPecasAsync(osReportar.Id, perfil);
+                    await OrdemServicoService.AguardarPecasAsync(osReportar.Id, perfil, usuarioId);
                     await CarregarOrdens();
                 }
 
@@ -658,7 +658,10 @@
         }
 
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
-        int usuarioId = userIdClaim != null && int.TryParse(userIdClaim.Value, out var id) ? id : 1;
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var usuarioId))
+        {
+            throw new UnauthorizedAccessException("Identificador de usuário inválido.");
+        }
 
         var roleClaim = user.FindFirst(ClaimTypes.Role)?.Value;
         if (!Enum.TryParse<PerfilUsuario>(roleClaim, out var perfil))

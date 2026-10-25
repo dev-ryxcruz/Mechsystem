@@ -249,6 +249,23 @@ public class OrdemServicoStabilizationTests
         var item = await db.OrdemServicoPecas.FirstAsync(op => op.OrdemServicoId == os.Id && op.PecaId == peca1.Id);
         Assert.Equal(35m, item.ValorCobrado);
         Assert.Equal(45m, item.PrecoBase);
+
+        // Atendente ou Mecânico tentando multiplicar item que já possui desconto na O.S. (valorCobrado = null) -> bloqueado
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.AdicionarPecaAsync(os.Id, peca1.Id, 1, null, atendente.Id, PerfilUsuario.Atendimento));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.AdicionarPecaAsync(os.Id, peca1.Id, 1, null, mecanico.Id, PerfilUsuario.Mecanico));
+
+        // Validação de perfil no servidor em ConcluirOSAsync (e demais transições de execução) quando chamado sem perfil/usuário válido
+        await osService.AprovarOSAsync(os.Id, "Cliente", "Presencial", admin.Id, PerfilUsuario.Administrador);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.ConcluirOSAsync(os.Id, null, 0));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.PausarServicoAsync(os.Id, null, 0));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.AguardarPecasAsync(os.Id, null, 0));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.IniciarOuRetomarServicoAsync(os.Id, null, 0));
     }
 
     [Fact]

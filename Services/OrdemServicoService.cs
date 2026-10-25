@@ -57,10 +57,15 @@ public class OrdemServicoService
         }
     }
 
+    private static bool EhPerfilValido(PerfilUsuario? perfil) =>
+        perfil == PerfilUsuario.Administrador
+        || perfil == PerfilUsuario.Atendimento
+        || perfil == PerfilUsuario.Mecanico;
+
     public async Task AprovarOSAsync(int osId, string? autorizadoPor, string? meioAutorizacao, int usuarioId, PerfilUsuario? perfilUsuario = null)
     {
         var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
-        if (perfil.HasValue && perfil.Value != PerfilUsuario.Administrador && perfil.Value != PerfilUsuario.Atendimento)
+        if (!EhPerfilValido(perfil) || (perfil.Value != PerfilUsuario.Administrador && perfil.Value != PerfilUsuario.Atendimento))
         {
             throw new UnauthorizedAccessException("Apenas Administradores e Atendimento possuem permissão para aprovar ordens de serviço.");
         }
@@ -107,8 +112,14 @@ public class OrdemServicoService
         });
     }
 
-    public async Task IniciarOuRetomarServicoAsync(int osId, PerfilUsuario? perfilUsuario = null)
+    public async Task IniciarOuRetomarServicoAsync(int osId, PerfilUsuario? perfilUsuario = null, int usuarioId = 0)
     {
+        var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
+        if (!EhPerfilValido(perfil))
+        {
+            throw new UnauthorizedAccessException("Usuário sem permissão para iniciar ou retomar a execução da ordem de serviço.");
+        }
+
         var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
             ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
@@ -135,8 +146,14 @@ public class OrdemServicoService
         await _db.SaveChangesAsync();
     }
 
-    public async Task PausarServicoAsync(int osId, PerfilUsuario? perfilUsuario = null)
+    public async Task PausarServicoAsync(int osId, PerfilUsuario? perfilUsuario = null, int usuarioId = 0)
     {
+        var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
+        if (!EhPerfilValido(perfil))
+        {
+            throw new UnauthorizedAccessException("Usuário sem permissão para pausar a ordem de serviço.");
+        }
+
         var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
             ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
@@ -147,8 +164,14 @@ public class OrdemServicoService
         await _db.SaveChangesAsync();
     }
 
-    public async Task AguardarPecasAsync(int osId, PerfilUsuario? perfilUsuario = null)
+    public async Task AguardarPecasAsync(int osId, PerfilUsuario? perfilUsuario = null, int usuarioId = 0)
     {
+        var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
+        if (!EhPerfilValido(perfil))
+        {
+            throw new UnauthorizedAccessException("Usuário sem permissão para alterar o status da ordem de serviço.");
+        }
+
         var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
             ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
@@ -159,8 +182,14 @@ public class OrdemServicoService
         await _db.SaveChangesAsync();
     }
 
-    public async Task ConcluirOSAsync(int osId, PerfilUsuario? perfilUsuario = null)
+    public async Task ConcluirOSAsync(int osId, PerfilUsuario? perfilUsuario = null, int usuarioId = 0)
     {
+        var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
+        if (!EhPerfilValido(perfil))
+        {
+            throw new UnauthorizedAccessException("Apenas Administradores, Atendimento e Mecânicos possuem permissão para concluir ordens de serviço.");
+        }
+
         var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
             ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
@@ -175,7 +204,7 @@ public class OrdemServicoService
     public async Task CancelarOSAsync(int osId, int usuarioId, PerfilUsuario? perfilUsuario = null)
     {
         var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
-        if (perfil.HasValue && perfil.Value != PerfilUsuario.Administrador && perfil.Value != PerfilUsuario.Atendimento)
+        if (!EhPerfilValido(perfil) || (perfil.Value != PerfilUsuario.Administrador && perfil.Value != PerfilUsuario.Atendimento))
         {
             throw new UnauthorizedAccessException("Apenas Administradores e Atendimento possuem permissão para cancelar ordens de serviço.");
         }
@@ -216,6 +245,10 @@ public class OrdemServicoService
         }
 
         var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
+        if (!EhPerfilValido(perfil))
+        {
+            throw new UnauthorizedAccessException("Usuário sem permissão para adicionar peças à ordem de serviço.");
+        }
 
         await ExecutarEmTransacaoAsync(async () =>
         {
@@ -232,7 +265,8 @@ public class OrdemServicoService
             var peca = await _db.Pecas.FindAsync(pecaId)
                 ?? throw new InvalidOperationException("Peça não encontrada.");
 
-            decimal cobrado = valorCobrado ?? peca.PrecoVenda;
+            var existente = os.PecasUtilizadas.FirstOrDefault(p => p.PecaId == pecaId);
+            decimal cobrado = valorCobrado ?? existente?.ValorCobrado ?? peca.PrecoVenda;
             if (cobrado < 0)
             {
                 throw new InvalidOperationException("O valor cobrado não pode ser negativo.");
@@ -248,7 +282,6 @@ public class OrdemServicoService
                 await _estoqueService.BaixarPecaIndividualDaOSAsync(os.Id, peca.Id, quantidade, usuarioId);
             }
 
-            var existente = os.PecasUtilizadas.FirstOrDefault(p => p.PecaId == pecaId);
             if (existente != null)
             {
                 existente.Quantidade += quantidade;
@@ -280,7 +313,7 @@ public class OrdemServicoService
     public async Task RemoverPecaAsync(int osId, int osPecaId, int usuarioId, PerfilUsuario? perfilUsuario = null)
     {
         var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
-        if (perfil.HasValue && perfil.Value != PerfilUsuario.Administrador && perfil.Value != PerfilUsuario.Atendimento)
+        if (!EhPerfilValido(perfil) || (perfil.Value != PerfilUsuario.Administrador && perfil.Value != PerfilUsuario.Atendimento))
         {
             throw new UnauthorizedAccessException("Apenas Administradores e Atendimento possuem permissão para remover peças da ordem de serviço.");
         }
