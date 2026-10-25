@@ -184,6 +184,12 @@ main {
         will-change: width;
     }
 
+    .sidebar.sidebar--collapsed {
+        width: var(--sidebar-width-collapsed);
+        overflow: visible;
+        z-index: 1030;
+    }
+
     .sidebar-toggler {
         display: none !important;
     }

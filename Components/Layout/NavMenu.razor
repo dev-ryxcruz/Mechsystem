@@ -1,34 +1,30 @@
 @rendermode InteractiveServer
 @inject IJSRuntime JS
 @inject NavigationManager NavigationManager
+@inject SidebarState SidebarState
 @implements IDisposable
 
-@if (collapseSidebar)
-{
-    <style>
-        @@media (min-width: 768px) {
-            .sidebar { width: var(--sidebar-width-collapsed) !important; }
-        }
-    </style>
-}
-
-<div class="top-row @(collapseSidebar ? "top-row--collapsed" : "")">
+<div class="top-row @(SidebarState.IsCollapsed ? "top-row--collapsed" : "")">
     <div class="top-row-inner d-flex align-items-center w-100">
-        @if (!collapseSidebar)
+        @if (!SidebarState.IsCollapsed)
         {
-            <a class="navbar-brand d-flex align-items-center gap-2 m-0" href="">
-                <img src="logo.png" alt="Mechsystem Logo" style="height: 25px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));" />
-                <span style="font-weight: 700; font-size: 1.25rem; letter-spacing: -0.5px;">Mechsystem</span>
+            <a class="navbar-brand" href="">
+                <img src="logo.png" alt="Mechsystem Logo" class="brand-logo" />
+                <span class="brand-title">Mechsystem</span>
             </a>
         }
-        <button type="button" title="Alternar Menu" class="btn btn-link text-white @(collapseSidebar ? "mx-auto" : "ms-auto") p-0 sidebar-toggle" @onclick="ToggleSidebar">
-            <i class="bi @(collapseSidebar ? "bi-arrow-bar-right" : "bi-arrow-bar-left")" style="font-size: 1.5rem; filter: none; color: var(--accent);"></i>
+        <button type="button"
+                title="@(SidebarState.IsCollapsed ? "Expandir menu" : "Recolher menu")"
+                aria-label="@(SidebarState.IsCollapsed ? "Expandir menu" : "Recolher menu")"
+                class="btn btn-link text-white @(SidebarState.IsCollapsed ? "mx-auto" : "ms-auto") p-0 sidebar-toggle"
+                @onclick="ToggleSidebar">
+            <i class="bi @(SidebarState.IsCollapsed ? "bi-arrow-bar-right" : "bi-arrow-bar-left") sidebar-toggle-icon" aria-hidden="true"></i>
         </button>
     </div>
 </div>
 
-<div class="nav-scrollable" style="@(collapseSidebar ? "overflow-x: hidden;" : "")">
-    <nav class="nav flex-column @(collapseSidebar ? "nav-collapsed" : "")" aria-label="Menu principal">
+<div class="nav-scrollable @(SidebarState.IsCollapsed ? "nav-scrollable--collapsed" : "")">
+    <nav class="nav flex-column @(SidebarState.IsCollapsed ? "nav-collapsed" : "")" aria-label="Menu principal">
         @for (var sectionIndex = 0; sectionIndex < NavConfig.Sections.Count; sectionIndex++)
         {
             var navSection = NavConfig.Sections[sectionIndex];
@@ -51,13 +47,37 @@
 </div>
 
 @code {
-    private bool collapseSidebar = false;
+    private const string SidebarStorageKey = "mechsystem.sidebar.collapsed";
     private readonly HashSet<string> expandedGroups = new(StringComparer.OrdinalIgnoreCase);
 
     protected override void OnInitialized()
     {
         SyncActiveGroupFromUri(NavigationManager.Uri);
         NavigationManager.LocationChanged += OnLocationChanged;
+        SidebarState.OnChange += HandleSidebarStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        try
+        {
+            var stored = await JS.InvokeAsync<string?>("localStorage.getItem", SidebarStorageKey);
+            var collapsed = string.Equals(stored, "true", StringComparison.OrdinalIgnoreCase);
+            SidebarState.SetCollapsed(collapsed);
+            if (collapsed)
+            {
+                expandedGroups.Clear();
+            }
+            await JS.InvokeVoidAsync("syncSidebarCollapsed", SidebarState.IsCollapsed);
+            StateHasChanged();
+        }
+        catch
+        {
+            SidebarState.SetCollapsed(false);
+        }
     }
 
     private RenderFragment RenderSection(NavSectionDefinition navSection, bool showDivider) => __builder =>
@@ -67,7 +87,7 @@
             <div class="nav-divider" role="separator"></div>
         }
 
-        if (!collapseSidebar && !string.IsNullOrWhiteSpace(navSection.Title))
+        if (!SidebarState.IsCollapsed && !string.IsNullOrWhiteSpace(navSection.Title))
         {
             <div class="nav-section-title">@navSection.Title</div>
         }
@@ -98,10 +118,10 @@
             var isExpanded = expandedGroups.Contains(groupId);
 
             <NavGroup Group="item"
-                      IsCollapsed="collapseSidebar"
+                      IsCollapsed="SidebarState.IsCollapsed"
                       IsExpanded="isExpanded"
                       IsRouteActive="isRouteActive"
-                      OnToggle="() => ToggleGroup(groupId)" />
+                      OnToggle="() => ToggleGroupAsync(groupId)" />
         }
         else
         {
@@ -112,7 +132,7 @@
                          title="@item.Title"
                          data-tooltip="@item.Title">
                     <i class="bi @item.Icon" aria-hidden="true"></i>
-                    @if (!collapseSidebar)
+                    @if (!SidebarState.IsCollapsed)
                     {
                         <span class="nav-text">@item.Title</span>
                     }
@@ -144,22 +164,31 @@
 
     private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        SyncActiveGroupFromUri(e.Location);
+        if (!SidebarState.IsCollapsed)
+        {
+            SyncActiveGroupFromUri(e.Location);
+        }
         await InvokeAsync(StateHasChanged);
 
         try { await JS.InvokeVoidAsync("closeMobileSidebar"); }
         catch { /* JS runtime may not be available during prerender */ }
     }
 
+    private void HandleSidebarStateChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     public void Dispose()
     {
         NavigationManager.LocationChanged -= OnLocationChanged;
+        SidebarState.OnChange -= HandleSidebarStateChanged;
     }
 
-    private void ToggleSidebar()
+    private async Task ToggleSidebar()
     {
-        collapseSidebar = !collapseSidebar;
-        if (collapseSidebar)
+        SidebarState.Toggle();
+        if (SidebarState.IsCollapsed)
         {
             expandedGroups.Clear();
         }
@@ -167,20 +196,36 @@
         {
             SyncActiveGroupFromUri(NavigationManager.Uri);
         }
+
+        await PersistSidebarStateAsync();
     }
 
-    private void ToggleGroup(string groupId)
+    private async Task ToggleGroupAsync(string groupId)
     {
-        if (collapseSidebar)
+        if (SidebarState.IsCollapsed)
         {
-            collapseSidebar = false;
+            SidebarState.SetCollapsed(false);
             expandedGroups.Add(groupId);
+            await PersistSidebarStateAsync();
             return;
         }
 
         if (!expandedGroups.Remove(groupId))
         {
             expandedGroups.Add(groupId);
+        }
+    }
+
+    private async Task PersistSidebarStateAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("localStorage.setItem", SidebarStorageKey, SidebarState.IsCollapsed ? "true" : "false");
+            await JS.InvokeVoidAsync("syncSidebarCollapsed", SidebarState.IsCollapsed);
+        }
+        catch
+        {
+            // Ignora indisponibilidade de storage / JS interop
         }
     }
 }

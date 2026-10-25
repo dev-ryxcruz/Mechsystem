@@ -1,7 +1,9 @@
 @inherits LayoutComponentBase
+@inject SidebarState SidebarState
+@implements IDisposable
 
 <div class="page">
-    <div class="sidebar">
+    <div class="sidebar @(SidebarState.IsCollapsed ? "sidebar--collapsed" : "")">
         <NavMenu />
     </div>
 
@@ -40,3 +42,19 @@
     <span class="dismiss">🗙</span>
 </div>
 
+@code {
+    protected override void OnInitialized()
+    {
+        SidebarState.OnChange += HandleSidebarChanged;
+    }
+
+    private void HandleSidebarChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        SidebarState.OnChange -= HandleSidebarChanged;
+    }
+}

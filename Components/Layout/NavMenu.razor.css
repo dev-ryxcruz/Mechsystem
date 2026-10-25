@@ -23,19 +23,38 @@
 }
 
 .top-row .navbar-brand {
-    font-size: 1.05rem;
-    font-weight: 800;
-    color: var(--accent);
-    letter-spacing: 1.8px;
-    text-transform: uppercase;
-    text-decoration: none;
-    transition: opacity var(--transition-normal);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
     padding: 0;
+    color: var(--accent);
+    text-decoration: none;
+    min-width: 0;
+    transition: opacity var(--transition-normal);
 }
 
 .top-row .navbar-brand:hover {
     color: var(--accent);
     opacity: 0.85;
+}
+
+.brand-logo {
+    height: 1.5rem;
+    width: auto;
+    object-fit: contain;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.brand-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    white-space: nowrap;
+    line-height: 1.2;
 }
 
 /* Botão Toggle da Sidebar */
@@ -51,15 +70,19 @@
     transition: transform var(--transition-fast);
 }
 
-.sidebar-toggle .bi {
+.sidebar-toggle .bi,
+.sidebar-toggle-icon {
     margin: 0;
     width: 1.5rem;
     height: 1.5rem;
+    font-size: 1.4rem;
+    color: var(--accent);
+    filter: none;
 }
 
 .sidebar-toggle:hover,
 .sidebar-toggle:focus {
-    transform: scale(1.15);
+    transform: scale(1.12);
     text-decoration: none !important;
 }
 
@@ -183,7 +206,7 @@
 }
 
 /* ==============================================
-   ESTADO COLAPSADO (Centralizar ícones no centro de --sidebar-width-collapsed)
+   ESTADO COLAPSADO (Centralizar ícones + Tooltip CSS)
    ============================================== */
 .nav-collapsed .nav-item {
     padding: 0;
@@ -215,6 +238,38 @@
 .nav-collapsed .nav-item ::deep .nav-link.active {
     background: rgba(255, 117, 31, 0.15);
     border-radius: var(--radius-sm);
+}
+
+.nav-collapsed .nav-item ::deep .nav-link[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 0.75rem);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+    background: #14161a;
+    color: var(--text-on-dark);
+    border: 1px solid var(--border-dark);
+    box-shadow: var(--shadow-md);
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-fast),
+                transform var(--transition-fast),
+                visibility var(--transition-fast);
+    z-index: 1050;
+}
+
+.nav-collapsed .nav-item ::deep .nav-link[data-tooltip]:hover::after,
+.nav-collapsed .nav-item ::deep .nav-link[data-tooltip]:focus-visible::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-50%) translateX(0);
 }
 
 /* ==============================================
@@ -321,11 +376,17 @@
 .nav-scrollable {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
 }
 
-/* Touch targets: todos os links de nav >= 44px em mobile */
+/* Touch targets: todos os links e botões de nav >= 44px em mobile */
 @media (max-width: 767.98px) {
+    .sidebar-toggle {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
     .nav-item ::deep .nav-link {
         height: auto;
         min-height: 44px;
@@ -340,6 +401,10 @@
     .nav-section-title {
         padding-top: 0.5rem;
     }
+
+    .nav-collapsed .nav-item ::deep .nav-link[data-tooltip]::after {
+        display: none;
+    }
 }
 
 /* ==============================================
@@ -349,5 +414,9 @@
     .nav-scrollable {
         height: calc(100vh - var(--topbar-height));
         padding: 0.5rem 0;
+    }
+
+    .nav-scrollable.nav-scrollable--collapsed {
+        overflow: visible;
     }
 }
