@@ -1,6 +1,7 @@
 @page "/acompanhar/{token}"
-@rendermode InteractiveServer
 @attribute [AllowAnonymous]
+@layout PublicLayout
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using mechsystem.Data
@@ -101,7 +102,7 @@
                 <div class="row g-4 mb-4">
                     <div class="col-sm-6">
                         <div class="info-box">
-                            <div class="info-icon text-secondary"><i class="bi bi-calendar-arrow-down"></i></div>
+                            <div class="info-icon text-secondary"><i class="bi bi-calendar-event"></i></div>
                             <div>
                                 <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Entrada</small>
                                 <span class="fw-bold fs-6">@os.DataEmissao.ToString("dd/MM/yyyy")</span>
@@ -177,7 +178,6 @@
         {
             os = await DbContext.OrdensServico
                 .Include(o => o.Veiculo)
-                .ThenInclude(v => v!.Cliente)
                 .FirstOrDefaultAsync(o => o.TokenAcompanhamento == Token);
         }
         finally
