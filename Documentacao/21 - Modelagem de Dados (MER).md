@@ -53,7 +53,7 @@ O sistema centraliza esses dados e garante que as regras da oficina sejam respei
 | RN10 | O SKU da peça é único. Peça com movimentação ou usada em OS **não pode ser excluída** (restrição). |
 | RN11 | Toda movimentação de estoque pertence a **uma** peça e é feita por **um** usuário (rastreabilidade). |
 | RN12 | O nome de usuário é único; cada usuário tem exatamente **um** perfil (Administrador, Atendimento, Mecânico). |
-| RN13 | Cada OS possui status único: Orçamento, Aguardando Peças, Em Andamento, Pausada, Concluída ou Cancelada. |
+| RN13 | Cada OS possui status único controlado por máquina de estados: `Orcamento`, `EmAndamento`, `Pausada`, `AguardandoPecas`, `Concluida` ou `Cancelada`. |
 | RN14 | Uma OS pode ter vários registros de contato com o cliente (ligação, WhatsApp, e-mail, presencial, outro). |
 | RN15 | Excluir uma OS remove seus itens (peças e serviços) em cascata. |
 | RN16 | Existe **um único** registro de configuração da oficina (nome, CNPJ, validade do orçamento, garantia padrão etc.). |
@@ -424,15 +424,15 @@ Regras de negócio  →  Modelo Conceitual  →  Modelo Lógico
 
 ---
 
-## 5. Observações de aderência ao código atual
+## 5. Observações de aderência ao código atual (Pós-Estabilização)
 
-Modelo derivado das entidades em `Models/` e do [AppDbContext.cs](../Data/AppDbContext.cs). Pontos em que o modelo **propõe** restrição além do que o código implementa hoje:
-- `cliente.cpf` e `veiculo.placa` como `UNIQUE` (hoje só validados por formato).
-- `UNIQUE` compostas em `ordem_servico_peca`/`ordem_servico_servico` e `UNIQUE` em `vistoria.ordem_servico_id`.
-- `CHECK` de domínio (hoje feitos por validação na aplicação).
-- Tamanhos de `VARCHAR` sem `MaxLength` no código (ex.: `veiculo.marca`) são propostas.
+Modelo derivado das entidades em `Models/` e do [AppDbContext.cs](../Data/AppDbContext.cs). Com o ciclo de estabilização:
+- `cliente.cpf`, `veiculo.placa` e `ordem_servico.token_acompanhamento` possuem índices `UNIQUE` no banco PostgreSQL (além de normalização automática na aplicação).
+- `ordem_servico.data_conclusao` foi adicionada (`TIMESTAMPTZ NULL`) e preenchida automaticamente na conclusão da OS para apuração financeira por competência de conclusão.
+- `peca.xmin` (`Version`) foi configurado como token nativo de concorrência otimista do PostgreSQL (`IsRowVersion()`).
+- Todas as colunas `DateTime` são persistidas em UTC (`timestamp with time zone`) via convenção global no `AppDbContext`.
 
-Fora do escopo: classes `Relatorio*` (consultas/relatórios; não possuem `DbSet` no contexto) e `Login` (DTO de autenticação).
+Fora do escopo de tabelas próprias: classes `Relatorio*` (consultas/relatórios; não possuem `DbSet` no contexto) e `Login` (DTO de autenticação).
 
 ---
 

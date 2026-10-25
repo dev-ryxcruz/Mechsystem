@@ -8,7 +8,7 @@
   * Controle de acesso baseado em três perfis (`Administrador`, `Atendimento` e `Mecanico`), com revalidação automática de sessão (`OnValidatePrincipal`).
   * Senhas com hash `BCrypt.Net-Next`, política mínima de complexidade e proteção contra força bruta (*Rate Limiting*) no endpoint de login.
 * **Gestão de Ordens de Serviço (O.S.)**:
-  * Máquina de estados centralizada (`EmOrcamento` → `Aprovada` → `EmExecucao` ⇄ `Pausada` → `Concluida`, além de `Cancelada`) validada no servidor.
+  * Máquina de estados centralizada (`Orcamento` → `EmAndamento` ⇄ `Pausada` / `AguardandoPecas` → `Concluida`, além de `Cancelada`) validada no servidor.
   * Checklist obrigatório de vistoria de entrada, catálogo de serviços e vínculo de peças com validação de desconto por perfil.
   * Rastreamento público da O.S. sem necessidade de login (`/acompanhar/{token}`) com **QR Code gerado localmente** via `QRCoder`.
 * **Controle de Estoque e Movimentações**:
@@ -96,6 +96,18 @@ O repositório possui a suíte `mechsystem.Tests` cobrindo transições de estad
 ```bash
 dotnet test --verbosity normal
 ```
+
+## 🔒 Privacidade e Conformidade com a LGPD (Lei nº 13.709/2018)
+
+O MechSystem adota princípios de minimização, finalidade e segurança no tratamento de dados pessoais de clientes e colaboradores:
+
+* **Dados Pessoais Armazenados**: Nome completo, CPF, telefone, e-mail e endereço do cliente (`Cliente`), além da placa do veículo (`Veiculo`) e histórico de contatos na O.S. (`ContatoOS`).
+* **Finalidade e Base Legal**: Execução de contrato de prestação de serviços mecânicos e emissão de orçamento prévio obrigatório nos termos do **Art. 40 do Código de Defesa do Consumidor (CDC)**, garantia legal de peças/serviços e comunicação operacional sobre o andamento do reparo.
+* **Medidas Técnicas de Proteção**:
+  * **Normalização e Integridade**: CPF e telefone são sanitizados (apenas dígitos) antes da persistência; senhas de operadores são armazenadas exclusivamente com hash `BCrypt`.
+  * **Exclusão Lógica (*Soft Delete*)**: Clientes inativados (`Ativo = false`) permanecem ocultos das listagens operacionais via *Global Query Filter*, preservando apenas a integridade histórica fiscal/contratual sem reativação indevida.
+  * **Privacidade no Acompanhamento Público**: O link público (`/acompanhar/{token}`) utiliza token opaco aleatório de 128 bits (`Guid` hexadecimal) e **QR Code renderizado localmente no servidor (`QRCoder`)**, sem enviar URLs ou dados da O.S. para APIs externas. No portal público, dados sensíveis do proprietário (CPF, endereço, telefone) não são exibidos.
+  * **Segurança de Sessão e Acesso**: Cookies `HttpOnly`, `SameSite=Strict`, `SecurePolicy=Always` em produção, revalidação automática de vínculo/perfil (`OnValidatePrincipal`), controle de acesso por papéis no servidor e *Rate Limiting* contra ataques de força bruta no login.
 
 ## 📁 Estrutura do Projeto
 
