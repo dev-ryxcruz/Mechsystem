@@ -3,9 +3,6 @@
 @inject NavigationManager NavigationManager
 @implements IDisposable
 
-@* Controle da largura da sidebar — usa <style> porque NavMenu não tem acesso direto
-   ao elemento .sidebar do MainLayout. A transição funciona porque .sidebar 
-   já possui 'transition: width' definida no MainLayout.razor.css *@
 @if (collapseSidebar)
 {
     <style>
@@ -24,274 +21,132 @@
                 <span style="font-weight: 700; font-size: 1.25rem; letter-spacing: -0.5px;">Mechsystem</span>
             </a>
         }
-        <button title="Alternar Menu" class="btn btn-link text-white @(collapseSidebar ? "mx-auto" : "ms-auto") p-0 sidebar-toggle" @onclick="ToggleSidebar">
+        <button type="button" title="Alternar Menu" class="btn btn-link text-white @(collapseSidebar ? "mx-auto" : "ms-auto") p-0 sidebar-toggle" @onclick="ToggleSidebar">
             <i class="bi @(collapseSidebar ? "bi-arrow-bar-right" : "bi-arrow-bar-left")" style="font-size: 1.5rem; filter: none; color: var(--accent);"></i>
         </button>
     </div>
 </div>
 
 <div class="nav-scrollable" style="@(collapseSidebar ? "overflow-x: hidden;" : "")">
-    <nav class="nav flex-column @(collapseSidebar ? "nav-collapsed" : "")">
-        <div class="nav-item">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All" title="Home">
-                <i class="bi bi-house-door-fill" aria-hidden="true"></i>
-                @if (!collapseSidebar) { <span class="nav-text">Home</span> }
-            </NavLink>
-        </div>
+    <nav class="nav flex-column @(collapseSidebar ? "nav-collapsed" : "")" aria-label="Menu principal">
+        @for (var sectionIndex = 0; sectionIndex < NavConfig.Sections.Count; sectionIndex++)
+        {
+            var navSection = NavConfig.Sections[sectionIndex];
+            var showDivider = sectionIndex > 0;
 
-        <div class="nav-item">
-            <NavLink class="nav-link" href="/agenda" title="Agenda">
-                <i class="bi bi-calendar-week-fill" aria-hidden="true"></i>
-                @if (!collapseSidebar) { <span class="nav-text">Agenda</span> }
-            </NavLink>
-        </div>
-
-        <AuthorizeView Roles="Administrador, Atendimento">
-            <Authorized>
-                <div class="nav-divider"></div>
-                @if (!collapseSidebar) { <div class="nav-section-title">Cadastros</div> }
-
-                <!-- Menu Clientes -->
-                <div class="nav-item">
-                    <div class="nav-link" @onclick="ToggleClientes" style="cursor: pointer;" title="Clientes">
-                        <i class="bi bi-people-fill" aria-hidden="true"></i>
-                        @if (!collapseSidebar)
-                        {
-                            <span class="nav-text">Clientes</span>
-                            <i class="bi bi-chevron-@(expandClientes ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
-                        }
-                    </div>
-                    @if (expandClientes && !collapseSidebar)
-                    {
-                        <div class="nav-submenu">
-                            <NavLink class="nav-link" href="/clientes/cadastro">
-                                <i class="bi bi-person-plus-fill" aria-hidden="true"></i>
-                                <span class="nav-text">Novo Cliente</span>
-                            </NavLink>
-                            <NavLink class="nav-link" href="/clientes" Match="NavLinkMatch.All">
-                                <i class="bi bi-list-ul" aria-hidden="true"></i>
-                                <span class="nav-text">Listar Clientes</span>
-                            </NavLink>
-                        </div>
-                    }
-                </div>
-
-                <div class="nav-divider"></div>
-
-                <!-- Menu Veículos -->
-                <div class="nav-item">
-                    <div class="nav-link" @onclick="ToggleVeiculos" style="cursor: pointer;" title="Veículos">
-                        <i class="bi bi-car-front-fill" aria-hidden="true"></i>
-                        @if (!collapseSidebar)
-                        {
-                            <span class="nav-text">Veículos</span>
-                            <i class="bi bi-chevron-@(expandVeiculos ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
-                        }
-                    </div>
-                    @if (expandVeiculos && !collapseSidebar)
-                    {
-                        <div class="nav-submenu">
-                            <NavLink class="nav-link" href="/veiculos/cadastro">
-                                <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
-                                <span class="nav-text">Novo Veículo</span>
-                            </NavLink>
-                            <NavLink class="nav-link" href="/veiculos" Match="NavLinkMatch.All">
-                                <i class="bi bi-list-ul" aria-hidden="true"></i>
-                                <span class="nav-text">Listar Veículos</span>
-                            </NavLink>
-                        </div>
-                    }
-                </div>
-            </Authorized>
-        </AuthorizeView>
-
-        <div class="nav-divider"></div>
-
-        <!-- Menu Serviços -->
-        <div class="nav-item">
-            <div class="nav-link" @onclick="ToggleServicos" style="cursor: pointer;" title="Serviços">
-                <i class="bi bi-tools" aria-hidden="true"></i>
-                @if (!collapseSidebar)
-                {
-                    <span class="nav-text">Serviços</span>
-                    <i class="bi bi-chevron-@(expandServicos ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
-                }
-            </div>
-            @if (expandServicos && !collapseSidebar)
+            @if (!string.IsNullOrWhiteSpace(navSection.Roles))
             {
-                <div class="nav-submenu">
-                    <AuthorizeView Roles="Administrador, Atendimento">
-                        <NavLink class="nav-link" href="/servicos/cadastro">
-                            <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
-                            <span class="nav-text">Novo Serviço</span>
-                        </NavLink>
-                    </AuthorizeView>
-                    <NavLink class="nav-link" href="/servicos" Match="NavLinkMatch.All">
-                        <i class="bi bi-list-ul" aria-hidden="true"></i>
-                        <span class="nav-text">Listar Serviços</span>
-                    </NavLink>
-                </div>
+                <AuthorizeView Roles="@navSection.Roles">
+                    <Authorized>
+                        @RenderSection(navSection, showDivider)
+                    </Authorized>
+                </AuthorizeView>
             }
-        </div>
-
-        <div class="nav-divider"></div>
-
-        <!-- Menu Estoque -->
-        <div class="nav-item">
-            <div class="nav-link" @onclick="ToggleEstoque" style="cursor: pointer;" title="Estoque">
-                <i class="bi bi-box-seam-fill" aria-hidden="true"></i>
-                @if (!collapseSidebar)
-                {
-                    <span class="nav-text">Estoque</span>
-                    <i class="bi bi-chevron-@(expandEstoque ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
-                }
-            </div>
-            @if (expandEstoque && !collapseSidebar)
+            else
             {
-                <div class="nav-submenu">
-                    <AuthorizeView Roles="Administrador, Atendimento">
-                        <NavLink class="nav-link" href="/estoque/cadastro">
-                            <i class="bi bi-plus-circle-fill" aria-hidden="true"></i>
-                            <span class="nav-text">Nova Peça</span>
-                        </NavLink>
-                    </AuthorizeView>
-                    <NavLink class="nav-link" href="/estoque" Match="NavLinkMatch.All">
-                        <i class="bi bi-list-ul" aria-hidden="true"></i>
-                        <span class="nav-text">Listar Peças</span>
-                    </NavLink>
-                    <AuthorizeView Roles="Administrador, Atendimento">
-                        <NavLink class="nav-link" href="/estoque/entrada">
-                            <i class="bi bi-box-arrow-in-down" aria-hidden="true"></i>
-                            <span class="nav-text">Entrada</span>
-                        </NavLink>
-                    </AuthorizeView>
-                    <AuthorizeView Roles="Administrador">
-                        <NavLink class="nav-link" href="/estoque/ajuste">
-                            <i class="bi bi-sliders" aria-hidden="true"></i>
-                            <span class="nav-text">Ajuste</span>
-                        </NavLink>
-                    </AuthorizeView>
-                </div>
+                @RenderSection(navSection, showDivider)
             }
-        </div>
-
-        <div class="nav-divider"></div>
-
-        <!-- Menu OS -->
-        <div class="nav-item">
-            <div class="nav-link" @onclick="ToggleOS" style="cursor: pointer;" title="Ordens de Serviço">
-                <i class="bi bi-file-earmark-text-fill" aria-hidden="true"></i>
-                @if (!collapseSidebar)
-                {
-                    <span class="nav-text">Ordens de Serv.</span>
-                    <i class="bi bi-chevron-@(expandOS ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
-                }
-            </div>
-            @if (expandOS && !collapseSidebar)
-            {
-                <div class="nav-submenu">
-                    <AuthorizeView Roles="Administrador, Atendimento">
-                        <NavLink class="nav-link" href="/ordens-servico/nova">
-                            <i class="bi bi-file-earmark-plus-fill" aria-hidden="true"></i>
-                            <span class="nav-text">Nova O.S.</span>
-                        </NavLink>
-                    </AuthorizeView>
-                    <NavLink class="nav-link" href="/ordens-servico" Match="NavLinkMatch.All">
-                        <i class="bi bi-list-ul" aria-hidden="true"></i>
-                        <span class="nav-text">Listar O.S.</span>
-                    </NavLink>
-                </div>
-            }
-        </div>
-
-        <div class="nav-divider"></div>
-
-        <!-- Menu Operacional -->
-        <div class="nav-item">
-            <NavLink class="nav-link" href="/operacional/painel" title="Painel Operacional">
-                <i class="bi bi-wrench-adjustable-circle-fill" aria-hidden="true"></i>
-                @if (!collapseSidebar) { <span class="nav-text">Painel Operacional</span> }
-            </NavLink>
-        </div>
-
-        <div class="nav-divider"></div>
-
-        <!-- Menu Vistorias -->
-        <div class="nav-item">
-            <NavLink class="nav-link" href="/vistorias" title="Vistorias">
-                <i class="bi bi-clipboard-check-fill" aria-hidden="true"></i>
-                @if (!collapseSidebar) { <span class="nav-text">Vistorias</span> }
-            </NavLink>
-        </div>
-
-        <div class="nav-divider"></div>
-
-        <!-- Menu Relatórios -->
-        <div class="nav-item">
-            <NavLink class="nav-link" href="/relatorios" title="Relatórios">
-                <i class="bi bi-file-earmark-bar-graph-fill" aria-hidden="true"></i>
-                @if (!collapseSidebar) { <span class="nav-text">Relatórios</span> }
-            </NavLink>
-        </div>
-
-        <AuthorizeView Roles="Administrador">
-            <Authorized>
-                <div class="nav-divider"></div>
-
-                @if (!collapseSidebar) { <div class="nav-section-title">Administrativo</div> }
-                
-                <!-- Menu Usuários -->
-                <div class="nav-item">
-                    <div class="nav-link" @onclick="ToggleUsuarios" style="cursor: pointer;" title="Usuários">
-                        <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
-                        @if (!collapseSidebar)
-                        {
-                            <span class="nav-text">Usuários</span>
-                            <i class="bi bi-chevron-@(expandUsuarios ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
-                        }
-                    </div>
-                    @if (expandUsuarios && !collapseSidebar)
-                    {
-                        <div class="nav-submenu">
-                            <NavLink class="nav-link" href="/usuarios/cadastro">
-                                <i class="bi bi-person-plus-fill" aria-hidden="true"></i>
-                                <span class="nav-text">Novo Usuário</span>
-                            </NavLink>
-                            <NavLink class="nav-link" href="/usuarios" Match="NavLinkMatch.All">
-                                <i class="bi bi-people-fill" aria-hidden="true"></i>
-                                <span class="nav-text">Listar Usuários</span>
-                            </NavLink>
-                        </div>
-                    }
-                </div>
-                 <!-- Menu Configurações -->
-                    <div class="nav-item">
-                        <NavLink class="nav-link" href="/configuracoes" title="Configurações">
-                            <i class="bi bi-gear" aria-hidden="true"></i>
-                            @if (!collapseSidebar) { <span class="nav-text">Configurações</span> }
-                        </NavLink>
-                    </div>
-            </Authorized>
-        </AuthorizeView>
+        }
     </nav>
 </div>
 
 @code {
     private bool collapseSidebar = false;
-    private bool expandClientes = false;
-    private bool expandVeiculos = false;
-    private bool expandServicos = false;
-    private bool expandEstoque = false;
-    private bool expandOS = false;
-    private bool expandUsuarios = false;
+    private readonly HashSet<string> expandedGroups = new(StringComparer.OrdinalIgnoreCase);
 
     protected override void OnInitialized()
     {
+        SyncActiveGroupFromUri(NavigationManager.Uri);
         NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private RenderFragment RenderSection(NavSectionDefinition navSection, bool showDivider) => __builder =>
+    {
+        if (showDivider)
+        {
+            <div class="nav-divider" role="separator"></div>
+        }
+
+        if (!collapseSidebar && !string.IsNullOrWhiteSpace(navSection.Title))
+        {
+            <div class="nav-section-title">@navSection.Title</div>
+        }
+
+        foreach (var item in navSection.Items)
+        {
+            if (!string.IsNullOrWhiteSpace(item.Roles))
+            {
+                <AuthorizeView Roles="@item.Roles">
+                    <Authorized>
+                        @RenderNavItem(item)
+                    </Authorized>
+                </AuthorizeView>
+            }
+            else
+            {
+                @RenderNavItem(item)
+            }
+        }
+    };
+
+    private RenderFragment RenderNavItem(NavItemDefinition item) => __builder =>
+    {
+        if (item.IsGroup && item.GroupId is not null)
+        {
+            var groupId = item.GroupId;
+            var isRouteActive = item.MatchesPath(GetCurrentRelativePath());
+            var isExpanded = expandedGroups.Contains(groupId);
+
+            <NavGroup Group="item"
+                      IsCollapsed="collapseSidebar"
+                      IsExpanded="isExpanded"
+                      IsRouteActive="isRouteActive"
+                      OnToggle="() => ToggleGroup(groupId)" />
+        }
+        else
+        {
+            <div class="nav-item">
+                <NavLink class="nav-link"
+                         href="@item.Href"
+                         Match="@item.Match"
+                         title="@item.Title"
+                         data-tooltip="@item.Title">
+                    <i class="bi @item.Icon" aria-hidden="true"></i>
+                    @if (!collapseSidebar)
+                    {
+                        <span class="nav-text">@item.Title</span>
+                    }
+                </NavLink>
+            </div>
+        }
+    };
+
+    private string GetCurrentRelativePath()
+    {
+        var relative = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        return "/" + relative;
+    }
+
+    private void SyncActiveGroupFromUri(string uri)
+    {
+        var relative = "/" + NavigationManager.ToBaseRelativePath(uri);
+        foreach (var section in NavConfig.Sections)
+        {
+            foreach (var item in section.Items)
+            {
+                if (item.IsGroup && item.GroupId is not null && item.MatchesPath(relative))
+                {
+                    expandedGroups.Add(item.GroupId);
+                }
+            }
+        }
     }
 
     private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
+        SyncActiveGroupFromUri(e.Location);
+        await InvokeAsync(StateHasChanged);
+
         try { await JS.InvokeVoidAsync("closeMobileSidebar"); }
         catch { /* JS runtime may not be available during prerender */ }
     }
@@ -306,48 +161,26 @@
         collapseSidebar = !collapseSidebar;
         if (collapseSidebar)
         {
-            expandClientes = false;
-            expandVeiculos = false;
-            expandServicos = false;
-            expandEstoque = false;
-            expandOS = false;
-            expandUsuarios = false;
+            expandedGroups.Clear();
+        }
+        else
+        {
+            SyncActiveGroupFromUri(NavigationManager.Uri);
         }
     }
 
-    private void ToggleClientes()
+    private void ToggleGroup(string groupId)
     {
-        if (collapseSidebar) collapseSidebar = false;
-        expandClientes = !expandClientes;
-    }
+        if (collapseSidebar)
+        {
+            collapseSidebar = false;
+            expandedGroups.Add(groupId);
+            return;
+        }
 
-    private void ToggleVeiculos()
-    {
-        if (collapseSidebar) collapseSidebar = false;
-        expandVeiculos = !expandVeiculos;
-    }
-
-    private void ToggleServicos()
-    {
-        if (collapseSidebar) collapseSidebar = false;
-        expandServicos = !expandServicos;
-    }
-
-    private void ToggleEstoque()
-    {
-        if (collapseSidebar) collapseSidebar = false;
-        expandEstoque = !expandEstoque;
-    }
-
-    private void ToggleOS()
-    {
-        if (collapseSidebar) collapseSidebar = false;
-        expandOS = !expandOS;
-    }
-
-    private void ToggleUsuarios()
-    {
-        if (collapseSidebar) collapseSidebar = false;
-        expandUsuarios = !expandUsuarios;
+        if (!expandedGroups.Remove(groupId))
+        {
+            expandedGroups.Add(groupId);
+        }
     }
 }

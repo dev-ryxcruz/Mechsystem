@@ -1,0 +1,65 @@
+@{
+    var submenuId = $"nav-submenu-{Group.GroupId}";
+    var expanded = IsExpanded && !IsCollapsed;
+}
+
+<div class="nav-item">
+    <button type="button"
+            class="nav-link nav-group-toggle @(IsRouteActive ? "group-active" : "") @(IsCollapsed && IsRouteActive ? "active" : "")"
+            aria-expanded="@(expanded ? "true" : "false")"
+            aria-controls="@submenuId"
+            title="@Group.Title"
+            data-tooltip="@Group.Title"
+            @onclick="OnToggle">
+        <i class="bi @Group.Icon" aria-hidden="true"></i>
+        @if (!IsCollapsed)
+        {
+            <span class="nav-text">@Group.Title</span>
+            <i class="bi bi-chevron-@(expanded ? "up" : "down") ms-auto chevron-icon" aria-hidden="true"></i>
+        }
+    </button>
+
+    @if (expanded && Group.Children is { Count: > 0 })
+    {
+        <div id="@submenuId" class="nav-submenu" role="group" aria-label="@Group.Title">
+            @foreach (var child in Group.Children)
+            {
+                @if (!string.IsNullOrWhiteSpace(child.Roles))
+                {
+                    <AuthorizeView Roles="@child.Roles">
+                        <Authorized>
+                            <NavLink class="nav-link" href="@child.Href" Match="@child.Match" title="@child.Title">
+                                <i class="bi @child.Icon" aria-hidden="true"></i>
+                                <span class="nav-text">@child.Title</span>
+                            </NavLink>
+                        </Authorized>
+                    </AuthorizeView>
+                }
+                else
+                {
+                    <NavLink class="nav-link" href="@child.Href" Match="@child.Match" title="@child.Title">
+                        <i class="bi @child.Icon" aria-hidden="true"></i>
+                        <span class="nav-text">@child.Title</span>
+                    </NavLink>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public NavItemDefinition Group { get; set; } = default!;
+
+    [Parameter]
+    public bool IsCollapsed { get; set; }
+
+    [Parameter]
+    public bool IsExpanded { get; set; }
+
+    [Parameter]
+    public bool IsRouteActive { get; set; }
+
+    [Parameter]
+    public EventCallback OnToggle { get; set; }
+}

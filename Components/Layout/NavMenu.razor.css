@@ -107,7 +107,33 @@
     text-decoration: none;
     font-size: 0.9rem;
     font-weight: 400;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
     box-sizing: border-box;
+}
+
+.nav-item ::deep .nav-link:focus-visible,
+.sidebar-toggle:focus-visible,
+.top-row .navbar-brand:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px var(--accent-glow) !important;
+}
+
+.nav-item ::deep .nav-group-toggle.group-active {
+    background: linear-gradient(90deg, rgba(255, 117, 31, 0.10) 0%, transparent 100%);
+    color: var(--text-on-dark);
+    font-weight: 600;
+}
+
+.nav-item ::deep .nav-group-toggle.group-active::before {
+    background-color: var(--accent);
+}
+
+.nav-item ::deep .nav-group-toggle.group-active .bi,
+.nav-item ::deep .nav-group-toggle.group-active .chevron-icon {
+    color: var(--accent);
 }
 
 .nav-item ::deep .nav-link::before {
