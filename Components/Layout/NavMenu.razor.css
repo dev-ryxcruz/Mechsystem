@@ -78,6 +78,9 @@
     font-size: 1.4rem;
     color: var(--accent);
     filter: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .sidebar-toggle:hover,
@@ -87,32 +90,46 @@
 }
 
 /* ==============================================
-   NAV & NAV ITEMS (Sistema de Medidas Único)
+   NAV & NAV ITEMS (Escopo raiz .app-nav com ::deep)
    ============================================== */
-.nav {
+.app-nav {
     gap: var(--nav-item-gap);
 }
 
-.nav-item {
+.app-nav ::deep .nav-item {
     padding: 0 var(--nav-pad-x);
     margin: 0;
 }
 
-.nav-text {
+.app-nav ::deep .nav-text {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     transition: opacity var(--transition-normal);
 }
 
-.chevron-icon {
+.app-nav ::deep .chevron-icon {
+    width: auto;
+    height: auto;
     font-size: 0.75rem;
-    transition: transform var(--transition-fast);
+    margin-left: auto;
+    margin-right: 0;
+    transition: transform var(--transition-fast), color var(--transition-fast);
     color: var(--text-on-dark-muted);
     flex-shrink: 0;
 }
 
-.nav-item ::deep .nav-link {
+.app-nav ::deep .nav-group-toggle {
+    background: none;
+    border: 0;
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    appearance: none;
+}
+
+.app-nav ::deep .nav-link {
     color: var(--text-on-dark-muted);
     background: transparent;
     border-radius: var(--radius-sm);
@@ -123,7 +140,7 @@
     padding: 0 0.5rem 0 0;
     margin: 0;
     gap: 0.75rem;
-    border: none;
+    border: 0;
     position: relative;
     transition: color var(--transition-fast),
                 background-color var(--transition-fast);
@@ -136,7 +153,7 @@
     box-sizing: border-box;
 }
 
-.nav-item ::deep .nav-link:focus-visible,
+.app-nav ::deep .nav-link:focus-visible,
 .sidebar-toggle:focus-visible,
 .top-row .navbar-brand:focus-visible {
     outline: 2px solid var(--accent);
@@ -144,22 +161,22 @@
     box-shadow: 0 0 0 3px var(--accent-glow) !important;
 }
 
-.nav-item ::deep .nav-group-toggle.group-active {
+.app-nav ::deep .nav-group-toggle.group-active {
     background: linear-gradient(90deg, rgba(255, 117, 31, 0.10) 0%, transparent 100%);
     color: var(--text-on-dark);
     font-weight: 600;
 }
 
-.nav-item ::deep .nav-group-toggle.group-active::before {
+.app-nav ::deep .nav-group-toggle.group-active::before {
     background-color: var(--accent);
 }
 
-.nav-item ::deep .nav-group-toggle.group-active .bi,
-.nav-item ::deep .nav-group-toggle.group-active .chevron-icon {
+.app-nav ::deep .nav-group-toggle.group-active .bi,
+.app-nav ::deep .nav-group-toggle.group-active .chevron-icon {
     color: var(--accent);
 }
 
-.nav-item ::deep .nav-link::before {
+.app-nav ::deep .nav-link::before {
     content: "";
     position: absolute;
     left: -0.5rem;
@@ -175,46 +192,46 @@
 /* ==============================================
    HOVER
    ============================================== */
-.nav-item ::deep .nav-link:hover {
+.app-nav ::deep .nav-link:hover {
     background-color: rgba(255, 255, 255, 0.05);
     color: var(--text-on-dark);
 }
 
-.nav-item ::deep .nav-link:hover::before {
+.app-nav ::deep .nav-link:hover::before {
     background-color: rgba(255, 117, 31, 0.4);
 }
 
-.nav-item ::deep .nav-link:hover .bi {
+.app-nav ::deep .nav-link:hover .bi {
     color: var(--text-on-dark);
 }
 
 /* ==============================================
    ITEM ATIVO
    ============================================== */
-.nav-item ::deep .nav-link.active {
+.app-nav ::deep .nav-link.active {
     background: linear-gradient(90deg, rgba(255, 117, 31, 0.15) 0%, transparent 100%);
     color: var(--accent);
     font-weight: 600;
 }
 
-.nav-item ::deep .nav-link.active::before {
+.app-nav ::deep .nav-link.active::before {
     background-color: var(--accent);
 }
 
-.nav-item ::deep .nav-link.active .bi {
+.app-nav ::deep .nav-link.active .bi {
     color: var(--accent);
 }
 
 /* ==============================================
    ESTADO COLAPSADO (Centralizar ícones + Tooltip CSS)
    ============================================== */
-.nav-collapsed .nav-item {
+.app-nav.nav-collapsed ::deep .nav-item {
     padding: 0;
     display: flex;
     justify-content: center;
 }
 
-.nav-collapsed .nav-item ::deep .nav-link {
+.app-nav.nav-collapsed ::deep .nav-link {
     width: var(--nav-item-height);
     height: var(--nav-item-height);
     justify-content: center;
@@ -223,24 +240,24 @@
     gap: 0;
 }
 
-.nav-collapsed .nav-item ::deep .nav-link::before {
+.app-nav.nav-collapsed ::deep .nav-link::before {
     display: none;
 }
 
-.nav-collapsed .nav-item ::deep .nav-link .bi {
+.app-nav.nav-collapsed ::deep .nav-link .bi {
     margin: 0;
 }
 
-.nav-collapsed .nav-item ::deep .nav-link:hover {
+.app-nav.nav-collapsed ::deep .nav-link:hover {
     background-color: rgba(255, 117, 31, 0.1);
 }
 
-.nav-collapsed .nav-item ::deep .nav-link.active {
+.app-nav.nav-collapsed ::deep .nav-link.active {
     background: rgba(255, 117, 31, 0.15);
     border-radius: var(--radius-sm);
 }
 
-.nav-collapsed .nav-item ::deep .nav-link[data-tooltip]::after {
+.app-nav.nav-collapsed ::deep .nav-link[data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
     left: calc(100% + 0.75rem);
@@ -265,8 +282,8 @@
     z-index: 1050;
 }
 
-.nav-collapsed .nav-item ::deep .nav-link[data-tooltip]:hover::after,
-.nav-collapsed .nav-item ::deep .nav-link[data-tooltip]:focus-visible::after {
+.app-nav.nav-collapsed ::deep .nav-link[data-tooltip]:hover::after,
+.app-nav.nav-collapsed ::deep .nav-link[data-tooltip]:focus-visible::after {
     opacity: 1;
     visibility: visible;
     transform: translateY(-50%) translateX(0);
@@ -275,7 +292,7 @@
 /* ==============================================
    TÍTULOS DE SEÇÃO (Mesmo eixo X = --nav-pad-x)
    ============================================== */
-.nav-section-title {
+.app-nav ::deep .nav-section-title {
     font-size: 0.65rem;
     font-weight: 700;
     color: var(--text-on-dark-muted);
@@ -289,16 +306,16 @@
 /* ==============================================
    DIVISORES
    ============================================== */
-.nav-divider {
+.app-nav ::deep .nav-divider {
     height: 1px;
     background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 50%, transparent 100%);
     margin: 0.5rem var(--nav-pad-x);
 }
 
 /* ==============================================
-   ÍCONES
+   ÍCONES (Escopados em .app-nav ::deep .bi)
    ============================================== */
-.bi {
+.app-nav ::deep .bi {
     width: 1.5rem;
     height: 1.5rem;
     font-size: 1.35rem;
@@ -312,10 +329,17 @@
     justify-content: center;
 }
 
+.app-nav ::deep .chevron-icon.bi {
+    width: auto;
+    height: auto;
+    font-size: 0.75rem;
+    margin-left: auto;
+}
+
 /* ==============================================
    SUBMENUS (Acordeão)
    ============================================== */
-.nav-submenu {
+.app-nav ::deep .nav-submenu {
     background-color: rgba(0, 0, 0, 0.15);
     border-radius: var(--radius-sm);
     margin: var(--nav-item-gap) 0 0.2rem 0.75rem;
@@ -326,7 +350,7 @@
     gap: var(--nav-item-gap);
 }
 
-.nav-submenu ::deep .nav-link {
+.app-nav ::deep .nav-submenu .nav-link {
     height: 2.4rem;
     font-size: 0.85rem;
     margin: 0;
@@ -334,11 +358,11 @@
     gap: 0.65rem;
 }
 
-.nav-submenu ::deep .nav-link::before {
+.app-nav ::deep .nav-submenu .nav-link::before {
     display: none;
 }
 
-.nav-submenu ::deep .nav-link .bi {
+.app-nav ::deep .nav-submenu .nav-link .bi {
     width: 1.25rem;
     height: 1.25rem;
     margin: 0;
@@ -387,22 +411,22 @@
         min-height: 44px;
     }
 
-    .nav-item ::deep .nav-link {
+    .app-nav ::deep .nav-item .nav-link {
         height: auto;
         min-height: 44px;
         padding-top: 0.6rem;
         padding-bottom: 0.6rem;
     }
 
-    .nav-submenu ::deep .nav-link {
+    .app-nav ::deep .nav-submenu .nav-link {
         min-height: 44px;
     }
 
-    .nav-section-title {
+    .app-nav ::deep .nav-section-title {
         padding-top: 0.5rem;
     }
 
-    .nav-collapsed .nav-item ::deep .nav-link[data-tooltip]::after {
+    .app-nav.nav-collapsed ::deep .nav-link[data-tooltip]::after {
         display: none;
     }
 }

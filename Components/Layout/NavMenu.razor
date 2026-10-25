@@ -24,7 +24,7 @@
 </div>
 
 <div class="nav-scrollable @(SidebarState.IsCollapsed ? "nav-scrollable--collapsed" : "")">
-    <nav class="nav flex-column @(SidebarState.IsCollapsed ? "nav-collapsed" : "")" aria-label="Menu principal">
+    <nav class="nav flex-column app-nav @(SidebarState.IsCollapsed ? "nav-collapsed" : "")" aria-label="Menu principal">
         @for (var sectionIndex = 0; sectionIndex < NavConfig.Sections.Count; sectionIndex++)
         {
             var navSection = NavConfig.Sections[sectionIndex];
