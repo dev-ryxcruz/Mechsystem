@@ -95,7 +95,12 @@ namespace mechsystem.Data
 
             // Peca: SKU único e controle de concorrência otimista (PostgreSQL xmin)
             modelBuilder.Entity<Peca>().HasIndex(p => p.Sku).IsUnique();
-            modelBuilder.Entity<Peca>().Property(p => p.Version).IsRowVersion();
+            modelBuilder.Entity<Peca>()
+                .Property(p => p.Version)
+                .HasColumnName("xmin")
+                .HasColumnType("xid")
+                .ValueGeneratedOnAddOrUpdate()
+                .IsConcurrencyToken();
 
             // MovimentacaoEstoque: FKs
             modelBuilder.Entity<MovimentacaoEstoque>()

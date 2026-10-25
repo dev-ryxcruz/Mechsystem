@@ -382,6 +382,7 @@ public class OrdemServicoStabilizationTests
             var options = new DbContextOptionsBuilder<AppDbContext>()
                 .UseNpgsql(connectionString)
                 .UseSnakeCaseNamingConvention()
+                .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
                 .Options;
 
             await using (var db = new AppDbContext(options))
