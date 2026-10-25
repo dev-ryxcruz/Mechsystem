@@ -40,6 +40,14 @@
     --transition-fast: 0.15s ease;
     --transition-normal: 0.25s ease;
     --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Sistema de Medidas (Layout & Sidebar) */
+    --topbar-height: 3.5rem;
+    --sidebar-width: 250px;
+    --sidebar-width-collapsed: 4.5rem;
+    --nav-item-height: 2.75rem;
+    --nav-item-gap: .125rem;
+    --nav-pad-x: 1rem;
 }
 
 /* ==============================================

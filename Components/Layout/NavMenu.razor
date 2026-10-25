@@ -10,13 +10,13 @@
 {
     <style>
         @@media (min-width: 768px) {
-            .sidebar { width: 4.5rem !important; }
+            .sidebar { width: var(--sidebar-width-collapsed) !important; }
         }
     </style>
 }
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid align-items-center d-flex p-0 pe-3">
+<div class="top-row @(collapseSidebar ? "top-row--collapsed" : "")">
+    <div class="top-row-inner d-flex align-items-center w-100">
         @if (!collapseSidebar)
         {
             <a class="navbar-brand d-flex align-items-center gap-2 m-0" href="">
@@ -32,14 +32,14 @@
 
 <div class="nav-scrollable" style="@(collapseSidebar ? "overflow-x: hidden;" : "")">
     <nav class="nav flex-column @(collapseSidebar ? "nav-collapsed" : "")">
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All" title="Home">
                 <i class="bi bi-house-door-fill" aria-hidden="true"></i>
                 @if (!collapseSidebar) { <span class="nav-text">Home</span> }
             </NavLink>
         </div>
 
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <NavLink class="nav-link" href="/agenda" title="Agenda">
                 <i class="bi bi-calendar-week-fill" aria-hidden="true"></i>
                 @if (!collapseSidebar) { <span class="nav-text">Agenda</span> }
@@ -49,10 +49,10 @@
         <AuthorizeView Roles="Administrador, Atendimento">
             <Authorized>
                 <div class="nav-divider"></div>
-                @if (!collapseSidebar) { <div class="nav-section-title px-3">Cadastros</div> }
+                @if (!collapseSidebar) { <div class="nav-section-title">Cadastros</div> }
 
                 <!-- Menu Clientes -->
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <div class="nav-link" @onclick="ToggleClientes" style="cursor: pointer;" title="Clientes">
                         <i class="bi bi-people-fill" aria-hidden="true"></i>
                         @if (!collapseSidebar)
@@ -79,7 +79,7 @@
                 <div class="nav-divider"></div>
 
                 <!-- Menu Veículos -->
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <div class="nav-link" @onclick="ToggleVeiculos" style="cursor: pointer;" title="Veículos">
                         <i class="bi bi-car-front-fill" aria-hidden="true"></i>
                         @if (!collapseSidebar)
@@ -108,7 +108,7 @@
         <div class="nav-divider"></div>
 
         <!-- Menu Serviços -->
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <div class="nav-link" @onclick="ToggleServicos" style="cursor: pointer;" title="Serviços">
                 <i class="bi bi-tools" aria-hidden="true"></i>
                 @if (!collapseSidebar)
@@ -137,7 +137,7 @@
         <div class="nav-divider"></div>
 
         <!-- Menu Estoque -->
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <div class="nav-link" @onclick="ToggleEstoque" style="cursor: pointer;" title="Estoque">
                 <i class="bi bi-box-seam-fill" aria-hidden="true"></i>
                 @if (!collapseSidebar)
@@ -178,7 +178,7 @@
         <div class="nav-divider"></div>
 
         <!-- Menu OS -->
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <div class="nav-link" @onclick="ToggleOS" style="cursor: pointer;" title="Ordens de Serviço">
                 <i class="bi bi-file-earmark-text-fill" aria-hidden="true"></i>
                 @if (!collapseSidebar)
@@ -207,7 +207,7 @@
         <div class="nav-divider"></div>
 
         <!-- Menu Operacional -->
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <NavLink class="nav-link" href="/operacional/painel" title="Painel Operacional">
                 <i class="bi bi-wrench-adjustable-circle-fill" aria-hidden="true"></i>
                 @if (!collapseSidebar) { <span class="nav-text">Painel Operacional</span> }
@@ -217,7 +217,7 @@
         <div class="nav-divider"></div>
 
         <!-- Menu Vistorias -->
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <NavLink class="nav-link" href="/vistorias" title="Vistorias">
                 <i class="bi bi-clipboard-check-fill" aria-hidden="true"></i>
                 @if (!collapseSidebar) { <span class="nav-text">Vistorias</span> }
@@ -227,7 +227,7 @@
         <div class="nav-divider"></div>
 
         <!-- Menu Relatórios -->
-        <div class="nav-item px-3">
+        <div class="nav-item">
             <NavLink class="nav-link" href="/relatorios" title="Relatórios">
                 <i class="bi bi-file-earmark-bar-graph-fill" aria-hidden="true"></i>
                 @if (!collapseSidebar) { <span class="nav-text">Relatórios</span> }
@@ -238,10 +238,10 @@
             <Authorized>
                 <div class="nav-divider"></div>
 
-                @if (!collapseSidebar) { <div class="nav-section-title px-3">Administrativo</div> }
+                @if (!collapseSidebar) { <div class="nav-section-title">Administrativo</div> }
                 
                 <!-- Menu Usuários -->
-                <div class="nav-item px-3">
+                <div class="nav-item">
                     <div class="nav-link" @onclick="ToggleUsuarios" style="cursor: pointer;" title="Usuários">
                         <i class="bi bi-shield-lock-fill" aria-hidden="true"></i>
                         @if (!collapseSidebar)
@@ -265,7 +265,7 @@
                     }
                 </div>
                  <!-- Menu Configurações -->
-                    <div class="nav-item px-3">
+                    <div class="nav-item">
                         <NavLink class="nav-link" href="/configuracoes" title="Configurações">
                             <i class="bi bi-gear" aria-hidden="true"></i>
                             @if (!collapseSidebar) { <span class="nav-text">Configurações</span> }

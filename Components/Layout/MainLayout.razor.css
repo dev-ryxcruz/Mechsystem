@@ -21,7 +21,7 @@ main {
 .sidebar {
     background: linear-gradient(180deg, #1e2227 0%, #181b1f 100%);
     overflow: hidden;
-    border-right: 1px solid var(--border-dark);
+    box-shadow: inset -1px 0 0 var(--border-dark);
     display: flex;
     flex-direction: column;
 }
@@ -79,9 +79,11 @@ main {
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
     border-bottom: 1px solid var(--border-light);
     justify-content: flex-end;
-    height: 3.5rem;
+    height: var(--topbar-height);
+    min-height: var(--topbar-height);
     display: flex;
     align-items: center;
+    box-sizing: border-box;
 }
 
     .top-row ::deep a, .top-row ::deep .btn-link {
@@ -137,7 +139,7 @@ main {
         padding-left: 0.75rem !important;
         padding-right: 0.75rem !important;
         height: auto;
-        min-height: 3.5rem;
+        min-height: var(--topbar-height);
         flex-wrap: wrap;
         gap: 0.4rem;
         padding-top: 0.4rem;
@@ -173,7 +175,7 @@ main {
     }
 
     .sidebar {
-        width: 250px;
+        width: var(--sidebar-width);
         height: 100vh;
         position: sticky;
         top: 0;
@@ -190,6 +192,8 @@ main {
         position: sticky;
         top: 0;
         z-index: 1;
+        height: var(--topbar-height);
+        min-height: var(--topbar-height);
         background: var(--bg-body);
         border-bottom: 1px solid var(--border-light);
         box-shadow: none;
