@@ -14,7 +14,7 @@ namespace mechsystem.Models
         // Datas
         [Required]
         [Display(Name = "Data de Emissão")]
-        public DateTime DataEmissao { get; set; } = DateTime.Now;
+        public DateTime DataEmissao { get; set; } = DateTime.UtcNow;
 
         [Display(Name = "Previsão de Início")]
         public DateTime? DataPrevisaoInicio { get; set; }
@@ -117,6 +117,9 @@ namespace mechsystem.Models
         [Display(Name = "Data da Autorização")]
         public DateTime? DataAutorizacao { get; set; }
 
+        [Display(Name = "Data da Conclusão")]
+        public DateTime? DataConclusao { get; set; }
+
         [Display(Name = "Validade do Orçamento")]
         public DateTime GetValidadeOrcamento(int validadeDias) => DataEmissao.AddDays(validadeDias);
 
@@ -130,18 +133,85 @@ namespace mechsystem.Models
         public ICollection<OrdemServicoServico> ServicosAExecutarList { get; set; } = new List<OrdemServicoServico>();
 
         // Comunicação com Cliente
-        public string? TokenAcompanhamento { get; set; }
+        public string? TokenAcompanhamento { get; set; } = Guid.NewGuid().ToString("N");
         public ICollection<ContatoOS> Contatos { get; set; } = new List<ContatoOS>();
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {
-            if (DataPrevisaoEntrega < DataEmissao.Date)
+            if (DataPrevisaoEntrega.Date < DataEmissao.Date)
             {
                 yield return new ValidationResult(
                     "A data de previsão de entrega não pode ser anterior à data de emissão.",
                     new[] { nameof(DataPrevisaoEntrega) }
                 );
             }
+        }
+    }
+
+    public static class DateTimeExtensions
+    {
+        private static readonly TimeZoneInfo BrasiliaTimeZone = ObterTimeZoneBrasilia();
+
+        private static TimeZoneInfo ObterTimeZoneBrasilia()
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById("America/Sao_Paulo");
+            }
+            catch
+            {
+                try
+                {
+                    return TimeZoneInfo.FindSystemTimeZoneById("E. South America Standard Time");
+                }
+                catch
+                {
+                    return TimeZoneInfo.Local;
+                }
+            }
+        }
+
+        public static DateTime ToBrasiliaTime(this DateTime dateTime)
+        {
+            if (dateTime.Kind == DateTimeKind.Local)
+            {
+                return TimeZoneInfo.ConvertTime(dateTime, BrasiliaTimeZone);
+            }
+
+            var utc = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+            return TimeZoneInfo.ConvertTimeFromUtc(utc, BrasiliaTimeZone);
+        }
+
+        public static DateTime? ToBrasiliaTime(this DateTime? dateTime)
+        {
+            return dateTime.HasValue ? dateTime.Value.ToBrasiliaTime() : null;
+        }
+
+        public static DateTime NowBrasilia() => DateTime.UtcNow.ToBrasiliaTime();
+
+        public static DateTime TodayBrasilia() => DateTime.UtcNow.ToBrasiliaTime().Date;
+    }
+
+    public static class DomainErrorHelper
+    {
+        public static string ObterMensagemSegura(
+            Exception ex,
+            Microsoft.Extensions.Logging.ILogger? logger,
+            string mensagemPadrao = "Ocorreu um erro interno ao processar a solicitação. Tente novamente.")
+        {
+            if (ex is InvalidOperationException || ex is UnauthorizedAccessException || ex is ArgumentException)
+            {
+                return ex.Message;
+            }
+
+            if (ex is Microsoft.EntityFrameworkCore.DbUpdateException dbEx &&
+                dbEx.InnerException?.Message.Contains("ix_pecas_sku", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                return "Já existe uma peça cadastrada com este código SKU.";
+            }
+
+            logger?.LogError(ex, "Erro inesperado: {MensagemPadrao}", mensagemPadrao);
+            return mensagemPadrao;
         }
     }
 }

@@ -777,8 +777,8 @@
 
     private async Task LoadDashboardData()
     {
-        var hoje = DateTime.Today;
-        DateTime? filtroInicio = isAllTime ? null : new DateTime(selectedYear, selectedMonth, 1);
+        var hoje = DateTime.SpecifyKind(DateTimeExtensions.TodayBrasilia(), DateTimeKind.Utc);
+        DateTime? filtroInicio = isAllTime ? null : new DateTime(selectedYear, selectedMonth, 1, 0, 0, 0, DateTimeKind.Utc);
         DateTime? filtroFim = isAllTime ? null : filtroInicio?.AddMonths(1);
 
         // 1. Idade Média da Frota (sempre geral)
@@ -789,15 +789,16 @@
         // 2. Faturamento e Ticket Médio (OS Concluídas no período)
         var queryConc = DbContext.OrdensServico
             .Include(o => o.PecasUtilizadas)
+            .Include(o => o.ServicosAExecutarList)
             .Where(o => o.Status == OrdemServicoStatus.Concluida);
-        if (filtroInicio != null) queryConc = queryConc.Where(o => o.DataAutorizacao >= filtroInicio);
-        if (filtroFim != null) queryConc = queryConc.Where(o => o.DataAutorizacao < filtroFim);
+        if (filtroInicio != null) queryConc = queryConc.Where(o => o.DataConclusao >= filtroInicio);
+        if (filtroFim != null) queryConc = queryConc.Where(o => o.DataConclusao < filtroFim);
         var osConcluidas = await queryConc.ToListAsync();
             
         totalOSConcluidasMes = osConcluidas.Count;
-        faturamentoMaoDeObra = osConcluidas.Sum(o => o.ValorMaoDeObra);
+        faturamentoMaoDeObra = osConcluidas.Sum(o => o.ValorMaoDeObraEfetivo);
         faturamentoPecas = osConcluidas.Sum(o => o.ValorPecasEfetivo);
-        faturamentoMes = faturamentoMaoDeObra + faturamentoPecas;
+        faturamentoMes = osConcluidas.Sum(o => o.ValorTotal);
         ticketMedio = totalOSConcluidasMes > 0 ? faturamentoMes / totalOSConcluidasMes : 0;
 
         // 3. Previsão de Caixa (Em Andamento — sempre real-time)
@@ -810,7 +811,7 @@
         // 4. Atrasos Operacionais (sempre real-time)
         totalAtrasadas = await DbContext.OrdensServico
             .CountAsync(o => (o.Status == OrdemServicoStatus.EmAndamento || o.Status == OrdemServicoStatus.AguardandoPecas) 
-                              && o.DataPrevisaoEntrega.Date < hoje);
+                              && o.DataPrevisaoEntrega < hoje);
 
         // 5. Funil de OS (período selecionado)
         var queryFunil = DbContext.OrdensServico.AsQueryable();

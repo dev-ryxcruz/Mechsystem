@@ -17,7 +17,13 @@
             <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Editar Veículo</h4>
         </div>
         <div class="card-body">
-            
+            @if (!string.IsNullOrEmpty(erroMensagem))
+            {
+                <div class="alert alert-danger mb-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@erroMensagem
+                </div>
+            }
+
             <EditForm Model="@veiculo" OnValidSubmit="GuardarEdicao">
                 <DataAnnotationsValidator />
 
@@ -91,6 +97,7 @@
 
     private Veiculo veiculo = new Veiculo();
     private List<Cliente>? clientes;
+    private string? erroMensagem;
 
     protected override async Task OnInitializedAsync()
     {
@@ -109,11 +116,24 @@
     {
         if (veiculo.ClienteId == 0)
         {
+            erroMensagem = "Selecione o cliente proprietário do veículo.";
             return;
         }
 
-        await VeiculoRepository.Atualizar(veiculo);
-        NavigationManager.NavigateTo("/veiculos");
+        try
+        {
+            erroMensagem = null;
+            await VeiculoRepository.Atualizar(veiculo);
+            NavigationManager.NavigateTo("/veiculos");
+        }
+        catch (InvalidOperationException ex)
+        {
+            erroMensagem = ex.Message;
+        }
+        catch
+        {
+            erroMensagem = "Ocorreu um erro ao atualizar o veículo. Verifique se a placa já está cadastrada.";
+        }
     }
 
     private void Cancelar()

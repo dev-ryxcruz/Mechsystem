@@ -26,6 +26,13 @@
 <div class="card shadow-sm dash-card">
     <div class="card-body p-4">
         
+        @if (!string.IsNullOrEmpty(erroMensagem))
+        {
+            <div class="alert alert-danger mb-3">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>@erroMensagem
+            </div>
+        }
+
         @* O EditForm liga o HTML ao nosso objeto C# e ativa as validações *@
         <EditForm Model="@cliente" OnValidSubmit="GuardarCliente">
             <DataAnnotationsValidator />
@@ -86,12 +93,25 @@
 @code {
     // Criamos um cliente vazio para preencher no formulário
     private Cliente cliente = new Cliente();
+    private string? erroMensagem;
 
     // Este método é chamado quando clicamos no botão verde e não há erros nas regras
     private async Task GuardarCliente()
     {
-        await ClienteRepository.Salvar(cliente); // Vai à base de dados e guarda
-        NavigationManager.NavigateTo("/clientes");       // Volta para a página inicial
+        try
+        {
+            erroMensagem = null;
+            await ClienteRepository.Salvar(cliente);
+            NavigationManager.NavigateTo("/clientes");
+        }
+        catch (InvalidOperationException ex)
+        {
+            erroMensagem = ex.Message;
+        }
+        catch
+        {
+            erroMensagem = "Ocorreu um erro ao salvar o cliente. Verifique se o CPF já está cadastrado.";
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

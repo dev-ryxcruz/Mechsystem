@@ -128,7 +128,7 @@
                                         <strong>@mov.Peca?.Nome</strong>
                                         <small class="text-muted d-block mt-1">@mov.Referencia</small>
                                     </div>
-                                    <small class="text-muted">@mov.DataHora.ToLocalTime().ToString("dd/MM HH:mm")</small>
+                                    <small class="text-muted">@mov.DataHora.ToBrasiliaTime().ToString("dd/MM HH:mm")</small>
                                 </div>
                             </div>
                         }
@@ -191,7 +191,10 @@
 
             var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             var userIdClaim = authState.User.FindFirst(ClaimTypes.NameIdentifier);
-            int usuarioId = userIdClaim != null ? int.Parse(userIdClaim.Value) : 1;
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var usuarioId))
+            {
+                throw new UnauthorizedAccessException("Identificador de usuário inválido.");
+            }
 
             await PecaRepository.RegistrarEntradaAsync(
                 pecaSelecionadaId,
@@ -214,7 +217,9 @@
         }
         catch (Exception ex)
         {
-            erroMensagem = ex.Message;
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível registrar a entrada no estoque.");
         }
     }
+
+    [Inject] private ILogger<Entrada> Logger { get; set; } = default!;
 }

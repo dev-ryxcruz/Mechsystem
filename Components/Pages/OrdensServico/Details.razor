@@ -13,6 +13,7 @@
 @inject IJSRuntime JSRuntime
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject EstoqueService EstoqueService
+@inject OrdemServicoService OrdemServicoService
 @inject IPecaRepository PecaRepository
 
 <PageTitle>Ordem de Serviço Nº @Id.ToString("D4")</PageTitle>
@@ -73,20 +74,41 @@ else
                 </Authorized>
             </AuthorizeView>
 
-            @if (os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.AguardandoPecas)
+            @if (os.Status == OrdemServicoStatus.Pausada || os.Status == OrdemServicoStatus.AguardandoPecas)
             {
+                <button class="btn btn-success" @onclick="RetomarOS">
+                    <i class="bi bi-play-fill me-1"></i> Retomar Serviço
+                </button>
+            }
+            @if (os.Status == OrdemServicoStatus.EmAndamento)
+            {
+                <button class="btn btn-outline-warning text-dark" @onclick="PausarOS">
+                    <i class="bi bi-pause-fill me-1"></i> Pausar
+                </button>
+                <button class="btn btn-outline-secondary" @onclick="AguardarPecasOS">
+                    <i class="bi bi-hourglass-split me-1"></i> Aguardar Peças
+                </button>
                 <button class="btn btn-primary" @onclick="ConcluirOS">
                     <i class="bi bi-flag me-1"></i> Concluir Serviço
                 </button>
             }
-            @if (os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.AguardandoPecas || os.Status == OrdemServicoStatus.Orcamento)
-            {
-                <button class="btn btn-outline-danger" @onclick="AbrirModalCancelamento">
-                    <i class="bi bi-x-circle me-1"></i> Cancelar OS
-                </button>
-            }
+            <AuthorizeView Roles="Administrador, Atendimento">
+                <Authorized>
+                    @if (OrdemServicoService.PodeTransicionar(os.Status, OrdemServicoStatus.Cancelada))
+                    {
+                        <button class="btn btn-outline-danger" @onclick="AbrirModalCancelamento">
+                            <i class="bi bi-x-circle me-1"></i> Cancelar OS
+                        </button>
+                    }
+                </Authorized>
+            </AuthorizeView>
         </div>
     </div>
+
+    @if (!string.IsNullOrEmpty(erroMensagem) && !mostrarModalAprovacao && !mostrarModalCancelamento)
+    {
+        <div class="alert alert-danger d-print-none mb-3">@erroMensagem</div>
+    }
 
     <!-- OS Document View -->
     <div class="card shadow-sm os-document">
@@ -138,7 +160,7 @@ else
                 <h5 class="fw-bold mb-0">
                     <i class="bi bi-box-seam me-2"></i>Peças Utilizadas
                 </h5>
-                @if (os.Status == OrdemServicoStatus.Orcamento || os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.AguardandoPecas)
+                @if (os.Status == OrdemServicoStatus.Orcamento || OrdemServicoService.EstaComEstoqueBaixado(os.Status))
                 {
                     <AuthorizeView Roles="Administrador, Atendimento">
                         <Authorized>
@@ -162,7 +184,7 @@ else
                                 <th class="text-end">Preço Base</th>
                                 <th class="text-end">Valor Cobrado</th>
                                 <th class="text-end">Subtotal</th>
-                                @if (os.Status == OrdemServicoStatus.Orcamento || os.Status == OrdemServicoStatus.EmAndamento)
+                                @if (os.Status == OrdemServicoStatus.Orcamento || OrdemServicoService.EstaComEstoqueBaixado(os.Status))
                                 {
                                     <th class="text-center d-print-none" style="width: 60px;">Ação</th>
                                 }
@@ -184,12 +206,16 @@ else
                                     <td class="text-end text-muted">@item.PrecoBase.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
                                     <td class="text-end @(item.TemDescontoAbaixoDoMinimo ? "text-danger fw-bold" : "")">@item.ValorCobrado.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
                                     <td class="text-end fw-bold">@item.Subtotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
-                                    @if (os.Status == OrdemServicoStatus.Orcamento || os.Status == OrdemServicoStatus.EmAndamento)
+                                    @if (os.Status == OrdemServicoStatus.Orcamento || OrdemServicoService.EstaComEstoqueBaixado(os.Status))
                                     {
                                         <td class="text-center d-print-none">
-                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoverPecaOS(item.Id)" title="Remover">
-                                                <i class="bi bi-x-lg"></i>
-                                            </button>
+                                            <AuthorizeView Roles="Administrador, Atendimento">
+                                                <Authorized>
+                                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoverPecaOS(item.Id)" title="Remover">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                </Authorized>
+                                            </AuthorizeView>
                                         </td>
                                     }
                                 </tr>
@@ -226,7 +252,11 @@ else
                         <div class="card-body text-center p-4">
                             @if (!string.IsNullOrEmpty(os.TokenAcompanhamento))
                             {
-                                var qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={NavigationManager.ToAbsoluteUri($"/acompanhar/{os.TokenAcompanhamento}")}";
+                                var trackingUrl = NavigationManager.ToAbsoluteUri($"/acompanhar/{os.TokenAcompanhamento}").ToString();
+                                using var qrGenerator = new QRCoder.QRCodeGenerator();
+                                using var qrCodeData = qrGenerator.CreateQrCode(trackingUrl, QRCoder.QRCodeGenerator.ECCLevel.Q);
+                                using var qrCode = new QRCoder.PngByteQRCode(qrCodeData);
+                                var qrUrl = $"data:image/png;base64,{Convert.ToBase64String(qrCode.GetGraphic(10))}";
                                 <img src="@qrUrl" alt="QR Code" class="img-fluid border p-2 bg-white rounded mb-3" style="width: 150px; height: 150px;" />
                                 <p class="small text-muted mb-3">O cliente pode escanear este código para ver o status da O.S. pelo celular.</p>
                                 <button class="btn btn-outline-primary btn-sm w-100 fw-bold" @onclick="CopiarLinkAcompanhamento">
@@ -286,7 +316,7 @@ else
                                                     else { <i class="bi bi-chat text-info me-1"></i> }
                                                     @contato.Tipo
                                                 </h6>
-                                                <small class="text-muted">@contato.DataContato.ToString("dd/MM/yyyy HH:mm")</small>
+                                                <small class="text-muted">@contato.DataContato.ToBrasiliaTime().ToString("dd/MM/yyyy HH:mm")</small>
                                             </div>
                                             <p class="mb-1 text-dark" style="font-size: 0.9rem;">@contato.Descricao</p>
                                             <small class="text-muted" style="font-size: 0.75rem;">Por: @contato.RegistradoPor</small>
@@ -351,7 +381,7 @@ else
                 {
                     <div class="alert alert-success mt-3 mb-0 text-center">
                         <i class="bi bi-shield-check me-2"></i><strong>Orçamento Aprovado</strong><br />
-                        <span class="small">Autorizado por: @(os.AutorizadoPor ?? os.Veiculo?.Cliente?.Nome) no dia @(os.DataAutorizacao?.ToString("dd/MM/yyyy HH:mm")) via @(os.MeioAutorizacao)</span>
+                        <span class="small">Autorizado por: @(os.AutorizadoPor ?? os.Veiculo?.Cliente?.Nome) no dia @(os.DataAutorizacao.ToBrasiliaTime()?.ToString("dd/MM/yyyy HH:mm")) via @(os.MeioAutorizacao)</span>
                     </div>
                 }
             </div>
@@ -694,13 +724,6 @@ else
         if (os != null)
         {
             autorizadoPor = os.Veiculo?.Cliente?.Nome ?? "";
-
-            // Gerar token se não existir
-            if (string.IsNullOrEmpty(os.TokenAcompanhamento))
-            {
-                os.TokenAcompanhamento = Guid.NewGuid().ToString("N");
-                await DbContext.SaveChangesAsync();
-            }
         }
         
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();
@@ -724,7 +747,7 @@ else
             Tipo = novoContatoTipo,
             Descricao = novoContatoDescricao,
             RegistradoPor = nomeUsuario,
-            DataContato = DateTime.Now
+            DataContato = DateTime.UtcNow
         };
 
         DbContext.ContatosOS.Add(contato);
@@ -757,72 +780,125 @@ else
         mostrarModalAprovacao = false;
     }
 
-    private async Task<int> GetUsuarioIdAtual()
+    private async Task<(int usuarioId, PerfilUsuario perfil)> GetUsuarioContextoAtual()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var userIdClaim = authState.User.FindFirst(ClaimTypes.NameIdentifier);
-        return userIdClaim != null ? int.Parse(userIdClaim.Value) : 1;
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            throw new UnauthorizedAccessException("Usuário não autenticado.");
+        }
+
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var usuarioId))
+        {
+            throw new UnauthorizedAccessException("Identificador de usuário inválido.");
+        }
+
+        var roleClaim = user.FindFirst(ClaimTypes.Role)?.Value;
+        if (!Enum.TryParse<PerfilUsuario>(roleClaim, out var perfil))
+        {
+            throw new UnauthorizedAccessException("Perfil de usuário inválido.");
+        }
+
+        return (usuarioId, perfil);
     }
+
+    [Inject] private ILogger<Details> Logger { get; set; } = default!;
 
     private async Task AprovarOS()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        if (!authState.User.IsInRole("Administrador") && !authState.User.IsInRole("Atendimento"))
-        {
-            return;
-        }
-
-        if (config != null && config.ObrigarVistoriaParaOS && os?.Vistoria == null)
-        {
-            erroMensagem = "Para aprovar este orçamento, as configurações da Oficina exigem a realização da Vistoria de Entrada. Cancele e realize a Vistoria na O.S. primeiro.";
-            return;
-        }
-
         if (os != null)
         {
-            try 
+            try
             {
                 erroMensagem = null;
-                os.Status = OrdemServicoStatus.EmAndamento;
-                os.DataAutorizacao = DateTime.Now;
-                os.AutorizadoPor = autorizadoPor;
-                os.MeioAutorizacao = meioAutorizacao;
-                
-                if (!os.DataPrevisaoInicio.HasValue)
+                var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+                if (perfil != PerfilUsuario.Administrador && perfil != PerfilUsuario.Atendimento)
                 {
-                    os.DataPrevisaoInicio = DateTime.Today;
+                    erroMensagem = "Apenas Administradores e Atendimento possuem permissão para aprovar ordens de serviço.";
+                    return;
                 }
 
-                await DbContext.SaveChangesAsync();
-
-                // 🔑 BAIXA AUTOMÁTICA DO ESTOQUE
-                if (os.PecasUtilizadas.Any())
-                {
-                    var usuarioId = await GetUsuarioIdAtual();
-                    await EstoqueService.BaixarPecasDaOS(os.Id, usuarioId);
-                }
+                await OrdemServicoService.AprovarOSAsync(os.Id, autorizadoPor, meioAutorizacao, usuarioId, perfil);
+                await LoadData();
 
                 mostrarModalAprovacao = false;
 
                 // Se aprovação presencial, abrir impressão automaticamente para assinatura do cliente
-                if (meioAutorizacao == "Assinatura Presencial")
+                if (meioAutorizacao == "Assinatura Presencial" && os != null)
                 {
                     await JSRuntime.InvokeVoidAsync("window.open", $"/imprimir/os/{os.Id}", "_blank");
                 }
             }
             catch (Exception ex)
             {
-                erroMensagem = $"Erro ao salvar: {ex.Message}";
+                erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível aprovar a Ordem de Serviço.");
             }
+        }
+    }
+
+    private async Task PausarOS()
+    {
+        if (os == null) return;
+        try
+        {
+            erroMensagem = null;
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.PausarServicoAsync(os.Id, perfil, usuarioId);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível pausar a Ordem de Serviço.");
+        }
+    }
+
+    private async Task AguardarPecasOS()
+    {
+        if (os == null) return;
+        try
+        {
+            erroMensagem = null;
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.AguardarPecasAsync(os.Id, perfil, usuarioId);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível atualizar o status da Ordem de Serviço.");
+        }
+    }
+
+    private async Task RetomarOS()
+    {
+        if (os == null) return;
+        try
+        {
+            erroMensagem = null;
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.IniciarOuRetomarServicoAsync(os.Id, perfil, usuarioId);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível retomar a Ordem de Serviço.");
         }
     }
 
     private async Task ConcluirOS()
     {
-        if (os != null)
+        if (os == null) return;
+        try
         {
-            os.Status = OrdemServicoStatus.Concluida;
-            await DbContext.SaveChangesAsync();
+            erroMensagem = null;
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.ConcluirOSAsync(os.Id, perfil, usuarioId);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível concluir a Ordem de Serviço.");
         }
     }
 
@@ -846,21 +922,20 @@ else
             try
             {
                 erroMensagem = null;
-
-                // 🔑 ESTORNO AUTOMÁTICO DO ESTOQUE (só se já foi aprovada/baixada)
-                if (os.Status != OrdemServicoStatus.Orcamento && os.PecasUtilizadas.Any())
+                var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+                if (perfil != PerfilUsuario.Administrador && perfil != PerfilUsuario.Atendimento)
                 {
-                    var usuarioId = await GetUsuarioIdAtual();
-                    await EstoqueService.EstornarPecasDaOS(os.Id, usuarioId);
+                    erroMensagem = "Apenas Administradores e Atendimento possuem permissão para cancelar ordens de serviço.";
+                    return;
                 }
 
-                os.Status = OrdemServicoStatus.Cancelada;
-                await DbContext.SaveChangesAsync();
+                await OrdemServicoService.CancelarOSAsync(os.Id, usuarioId, perfil);
+                await LoadData();
                 mostrarModalCancelamento = false;
             }
             catch (Exception ex)
             {
-                erroMensagem = $"Erro ao cancelar: {ex.Message}";
+                erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível cancelar a Ordem de Serviço.");
             }
         }
     }
@@ -904,46 +979,20 @@ else
         try
         {
             erroPeca = null;
-            var peca = await PecaRepository.GetByIdAsync(pecaSelecionadaId);
-            if (peca == null) { erroPeca = "Peça não encontrada."; return; }
-
-            // Verificar se já existe essa peça na OS
-            var existente = os.PecasUtilizadas?.FirstOrDefault(p => p.PecaId == pecaSelecionadaId);
-            if (existente != null)
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            if (perfil != PerfilUsuario.Administrador && perfil != PerfilUsuario.Atendimento)
             {
-                existente.Quantidade += qtdPecaAdicionar;
-            }
-            else
-            {
-                var osPeca = new OrdemServicoPeca
-                {
-                    OrdemServicoId = os.Id,
-                    PecaId = peca.Id,
-                    Quantidade = qtdPecaAdicionar,
-                    PrecoBase = peca.PrecoVenda,
-                    ValorCobrado = valorCobradoModal,
-                    PrecoCustoSnapshot = peca.PrecoCusto
-                };
-                DbContext.OrdemServicoPecas.Add(osPeca);
+                erroPeca = "Apenas Administradores e Atendimento possuem permissão para adicionar peças nesta tela.";
+                return;
             }
 
-            await DbContext.SaveChangesAsync();
-
-            // Reload para obter os dados frescos e recalcular
+            await OrdemServicoService.AdicionarPecaAsync(os.Id, pecaSelecionadaId, qtdPecaAdicionar, valorCobradoModal, usuarioId, perfil);
             await LoadData();
-
-            // Sincronizar ValorPecas manual com a soma calculada (graceful degradation)
-            if (os != null && os.PecasUtilizadas != null && os.PecasUtilizadas.Any())
-            {
-                os.ValorPecas = os.PecasUtilizadas.Sum(p => p.Subtotal);
-                await DbContext.SaveChangesAsync();
-            }
-
             mostrarModalPeca = false;
         }
         catch (Exception ex)
         {
-            erroPeca = ex.Message;
+            erroPeca = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível adicionar a peça à Ordem de Serviço.");
         }
     }
 
@@ -951,19 +1000,22 @@ else
     {
         if (os == null) return;
 
-        var item = await DbContext.OrdemServicoPecas.FindAsync(osPecaId);
-        if (item != null)
+        try
         {
-            DbContext.OrdemServicoPecas.Remove(item);
-            await DbContext.SaveChangesAsync();
-
-            // Reload e recalcular
-            await LoadData();
-            if (os != null)
+            erroMensagem = null;
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            if (perfil != PerfilUsuario.Administrador && perfil != PerfilUsuario.Atendimento)
             {
-                os.ValorPecas = os.PecasUtilizadas?.Any() == true ? os.PecasUtilizadas.Sum(p => p.Subtotal) : 0;
-                await DbContext.SaveChangesAsync();
+                erroMensagem = "Apenas Administradores e Atendimento possuem permissão para remover peças da ordem de serviço.";
+                return;
             }
+
+            await OrdemServicoService.RemoverPecaAsync(os.Id, osPecaId, usuarioId, perfil);
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível remover a peça da Ordem de Serviço.");
         }
     }
 

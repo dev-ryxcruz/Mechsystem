@@ -117,7 +117,9 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Erro ao atualizar o serviço: {ex.Message}";
+            errorMessage = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível atualizar o serviço. Tente novamente.");
         }
     }
+
+    [Inject] private ILogger<Editar> Logger { get; set; } = default!;
 }

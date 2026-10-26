@@ -54,7 +54,7 @@ namespace mechsystem.Models
         [Display(Name = "Observações Adicionais")]
         public string? Observacoes { get; set; }
         
-        public DateTime DataVistoria { get; set; } = DateTime.Now;
+        public DateTime DataVistoria { get; set; } = DateTime.UtcNow;
     }
 
     public enum VistoriaStatus

@@ -23,6 +23,12 @@
 
 <div class="card shadow-sm dash-card">
     <div class="card-body p-4">
+        @if (!string.IsNullOrEmpty(erroMensagem))
+        {
+            <div class="alert alert-danger mb-3">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>@erroMensagem
+            </div>
+        }
 
         <EditForm Model="@veiculo" OnValidSubmit="GuardarVeiculo">
             <DataAnnotationsValidator />
@@ -110,6 +116,7 @@
 @code
 {
     private Veiculo veiculo = new Veiculo();
+    private string? erroMensagem;
 
     // Lista para guardar clientes
     private List<Cliente>? clientes;
@@ -124,10 +131,23 @@
     {
         if (veiculo.ClienteId == 0)
         {
+            erroMensagem = "Selecione o cliente proprietário do veículo.";
             return;
         }
 
-        await VeiculoRepository.Salvar(veiculo);
-        NavigationManager.NavigateTo("/veiculos"); // Redireciona para lista de veiculos
+        try
+        {
+            erroMensagem = null;
+            await VeiculoRepository.Salvar(veiculo);
+            NavigationManager.NavigateTo("/veiculos"); // Redireciona para lista de veiculos
+        }
+        catch (InvalidOperationException ex)
+        {
+            erroMensagem = ex.Message;
+        }
+        catch
+        {
+            erroMensagem = "Ocorreu um erro ao salvar o veículo. Verifique se a placa já está cadastrada.";
+        }
     }
 }

@@ -58,7 +58,7 @@ else
             <div class="doc-os-info">
                 <div class="doc-os-titulo">FICHA DE VISTORIA DE ENTRADA</div>
                 <div class="doc-os-numero">OS Nº @Id.ToString("D4")</div>
-                <div class="doc-os-data">Data: @os.Vistoria.DataVistoria.ToString("dd/MM/yyyy HH:mm")</div>
+                <div class="doc-os-data">Data: @os.Vistoria.DataVistoria.ToBrasiliaTime().ToString("dd/MM/yyyy HH:mm")</div>
             </div>
         </div>
 
@@ -70,7 +70,7 @@ else
             <div class="doc-grid-veiculo">
                 <div class="doc-field">
                     <span class="doc-label">Cliente</span>
-                    <span class="doc-value fw-bold">@os.Veiculo?.Cliente?.Nome</span>
+                    <span class="doc-value">@os.Veiculo?.Cliente?.Nome</span>
                 </div>
                 <div class="doc-field">
                     <span class="doc-label">CPF</span>
@@ -235,7 +235,7 @@ else
 
         <!-- Rodapé -->
         <div class="doc-rodape">
-            @(config?.NomeFantasia ?? "Mechsystem") · Ficha de Vistoria de Entrada · OS Nº @Id.ToString("D4") · Gerado em @DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+            @(config?.NomeFantasia ?? "Mechsystem") · Ficha de Vistoria de Entrada · OS Nº @Id.ToString("D4") · Gerado em @DateTimeExtensions.NowBrasilia().ToString("dd/MM/yyyy HH:mm")
         </div>
     </div>
 }

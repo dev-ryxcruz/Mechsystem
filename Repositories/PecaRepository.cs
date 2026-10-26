@@ -49,7 +49,7 @@ namespace mechsystem.Repositories
             }
 
             _context.Entry(peca).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            await SaveWithConcurrencyHandlingAsync();
         }
 
         public async Task DeleteAsync(int id)
@@ -58,7 +58,7 @@ namespace mechsystem.Repositories
             if (peca != null)
             {
                 peca.Ativo = false; // Soft-delete
-                await _context.SaveChangesAsync();
+                await SaveWithConcurrencyHandlingAsync();
             }
         }
 
@@ -75,6 +75,11 @@ namespace mechsystem.Repositories
 
         public async Task RegistrarEntradaAsync(int pecaId, int quantidade, decimal? novoPrecoCusto, string? referencia, int usuarioId)
         {
+            if (quantidade <= 0)
+            {
+                throw new InvalidOperationException("A quantidade de entrada deve ser maior que zero.");
+            }
+
             var peca = await _context.Pecas.FindAsync(pecaId)
                 ?? throw new InvalidOperationException($"Peça ID {pecaId} não encontrada.");
 
@@ -95,11 +100,16 @@ namespace mechsystem.Repositories
                 UsuarioId = usuarioId
             });
 
-            await _context.SaveChangesAsync();
+            await SaveWithConcurrencyHandlingAsync();
         }
 
         public async Task RegistrarSaidaAsync(int pecaId, int quantidade, string? referencia, int usuarioId)
         {
+            if (quantidade <= 0)
+            {
+                throw new InvalidOperationException("A quantidade de saída deve ser maior que zero.");
+            }
+
             var peca = await _context.Pecas.FindAsync(pecaId)
                 ?? throw new InvalidOperationException($"Peça ID {pecaId} não encontrada.");
 
@@ -122,7 +132,7 @@ namespace mechsystem.Repositories
                 UsuarioId = usuarioId
             });
 
-            await _context.SaveChangesAsync();
+            await SaveWithConcurrencyHandlingAsync();
         }
 
         public async Task RegistrarAjusteAsync(int pecaId, int novaQuantidade, string motivo, int usuarioId)
@@ -143,7 +153,26 @@ namespace mechsystem.Repositories
                 UsuarioId = usuarioId
             });
 
-            await _context.SaveChangesAsync();
+            await SaveWithConcurrencyHandlingAsync();
+        }
+
+        private async Task SaveWithConcurrencyHandlingAsync()
+        {
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                foreach (var entry in ex.Entries)
+                {
+                    await entry.ReloadAsync();
+                }
+
+                throw new InvalidOperationException(
+                    "Conflito de concorrência: os dados ou o estoque desta peça foram alterados simultaneamente por outro usuário. Atualize a página e tente novamente.",
+                    ex);
+            }
         }
     }
 }

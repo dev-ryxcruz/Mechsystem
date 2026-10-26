@@ -248,7 +248,7 @@ else
                     <h5 class="text-primary mb-0">Status da Vistoria</h5>
                     <p class="text-secondary small mb-0">
                         @if (Vistoria.Id == 0) { <span>Nova vistoria a ser salva.</span> } 
-                        else { <span>Vistoria registrada em @Vistoria.DataVistoria.ToString("dd/MM/yyyy HH:mm")</span> }
+                        else { <span>Vistoria registrada em @Vistoria.DataVistoria.ToBrasiliaTime().ToString("dd/MM/yyyy HH:mm")</span> }
                     </p>
                 </div>
                 <div>

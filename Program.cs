@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using mechsystem.Components;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using mechsystem.Data;
 using mechsystem.Interfaces;
 using mechsystem.Repositories;
@@ -8,12 +9,11 @@ using mechsystem.Services;
 using mechsystem.Endpoints;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
-AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
-
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-           .UseSnakeCaseNamingConvention());
+           .UseSnakeCaseNamingConvention()
+           .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
 
 
 
@@ -29,6 +29,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<UsuarioService>();
 builder.Services.AddScoped<ConfiguracaoService>();
 builder.Services.AddScoped<EstoqueService>();
+builder.Services.AddScoped<OrdemServicoService>();
 
 // Authentication via Cookies
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -40,7 +41,35 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = true;
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Strict;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnValidatePrincipal = async context =>
+            {
+                var userIdClaim = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                var roleClaim = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+                if (!int.TryParse(userIdClaim, out var userId))
+                {
+                    context.RejectPrincipal();
+                    await Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions.SignOutAsync(
+                        context.HttpContext, CookieAuthenticationDefaults.AuthenticationScheme);
+                    return;
+                }
+
+                var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                var usuario = await db.Usuarios.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+
+                if (usuario == null || !usuario.Ativo || usuario.Perfil.ToString() != roleClaim)
+                {
+                    context.RejectPrincipal();
+                    await Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions.SignOutAsync(
+                        context.HttpContext, CookieAuthenticationDefaults.AuthenticationScheme);
+                }
+            }
+        };
     });
 
 builder.Services.AddAuthorization(options =>
@@ -50,6 +79,21 @@ builder.Services.AddAuthorization(options =>
         .Build();
 });
 builder.Services.AddCascadingAuthenticationState();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+});
 
 var app = builder.Build();
 
@@ -63,6 +107,7 @@ if (!app.Environment.IsDevelopment())
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -80,28 +125,50 @@ app.MapRazorComponents<App>()
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var loggerFactory = scope.ServiceProvider.GetRequiredService<ILoggerFactory>();
+    var startupLogger = loggerFactory.CreateLogger("AdminBootstrap");
+
     await db.Database.MigrateAsync();
 
     var resetAdmin = args.Contains("--reset-admin");
     var admin = await db.Usuarios.FirstOrDefaultAsync(u => u.Username == "admin");
+    var configuredAdminPassword = builder.Configuration["Admin:InitialPassword"];
+
+    static string GerarSenhaForteAleatoria()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
+        return System.Security.Cryptography.RandomNumberGenerator.GetString(chars, 16);
+    }
 
     if (admin == null)
     {
-        // Create default admin
+        var senhaInicial = !string.IsNullOrWhiteSpace(configuredAdminPassword)
+            ? configuredAdminPassword
+            : GerarSenhaForteAleatoria();
+
         db.Usuarios.Add(new mechsystem.Models.Usuario
         {
             Username = "admin",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(senhaInicial),
             NomeCompleto = "Administrador",
             Ativo = true,
-            Perfil = mechsystem.Models.PerfilUsuario.Administrador
+            Perfil = mechsystem.Models.PerfilUsuario.Administrador,
+            DataCriacao = DateTime.UtcNow
         });
         await db.SaveChangesAsync();
-        Console.WriteLine(">>> Usuário admin criado. Senha: admin123");
+
+        if (string.IsNullOrWhiteSpace(configuredAdminPassword))
+        {
+            startupLogger.LogWarning("Usuário 'admin' criado no primeiro boot. Senha temporária gerada automaticamente (altere imediatamente): {SenhaInicial}", senhaInicial);
+        }
+        else
+        {
+            startupLogger.LogInformation("Usuário 'admin' criado utilizando a configuração Admin:InitialPassword.");
+        }
     }
     else
     {
-        // Força que o admin original sempre tenha Perfil Administrador pós-migração
+        // Garante que o admin original sempre tenha Perfil Administrador
         var mudou = false;
         if (admin.Perfil != mechsystem.Models.PerfilUsuario.Administrador)
         {
@@ -109,12 +176,28 @@ using (var scope = app.Services.CreateScope())
             mudou = true;
         }
 
-        if (resetAdmin)
+        // Se o admin veio da migration histórica inicial (hash legado), rotaciona a senha no primeiro boot
+        const string legacySeedHashPrefix = "$2a$11$uegyC1YafmGAkp2uMJmfje/";
+        var possuiHashLegado = admin.PasswordHash != null && admin.PasswordHash.StartsWith(legacySeedHashPrefix, StringComparison.Ordinal);
+
+        if (resetAdmin || possuiHashLegado)
         {
-            admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123");
+            var novaSenha = !string.IsNullOrWhiteSpace(configuredAdminPassword)
+                ? configuredAdminPassword
+                : GerarSenhaForteAleatoria();
+
+            admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(novaSenha);
             admin.Ativo = true;
             mudou = true;
-            Console.WriteLine(">>> Senha do admin resetada para: admin123");
+
+            if (string.IsNullOrWhiteSpace(configuredAdminPassword))
+            {
+                startupLogger.LogWarning("Senha inicial/temporária do usuário 'admin' gerada (altere imediatamente): {NovaSenha}", novaSenha);
+            }
+            else
+            {
+                startupLogger.LogInformation("Senha do usuário 'admin' definida utilizando Admin:InitialPassword.");
+            }
         }
 
         if (mudou)
@@ -123,8 +206,12 @@ using (var scope = app.Services.CreateScope())
         }
     }
 
-    // Popula dados de teste
-    await mechsystem.Data.DatabaseSeeder.SeedAsync(db);
+    // Popula dados de demonstração apenas se solicitado via flag --seed-demo
+    if (args.Contains("--seed-demo"))
+    {
+        var seederLogger = loggerFactory.CreateLogger("DatabaseSeeder");
+        await mechsystem.Data.DatabaseSeeder.SeedAsync(db, seederLogger);
+    }
 }
 
 app.Run();
