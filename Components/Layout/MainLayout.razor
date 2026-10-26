@@ -1,11 +1,8 @@
 @inherits LayoutComponentBase
-@inject SidebarState SidebarState
-@implements IDisposable
 
 <div class="page">
-    <div class="sidebar @(SidebarState.IsCollapsed ? "sidebar--collapsed" : "")">
-        <NavMenu />
-    </div>
+    @* O .sidebar (largura + rótulos) é renderizado inteiramente pelo NavMenu a partir do SidebarState. *@
+    <NavMenu />
 
     <div class="sidebar-backdrop d-md-none" onclick="closeSidebar()"></div>
 
@@ -41,20 +38,3 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
-
-@code {
-    protected override void OnInitialized()
-    {
-        SidebarState.OnChange += HandleSidebarChanged;
-    }
-
-    private void HandleSidebarChanged()
-    {
-        _ = InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        SidebarState.OnChange -= HandleSidebarChanged;
-    }
-}

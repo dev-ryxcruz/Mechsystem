@@ -2,83 +2,146 @@
 @inject IJSRuntime JS
 @inject NavigationManager NavigationManager
 @inject SidebarState SidebarState
-@implements IDisposable
+@implements IAsyncDisposable
 
-<div class="top-row @(SidebarState.IsCollapsed ? "top-row--collapsed" : "")">
-    <div class="top-row-inner d-flex align-items-center w-100">
-        @if (!SidebarState.IsCollapsed)
-        {
-            <a class="navbar-brand" href="">
-                <img src="logo.png" alt="Mechsystem Logo" class="brand-logo" />
-                <span class="brand-title">Mechsystem</span>
-            </a>
-        }
-        <button type="button"
-                title="@(SidebarState.IsCollapsed ? "Expandir menu" : "Recolher menu")"
-                aria-label="@(SidebarState.IsCollapsed ? "Expandir menu" : "Recolher menu")"
-                class="btn btn-link text-white @(SidebarState.IsCollapsed ? "mx-auto" : "ms-auto") p-0 sidebar-toggle"
-                @onclick="ToggleSidebar">
-            <i class="bi @(SidebarState.IsCollapsed ? "bi-arrow-bar-right" : "bi-arrow-bar-left") sidebar-toggle-icon" aria-hidden="true"></i>
-        </button>
+@* O elemento .sidebar é renderizado AQUI (e não no MainLayout, que é SSR estático e usa outro escopo de DI):
+   largura (classe sidebar--collapsed) e rótulos saem do mesmo SidebarState, no mesmo ciclo de renderização. *@
+<div @ref="sidebarElement"
+     class="sidebar @(Rail ? "sidebar--collapsed" : "") @(!transitionsReady ? "sidebar--no-anim" : "")">
+    <div class="top-row @(Rail ? "top-row--collapsed" : "")">
+        <div class="top-row-inner d-flex align-items-center w-100">
+            @if (!Rail)
+            {
+                <a class="navbar-brand" href="">
+                    <img src="logo.png" alt="Mechsystem Logo" class="brand-logo" />
+                    <span class="brand-title">Mechsystem</span>
+                </a>
+            }
+            <button type="button"
+                    aria-label="@(Rail ? "Expandir menu" : "Recolher menu")"
+                    data-label="@(Rail ? "Expandir menu" : null)"
+                    class="btn btn-link text-white @(Rail ? "mx-auto" : "ms-auto") p-0 sidebar-toggle"
+                    @onclick="ToggleSidebar">
+                <i class="bi @(Rail ? "bi-arrow-bar-right" : "bi-arrow-bar-left") sidebar-toggle-icon" aria-hidden="true"></i>
+            </button>
+        </div>
     </div>
-</div>
 
-<div class="nav-scrollable @(SidebarState.IsCollapsed ? "nav-scrollable--collapsed" : "")">
-    <nav class="nav flex-column app-nav @(SidebarState.IsCollapsed ? "nav-collapsed" : "")" aria-label="Menu principal">
-        @for (var sectionIndex = 0; sectionIndex < NavConfig.Sections.Count; sectionIndex++)
-        {
-            var navSection = NavConfig.Sections[sectionIndex];
-            var showDivider = sectionIndex > 0;
+    <div class="nav-scrollable @(Rail ? "nav-scrollable--collapsed" : "")">
+        <nav class="nav flex-column app-nav @(Rail ? "nav-collapsed" : "")" aria-label="Menu principal">
+            @for (var sectionIndex = 0; sectionIndex < NavConfig.Sections.Count; sectionIndex++)
+            {
+                var navSection = NavConfig.Sections[sectionIndex];
+                var showDivider = sectionIndex > 0;
 
-            @if (!string.IsNullOrWhiteSpace(navSection.Roles))
-            {
-                <AuthorizeView Roles="@navSection.Roles">
-                    <Authorized>
-                        @RenderSection(navSection, showDivider)
-                    </Authorized>
-                </AuthorizeView>
+                @if (!string.IsNullOrWhiteSpace(navSection.Roles))
+                {
+                    <AuthorizeView Roles="@navSection.Roles">
+                        <Authorized>
+                            @RenderSection(navSection, showDivider)
+                        </Authorized>
+                    </AuthorizeView>
+                }
+                else
+                {
+                    @RenderSection(navSection, showDivider)
+                }
             }
-            else
-            {
-                @RenderSection(navSection, showDivider)
-            }
-        }
-    </nav>
+        </nav>
+    </div>
+
+    @* Tooltip único, fora do contêiner de rolagem; posicionado por JS (position: fixed). *@
+    <div @ref="tooltipElement" id="sidebar-tooltip" class="sidebar-tooltip" role="tooltip" hidden></div>
 </div>
 
 @code {
     private const string SidebarStorageKey = "mechsystem.sidebar.collapsed";
     private readonly HashSet<string> expandedGroups = new(StringComparer.OrdinalIgnoreCase);
 
+    private ElementReference sidebarElement;
+    private ElementReference tooltipElement;
+    private IJSObjectReference? module;
+    private IJSObjectReference? binding;
+    private DotNetObjectReference<NavMenu>? selfReference;
+    private bool transitionsReady;
+    private bool disposed;
+
+    private bool Rail => SidebarState.IsRail;
+
     protected override void OnInitialized()
     {
         SyncActiveGroupFromUri(NavigationManager.Uri);
         NavigationManager.LocationChanged += OnLocationChanged;
         SidebarState.OnChange += HandleSidebarStateChanged;
+
+        // O SidebarState vive no circuito. Se esta instância do NavMenu for recriada (ex.: o layout
+        // re-renderiza em uma navegação), o estado já aplicado é mantido e não há nova leitura nem "piscada".
+        // Em um circuito novo (recarregar a página), o valor inicial vem do localStorage (ver OnAfterRenderAsync).
+        transitionsReady = SidebarState.IsInitialized;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        if (firstRender)
+        {
+            await InitializeInteropAsync();
+            await InitializeFromStorageAsync();
+        }
+
+        if (!transitionsReady && SidebarState.IsInitialized)
+        {
+            // O valor persistido foi aplicado sem animação; só depois habilita a transição de largura.
+            await Task.Delay(80);
+            if (disposed)
+                return;
+
+            transitionsReady = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task InitializeInteropAsync()
+    {
+        try
+        {
+            module = await JS.InvokeAsync<IJSObjectReference>("import", "./Components/Layout/NavMenu.razor.js");
+            selfReference = DotNetObjectReference.Create(this);
+            binding = await module.InvokeAsync<IJSObjectReference>("init", sidebarElement, tooltipElement, selfReference);
+            var isMobile = await module.InvokeAsync<bool>("isMobile");
+            SidebarState.SetMobile(isMobile);
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or JSDisconnectedException or TaskCanceledException)
+        {
+            // Sem JS (ou circuito caiu): a sidebar continua funcional, apenas sem tooltip/detecção mobile.
+        }
+    }
+
+    private async Task InitializeFromStorageAsync()
+    {
+        if (SidebarState.IsInitialized)
             return;
 
+        var collapsed = false;
         try
         {
             var stored = await JS.InvokeAsync<string?>("localStorage.getItem", SidebarStorageKey);
-            var collapsed = string.Equals(stored, "true", StringComparison.OrdinalIgnoreCase);
-            SidebarState.SetCollapsed(collapsed);
-            if (collapsed)
-            {
-                expandedGroups.Clear();
-            }
-            await JS.InvokeVoidAsync("syncSidebarCollapsed", SidebarState.IsCollapsed);
-            StateHasChanged();
+            collapsed = string.Equals(stored, "true", StringComparison.OrdinalIgnoreCase);
         }
-        catch
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or JSDisconnectedException or TaskCanceledException)
         {
-            SidebarState.SetCollapsed(false);
+            // Sem storage disponível: inicia expandida.
         }
+
+        SidebarState.Initialize(collapsed);
+        ApplyGroupsForState();
     }
+
+    [JSInvokable]
+    public Task OnViewportChanged(bool isMobile) => InvokeAsync(() =>
+    {
+        SidebarState.SetMobile(isMobile);
+        ApplyGroupsForState();
+    });
 
     private RenderFragment RenderSection(NavSectionDefinition navSection, bool showDivider) => __builder =>
     {
@@ -87,7 +150,7 @@
             <div class="nav-divider" role="separator"></div>
         }
 
-        if (!SidebarState.IsCollapsed && !string.IsNullOrWhiteSpace(navSection.Title))
+        if (!Rail && !string.IsNullOrWhiteSpace(navSection.Title))
         {
             <div class="nav-section-title">@navSection.Title</div>
         }
@@ -118,7 +181,7 @@
             var isExpanded = expandedGroups.Contains(groupId);
 
             <NavGroup Group="item"
-                      IsCollapsed="SidebarState.IsCollapsed"
+                      IsCollapsed="Rail"
                       IsExpanded="isExpanded"
                       IsRouteActive="isRouteActive"
                       OnToggle="() => ToggleGroupAsync(groupId)" />
@@ -129,10 +192,10 @@
                 <NavLink class="nav-link"
                          href="@item.Href"
                          Match="@item.Match"
-                         title="@item.Title"
-                         data-tooltip="@item.Title">
+                         aria-label="@(Rail ? item.Title : null)"
+                         data-label="@(Rail ? item.Title : null)">
                     <i class="bi @item.Icon" aria-hidden="true"></i>
-                    @if (!SidebarState.IsCollapsed)
+                    @if (!Rail)
                     {
                         <span class="nav-text">@item.Title</span>
                     }
@@ -162,9 +225,22 @@
         }
     }
 
+    /// <summary>Recolhida: nenhum grupo aberto. Com rótulos: abre o grupo da rota atual.</summary>
+    private void ApplyGroupsForState()
+    {
+        if (Rail)
+        {
+            expandedGroups.Clear();
+        }
+        else
+        {
+            SyncActiveGroupFromUri(NavigationManager.Uri);
+        }
+    }
+
     private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        if (!SidebarState.IsCollapsed)
+        if (!Rail)
         {
             SyncActiveGroupFromUri(e.Location);
         }
@@ -179,31 +255,45 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
+        disposed = true;
         NavigationManager.LocationChanged -= OnLocationChanged;
         SidebarState.OnChange -= HandleSidebarStateChanged;
+
+        try
+        {
+            if (binding is not null)
+            {
+                await binding.InvokeVoidAsync("dispose");
+                await binding.DisposeAsync();
+            }
+
+            if (module is not null)
+            {
+                await module.DisposeAsync();
+            }
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or JSDisconnectedException or TaskCanceledException)
+        {
+            // Circuito já encerrado: nada a limpar no cliente.
+        }
+
+        selfReference?.Dispose();
     }
 
     private async Task ToggleSidebar()
     {
         SidebarState.Toggle();
-        if (SidebarState.IsCollapsed)
-        {
-            expandedGroups.Clear();
-        }
-        else
-        {
-            SyncActiveGroupFromUri(NavigationManager.Uri);
-        }
-
+        ApplyGroupsForState();
         await PersistSidebarStateAsync();
     }
 
     private async Task ToggleGroupAsync(string groupId)
     {
-        if (SidebarState.IsCollapsed)
+        if (Rail)
         {
+            // Recolhida + clique no ícone de um grupo: expande (com rótulos) e abre esse grupo.
             SidebarState.SetCollapsed(false);
             expandedGroups.Add(groupId);
             await PersistSidebarStateAsync();
@@ -221,9 +311,8 @@
         try
         {
             await JS.InvokeVoidAsync("localStorage.setItem", SidebarStorageKey, SidebarState.IsCollapsed ? "true" : "false");
-            await JS.InvokeVoidAsync("syncSidebarCollapsed", SidebarState.IsCollapsed);
         }
-        catch
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or JSDisconnectedException or TaskCanceledException)
         {
             // Ignora indisponibilidade de storage / JS interop
         }

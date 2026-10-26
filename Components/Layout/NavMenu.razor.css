@@ -1,4 +1,22 @@
 /* ==============================================
+   SIDEBAR (contêiner raiz — renderizado pelo NavMenu)
+   Fonte única de largura: a classe sidebar--collapsed, aplicada no
+   mesmo ciclo de renderização que remove/insere os rótulos (.nav-text).
+   ============================================== */
+.sidebar {
+    background: linear-gradient(180deg, #1e2227 0%, #181b1f 100%);
+    overflow: hidden;
+    box-shadow: inset -1px 0 0 var(--border-dark);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Primeira aplicação do valor persistido: sem animar a largura. */
+.sidebar.sidebar--no-anim {
+    transition: none;
+}
+
+/* ==============================================
    TOP ROW (Header da Sidebar)
    ============================================== */
 .top-row {
@@ -257,12 +275,12 @@
     border-radius: var(--radius-sm);
 }
 
-.app-nav.nav-collapsed ::deep .nav-link[data-tooltip]::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    left: calc(100% + 0.75rem);
-    top: 50%;
-    transform: translateY(-50%) translateX(-4px);
+/* Tooltip único (position: fixed, posicionado por JS em NavMenu.razor.js) */
+.sidebar-tooltip {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1060;
     background: #14161a;
     color: var(--text-on-dark);
     border: 1px solid var(--border-dark);
@@ -274,19 +292,10 @@
     line-height: 1.2;
     white-space: nowrap;
     pointer-events: none;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity var(--transition-fast),
-                transform var(--transition-fast),
-                visibility var(--transition-fast);
-    z-index: 1050;
 }
 
-.app-nav.nav-collapsed ::deep .nav-link[data-tooltip]:hover::after,
-.app-nav.nav-collapsed ::deep .nav-link[data-tooltip]:focus-visible::after {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(-50%) translateX(0);
+.sidebar-tooltip[hidden] {
+    display: none;
 }
 
 /* ==============================================
@@ -406,9 +415,26 @@
 
 /* Touch targets: todos os links e botões de nav >= 44px em mobile */
 @media (max-width: 767.98px) {
+    /* Gaveta mobile: largura própria; o modo recolhido não existe aqui. */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        z-index: 1045;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 4px 0 25px rgba(0, 0, 0, 0.5);
+    }
+
+    /* O botão recolher/expandir só faz sentido no desktop */
     .sidebar-toggle {
-        min-width: 44px;
-        min-height: 44px;
+        display: none;
     }
 
     .app-nav ::deep .nav-item .nav-link {
@@ -425,22 +451,40 @@
     .app-nav ::deep .nav-section-title {
         padding-top: 0.5rem;
     }
-
-    .app-nav.nav-collapsed ::deep .nav-link[data-tooltip]::after {
-        display: none;
-    }
 }
 
 /* ==============================================
    DESKTOP
    ============================================== */
 @media (min-width: 768px) {
+    .sidebar {
+        --sidebar-current-width: var(--sidebar-width);
+        width: var(--sidebar-current-width);
+        min-width: var(--sidebar-current-width);
+        flex: 0 0 var(--sidebar-current-width);
+        height: 100vh;
+        position: sticky;
+        top: 0;
+        transition: width var(--transition-smooth),
+                    min-width var(--transition-smooth),
+                    flex-basis var(--transition-smooth);
+    }
+
+    .sidebar.sidebar--collapsed {
+        --sidebar-current-width: var(--sidebar-width-collapsed);
+    }
+
     .nav-scrollable {
         height: calc(100vh - var(--topbar-height));
         padding: 0.5rem 0;
     }
 
+    /* Recolhida: rola sem barra visível para manter o eixo dos ícones/botão no centro de 4.5rem */
     .nav-scrollable.nav-scrollable--collapsed {
-        overflow: visible;
+        scrollbar-width: none;
+    }
+
+    .nav-scrollable.nav-scrollable--collapsed::-webkit-scrollbar {
+        display: none;
     }
 }

@@ -8,8 +8,8 @@
             class="nav-link nav-group-toggle @(IsRouteActive ? "group-active" : "") @(IsCollapsed && IsRouteActive ? "active" : "")"
             aria-expanded="@(expanded ? "true" : "false")"
             aria-controls="@submenuId"
-            title="@Group.Title"
-            data-tooltip="@Group.Title"
+            aria-label="@(IsCollapsed ? Group.Title : null)"
+            data-label="@(IsCollapsed ? Group.Title : null)"
             @onclick="OnToggle">
         <i class="bi @Group.Icon" aria-hidden="true"></i>
         @if (!IsCollapsed)
