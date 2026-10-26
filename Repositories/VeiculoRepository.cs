@@ -17,7 +17,12 @@ namespace mechsystem.Repositories
         public async Task<List<Veiculo>> Listar()
         {
             // O Include traz os dados do Cliente dono do veículo automaticamente
-            return await _context.Veiculos.Include(v => v.Cliente).ToListAsync();
+            return await _context.Veiculos.Include(v => v.Cliente).Where(v => v.Ativo).ToListAsync();
+        }
+
+        public async Task<List<Veiculo>> ListarInativos()
+        {
+            return await _context.Veiculos.Include(v => v.Cliente).Where(v => !v.Ativo).ToListAsync();
         }
 
         public async Task<Veiculo?> BuscarPorId(int id)
@@ -42,7 +47,19 @@ namespace mechsystem.Repositories
             var veiculo = await BuscarPorId(id);
             if (veiculo != null)
             {
-                _context.Veiculos.Remove(veiculo);
+                veiculo.Ativo = false; // Soft-delete: mantém o histórico das ordens de serviço
+                _context.Veiculos.Update(veiculo);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task Reativar(int id)
+        {
+            var veiculo = await BuscarPorId(id);
+            if (veiculo != null)
+            {
+                veiculo.Ativo = true;
+                _context.Veiculos.Update(veiculo);
                 await _context.SaveChangesAsync();
             }
         }

@@ -19,6 +19,11 @@ namespace mechsystem.Repositories
             return await _context.Clientes.Where(c => c.Ativo).ToListAsync();
         }
 
+        public async Task<List<Cliente>> ListarInativos()
+        {
+            return await _context.Clientes.Where(c => !c.Ativo).ToListAsync();
+        }
+
         public async Task<Cliente?> BuscarPorId(int id)
         {
             return await _context.Clientes.FindAsync(id);
@@ -42,6 +47,17 @@ namespace mechsystem.Repositories
             if (cliente != null)
             {
                 cliente.Ativo = false;
+                _context.Clientes.Update(cliente);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task Reativar(int id)
+        {
+            var cliente = await BuscarPorId(id);
+            if (cliente != null)
+            {
+                cliente.Ativo = true;
                 _context.Clientes.Update(cliente);
                 await _context.SaveChangesAsync();
             }

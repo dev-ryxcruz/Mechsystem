@@ -7,20 +7,6 @@ namespace mechsystem.Data
     {
         public static async Task SeedAsync(AppDbContext context)
         {
-            // Corrige clientes antigos que possam ter ficado inativos pela migration recente
-            var clientesInativos = await context.Clientes.IgnoreQueryFilters().Where(c => !c.Ativo).ToListAsync();
-            bool hasUpdates = false;
-            foreach (var c in clientesInativos)
-            {
-                c.Ativo = true;
-                hasUpdates = true;
-            }
-            if (hasUpdates)
-            {
-                await context.SaveChangesAsync();
-                Console.WriteLine(">>> Clientes inativos corrigidos para ativos.");
-            }
-
             // Insere dados de teste se a base não tiver o cliente de teste
             if (!await context.Clientes.AnyAsync(c => c.Nome == "João Silva"))
             {

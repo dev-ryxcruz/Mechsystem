@@ -12,13 +12,32 @@
 @inject IJSRuntime JS
 
 <div class="container-fluid px-4 mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-        <h3><i class="bi bi-people"></i> Clientes Registados</h3>
-        <div class="d-flex gap-2 align-items-center flex-wrap flex-md-nowrap w-100" style="max-width: 600px;">
-            <div class="input-group">
-                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                <input type="text" class="form-control border-start-0 ps-0 shadow-none" placeholder="Pesquisar cliente..." @bind="termoPesquisa" @bind:event="oninput" />
-            </div>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3 class="mb-0"><i class="bi bi-people"></i> Clientes Registados</h3>
+        <button class="btn btn-primary text-nowrap" @onclick="NovoCliente">
+            <i class="bi bi-plus-lg"></i> Novo Cliente
+        </button>
+    </div>
+
+    @* Barra de ferramentas: pesquisa ocupa o espaço disponível, filtros à direita *@
+    <div class="d-flex gap-2 align-items-center flex-wrap mb-4">
+        <div class="input-group flex-grow-1" style="min-width: 240px; max-width: 520px;">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" id="pesquisa-cliente" class="form-control border-start-0 ps-0 shadow-none" placeholder="Pesquisar cliente..." @bind="termoPesquisa" @bind:event="oninput" />
+        </div>
+        <div class="d-flex gap-2 ms-auto flex-wrap">
+            <AuthorizeView Roles="Administrador">
+                <Authorized>
+                    <div class="btn-group" role="group" aria-label="Filtrar por estado">
+                        <button type="button" id="btn-filtro-ativos" class="btn btn-outline-success text-nowrap @(!MostrarInativos ? "active" : "")" @onclick="() => AlternarFiltro(false)">
+                            <i class="bi bi-person-check"></i> Ativos
+                        </button>
+                        <button type="button" id="btn-filtro-inativos" class="btn btn-outline-secondary text-nowrap @(MostrarInativos ? "active" : "")" @onclick="() => AlternarFiltro(true)">
+                            <i class="bi bi-archive"></i> Inativos
+                        </button>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
             <div class="btn-group" role="group" aria-label="Alternar visualização">
                 <button type="button" class="btn btn-outline-secondary @(!IsGridView ? "active" : "")" @onclick="() => ToggleView(false)">
                     <i class="bi bi-list-ul"></i>
@@ -27,9 +46,6 @@
                     <i class="bi bi-grid-fill"></i>
                 </button>
             </div>
-            <button class="btn btn-primary text-nowrap" @onclick="NovoCliente">
-                <i class="bi bi-plus-lg"></i> Novo Cliente
-            </button>
         </div>
     </div>
 
@@ -45,7 +61,7 @@
     else if (!clientes.Any())
     {
         <div class="alert alert-info" role="alert">
-            Nenhum cliente registado no sistema ainda.
+            @(MostrarInativos ? "Nenhum cliente inativo." : "Nenhum cliente registado no sistema ainda.")
         </div>
     }
     @* Se existirem clientes, montamos a tabela *@
@@ -69,9 +85,18 @@
                                 </button>
                                 <AuthorizeView Roles="Administrador">
                                     <Authorized>
-                                        <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => ApagarCliente(cliente.Id)">
-                                            <i class="bi bi-archive"></i>
-                                        </button>
+                                        @if (cliente.Ativo)
+                                        {
+                                            <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => ApagarCliente(cliente.Id)">
+                                                <i class="bi bi-archive"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-sm btn-outline-success" title="Reativar" @onclick="() => ReativarCliente(cliente.Id)">
+                                                <i class="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+                                        }
                                     </Authorized>
                                 </AuthorizeView>
                             </div>
@@ -112,10 +137,20 @@
                                 
                                 <AuthorizeView Roles="Administrador">
                                     <Authorized>
-                                        @* O botão Eliminar chama a função de apagar diretamente *@
-                                        <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => ApagarCliente(cliente.Id)">
-                                            <i class="bi bi-archive"></i>
-                                        </button>
+                                        @if (cliente.Ativo)
+                                        {
+                                            @* O botão Inativar abre o modal de confirmação *@
+                                            <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => ApagarCliente(cliente.Id)">
+                                                <i class="bi bi-archive"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            @* O botão Reativar devolve o cliente à lista de ativos *@
+                                            <button class="btn btn-sm btn-outline-success" title="Reativar" @onclick="() => ReativarCliente(cliente.Id)">
+                                                <i class="bi bi-arrow-counterclockwise"></i>
+                                            </button>
+                                        }
                                     </Authorized>
                                 </AuthorizeView>
                             </td>                                
@@ -152,6 +187,28 @@
     </div>
 }
 
+@if (ShowReativarModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-success text-white border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-arrow-counterclockwise me-2"></i> Confirmar Reativação</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseReativarModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-0 fs-5">Tem certeza que deseja reativar este cliente?</p>
+                    <p class="text-muted mt-2 mb-0"><small>Ele voltará a aparecer nas buscas e poderá ser utilizado em novas ordens de serviço.</small></p>
+                </div>
+                <div class="modal-footer border-0 bg-light">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CloseReativarModal">Cancelar</button>
+                    <button type="button" id="btn-confirmar-reativar" class="btn btn-success" @onclick="ConfirmReativar">Reativar Cliente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<Cliente>? clientes;
     private string termoPesquisa = "";
@@ -164,6 +221,7 @@
 
     private Cliente _cliente = new Cliente();
     private bool IsGridView = false;
+    private bool MostrarInativos = false;
 
     private void ToggleView(bool gridView) => IsGridView = gridView;
 
@@ -172,7 +230,23 @@
     protected override async Task OnInitializedAsync()
     {
         // Pede ao repositório para ir à base de dados e trazer todos os clientes
-        clientes = await ClienteRepository.Listar();
+        await CarregarClientes();
+    }
+
+    // Carrega os clientes ativos ou inativos conforme o filtro selecionado
+    private async Task CarregarClientes()
+    {
+        clientes = MostrarInativos
+            ? await ClienteRepository.ListarInativos()
+            : await ClienteRepository.Listar();
+    }
+
+    private async Task AlternarFiltro(bool inativos)
+    {
+        if (MostrarInativos == inativos) return;
+        MostrarInativos = inativos;
+        clientes = null;
+        await CarregarClientes();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -227,9 +301,42 @@ private void IrParaEdicao(int id)
         await ClienteRepository.Deletar(ClienteIdToInactivate);
         
         // 2. Consulta a base de dados novamente para atualizar a tabela no ecrã
-        clientes = await ClienteRepository.Listar();
+        await CarregarClientes();
         
         CloseConfirmModal();
+    }
+
+    private bool ShowReativarModal = false;
+    private int ClienteIdToReactivate = 0;
+
+    private void ReativarCliente(int id)
+    {
+        ClienteIdToReactivate = id;
+        ShowReativarModal = true;
+    }
+
+    private void CloseReativarModal()
+    {
+        ShowReativarModal = false;
+        ClienteIdToReactivate = 0;
+    }
+
+    private async Task ConfirmReativar()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (!authState.User.IsInRole("Administrador"))
+        {
+            CloseReativarModal();
+            return;
+        }
+
+        // 1. Vai à base de dados e reativa o cliente
+        await ClienteRepository.Reativar(ClienteIdToReactivate);
+
+        // 2. Atualiza a lista no ecrã (o cliente sai da lista de inativos)
+        await CarregarClientes();
+
+        CloseReativarModal();
     }
 
     private string FormatCpf(string? cpf)

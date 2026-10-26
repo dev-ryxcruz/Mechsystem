@@ -565,6 +565,10 @@ namespace mechsystem.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("ano");
 
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ativo");
+
                     b.Property<int>("ClienteId")
                         .HasColumnType("integer")
                         .HasColumnName("cliente_id");
