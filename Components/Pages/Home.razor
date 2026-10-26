@@ -224,7 +224,7 @@
                     }
 
                     <div class="d-flex justify-content-center mb-4 mt-2">
-                        <div class="donut-chart" style="background: conic-gradient(#198754 0% @pctMaoObra.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%, #fd7e14 @pctMaoObra.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)% 100%);">
+                        <div class="donut-chart" style="background: @(faturamentoMes == 0 ? "#e9ecef" : $"conic-gradient(#198754 0% {pctMaoObra.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}%, #fd7e14 {pctMaoObra.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)}% 100%)");">
                             <div class="donut-hole d-flex flex-column align-items-center justify-content-center bg-white">
                                 <span class="d-block text-muted" style="font-size: 0.75rem; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">Receita</span>
                                 <span class="fs-4 fw-bold text-dark" style="line-height: 1.1;">@faturamentoMes.ToString("C0", new System.Globalization.CultureInfo("pt-BR"))</span>
@@ -234,13 +234,13 @@
 
                     <div class="d-flex justify-content-around px-2">
                         <div class="text-start">
-                            <span class="d-flex align-items-center gap-1 mb-1" style="font-size: 0.85rem;"><span class="dot bg-success"></span>Mão de Obra</span>
-                            <strong class="d-block">@Math.Round(pctMaoObra)%</strong>
+                            <span class="d-flex align-items-center gap-1 mb-1 @(faturamentoMes == 0 ? "text-muted" : "")" style="font-size: 0.85rem;"><span class="dot @(faturamentoMes == 0 ? "" : "bg-success")" style="@(faturamentoMes == 0 ? "background-color: #adb5bd;" : "")"></span>Mão de Obra</span>
+                            <strong class="d-block @(faturamentoMes == 0 ? "text-muted" : "")">@Math.Round(pctMaoObra)%</strong>
                             <small class="text-muted">@faturamentoMaoDeObra.ToString("C0", new System.Globalization.CultureInfo("pt-BR"))</small>
                         </div>
                         <div class="text-start">
-                             <span class="d-flex align-items-center gap-1 mb-1" style="font-size: 0.85rem;"><span class="dot" style="background-color: #fd7e14;"></span>Peças</span>
-                            <strong class="d-block">@Math.Round(pctPecas)%</strong>
+                             <span class="d-flex align-items-center gap-1 mb-1 @(faturamentoMes == 0 ? "text-muted" : "")" style="font-size: 0.85rem;"><span class="dot" style="background-color: @(faturamentoMes == 0 ? "#ced4da" : "#fd7e14");"></span>Peças</span>
+                            <strong class="d-block @(faturamentoMes == 0 ? "text-muted" : "")">@Math.Round(pctPecas)%</strong>
                             <small class="text-muted">@faturamentoPecas.ToString("C0", new System.Globalization.CultureInfo("pt-BR"))</small>
                         </div>
                     </div>

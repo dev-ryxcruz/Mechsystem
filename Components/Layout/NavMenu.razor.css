@@ -1,22 +1,54 @@
 /* ==============================================
+   SIDEBAR (contêiner raiz — renderizado pelo NavMenu)
+   Fonte única de largura: a classe sidebar--collapsed, aplicada no
+   mesmo ciclo de renderização que remove/insere os rótulos (.nav-text).
+   ============================================== */
+.sidebar {
+    background: linear-gradient(180deg, #1e2227 0%, #181b1f 100%);
+    overflow: hidden;
+    box-shadow: inset -1px 0 0 var(--border-dark);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Primeira aplicação do valor persistido: sem animar a largura. */
+.sidebar.sidebar--no-anim {
+    transition: none;
+}
+
+/* ==============================================
    TOP ROW (Header da Sidebar)
    ============================================== */
 .top-row {
-    height: 3.5rem;
+    height: var(--topbar-height);
+    min-height: var(--topbar-height);
+    padding: 0 var(--nav-pad-x);
     background: linear-gradient(135deg, #1a1d21 0%, #22262b 100%);
     display: flex;
     align-items: center;
     border-bottom: 1px solid var(--border-dark);
+    box-sizing: border-box;
     position: relative;
 }
 
+.top-row--collapsed {
+    padding: 0;
+    justify-content: center;
+}
+
+.top-row--collapsed .top-row-inner {
+    justify-content: center;
+}
+
 .top-row .navbar-brand {
-    font-size: 1.05rem;
-    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
     color: var(--accent);
-    letter-spacing: 1.8px;
-    text-transform: uppercase;
     text-decoration: none;
+    min-width: 0;
     transition: opacity var(--transition-normal);
 }
 
@@ -25,180 +57,325 @@
     opacity: 0.85;
 }
 
+.brand-logo {
+    height: 1.5rem;
+    width: auto;
+    object-fit: contain;
+    flex-shrink: 0;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.brand-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
 /* Botão Toggle da Sidebar */
 .sidebar-toggle {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border: none !important;
     box-shadow: none !important;
     text-decoration: none !important;
     transition: transform var(--transition-fast);
 }
 
-.sidebar-toggle:hover,
-.sidebar-toggle:focus {
-    transform: scale(1.15);
-    text-decoration: none !important;
-}
-
-/* ==============================================
-   NAV ITEMS
-   ============================================== */
-.nav-item {
-    padding: 0.15rem 0;
-}
-
-.nav-text {
-    white-space: nowrap;
-    overflow: hidden;
-    transition: opacity var(--transition-normal);
-}
-
-.chevron-icon {
-    font-size: 0.75rem;
-    transition: transform var(--transition-fast);
-    color: var(--text-on-dark-muted);
-}
-
-.nav-item ::deep .nav-link {
-    color: var(--text-on-dark-muted);
-    background: transparent;
-    border-radius: var(--radius-sm);
-    height: 2.75rem;
-    display: flex;
-    align-items: center;
-    padding: 0 0.85rem;
-    gap: 0;
-    transition: color var(--transition-fast),
-                background-color var(--transition-fast),
-                border-color var(--transition-fast);
-    margin: 0.1rem 0.4rem;
-    border-left: 3px solid transparent;
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 400;
-}
-
-/* ==============================================
-   HOVER (Bug Fix: removido translateX que causava overflow)
-   ============================================== */
-.nav-item ::deep .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: var(--text-on-dark);
-    border-left-color: rgba(255, 117, 31, 0.4);
-}
-
-/* Bug Fix: ícones agora usam 'color' em vez de 'filter' */
-.nav-item ::deep .nav-link:hover .bi {
-    color: var(--text-on-dark);
-}
-
-/* ==============================================
-   ITEM ATIVO
-   ============================================== */
-.nav-item ::deep .nav-link.active {
-    background: linear-gradient(90deg, rgba(255, 117, 31, 0.15) 0%, transparent 100%);
-    color: var(--accent);
-    font-weight: 600;
-    border-left: 3px solid var(--accent);
-}
-
-.nav-item ::deep .nav-link.active .bi {
-    color: var(--accent);
-}
-
-/* ==============================================
-   ESTADO COLAPSADO (Centralizar ícones via classe pai)
-   ============================================== */
-.nav-collapsed .nav-item ::deep .nav-link {
-    justify-content: center;
-    padding: 0;
-    border-left: 3px solid transparent;
-}
-
-.nav-collapsed .nav-item ::deep .nav-link .bi {
-    margin-right: 0;
-}
-
-.nav-collapsed .nav-item ::deep .nav-link:hover {
-    border-left-color: transparent;
-    background-color: rgba(255, 117, 31, 0.1);
-}
-
-.nav-collapsed .nav-item ::deep .nav-link.active {
-    border-left: 3px solid transparent;
-    background: rgba(255, 117, 31, 0.15);
-    border-radius: var(--radius-sm);
-}
-
-/* ==============================================
-   TÍTULOS DE SECÇÃO
-   ============================================== */
-.nav-section-title {
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: var(--text-on-dark-muted);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin: 1.2rem 0 0.4rem 0;
-    padding-left: 1.3rem;
-    opacity: 0.7;
-}
-
-/* ==============================================
-   DIVISORES
-   ============================================== */
-.nav-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 50%, transparent 100%);
-    margin: 0.6rem 1.2rem;
-}
-
-/* ==============================================
-   ÍCONES
-   ============================================== */
-.bi {
+.sidebar-toggle .bi,
+.sidebar-toggle-icon {
+    margin: 0;
     width: 1.5rem;
     height: 1.5rem;
     font-size: 1.4rem;
-    margin-right: 0.85rem;
-    color: var(--text-on-dark-muted);
-    transition: color var(--transition-fast), transform var(--transition-fast);
-    flex-shrink: 0;
-    /* Remover filter — era a causa do bug de aparência imprevisível */
+    color: var(--accent);
     filter: none;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
+.sidebar-toggle:hover,
+.sidebar-toggle:focus {
+    transform: scale(1.12);
+    text-decoration: none !important;
+}
+
+/* ==============================================
+   NAV & NAV ITEMS (Escopo raiz .app-nav com ::deep)
+   ============================================== */
+.app-nav {
+    gap: var(--nav-item-gap);
+}
+
+.app-nav ::deep .nav-item {
+    padding: 0 var(--nav-pad-x);
+    margin: 0;
+}
+
+.app-nav ::deep .nav-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: opacity var(--transition-normal);
+}
+
+.app-nav ::deep .chevron-icon {
+    width: auto;
+    height: auto;
+    font-size: 0.75rem;
+    margin-left: auto;
+    margin-right: 0;
+    transition: transform var(--transition-fast), color var(--transition-fast);
+    color: var(--text-on-dark-muted);
+    flex-shrink: 0;
+}
+
+.app-nav ::deep .nav-group-toggle {
+    background: none;
+    border: 0;
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    appearance: none;
+}
+
+.app-nav ::deep .nav-link {
+    color: var(--text-on-dark-muted);
+    background: transparent;
+    border-radius: var(--radius-sm);
+    height: var(--nav-item-height);
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem 0 0;
+    margin: 0;
+    gap: 0.75rem;
+    border: 0;
+    position: relative;
+    transition: color var(--transition-fast),
+                background-color var(--transition-fast);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 400;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.app-nav ::deep .nav-link:focus-visible,
+.sidebar-toggle:focus-visible,
+.top-row .navbar-brand:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px var(--accent-glow) !important;
+}
+
+.app-nav ::deep .nav-group-toggle.group-active {
+    background: linear-gradient(90deg, rgba(255, 117, 31, 0.10) 0%, transparent 100%);
+    color: var(--text-on-dark);
+    font-weight: 600;
+}
+
+.app-nav ::deep .nav-group-toggle.group-active::before {
+    background-color: var(--accent);
+}
+
+.app-nav ::deep .nav-group-toggle.group-active .bi,
+.app-nav ::deep .nav-group-toggle.group-active .chevron-icon {
+    color: var(--accent);
+}
+
+.app-nav ::deep .nav-link::before {
+    content: "";
+    position: absolute;
+    left: -0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 1.5rem;
+    border-radius: 0 3px 3px 0;
+    background-color: transparent;
+    transition: background-color var(--transition-fast);
+}
+
+/* ==============================================
+   HOVER
+   ============================================== */
+.app-nav ::deep .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: var(--text-on-dark);
+}
+
+.app-nav ::deep .nav-link:hover::before {
+    background-color: rgba(255, 117, 31, 0.4);
+}
+
+.app-nav ::deep .nav-link:hover .bi {
+    color: var(--text-on-dark);
+}
+
+/* ==============================================
+   ITEM ATIVO
+   ============================================== */
+.app-nav ::deep .nav-link.active {
+    background: linear-gradient(90deg, rgba(255, 117, 31, 0.15) 0%, transparent 100%);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.app-nav ::deep .nav-link.active::before {
+    background-color: var(--accent);
+}
+
+.app-nav ::deep .nav-link.active .bi {
+    color: var(--accent);
+}
+
+/* ==============================================
+   ESTADO COLAPSADO (Centralizar ícones + Tooltip CSS)
+   ============================================== */
+.app-nav.nav-collapsed ::deep .nav-item {
+    padding: 0;
+    display: flex;
+    justify-content: center;
+}
+
+.app-nav.nav-collapsed ::deep .nav-link {
+    width: var(--nav-item-height);
+    height: var(--nav-item-height);
+    justify-content: center;
+    padding: 0;
+    margin: 0 auto;
+    gap: 0;
+}
+
+.app-nav.nav-collapsed ::deep .nav-link::before {
+    display: none;
+}
+
+.app-nav.nav-collapsed ::deep .nav-link .bi {
+    margin: 0;
+}
+
+.app-nav.nav-collapsed ::deep .nav-link:hover {
+    background-color: rgba(255, 117, 31, 0.1);
+}
+
+.app-nav.nav-collapsed ::deep .nav-link.active {
+    background: rgba(255, 117, 31, 0.15);
+    border-radius: var(--radius-sm);
+}
+
+/* Tooltip único (position: fixed, posicionado por JS em NavMenu.razor.js) */
+.sidebar-tooltip {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1060;
+    background: #14161a;
+    color: var(--text-on-dark);
+    border: 1px solid var(--border-dark);
+    box-shadow: var(--shadow-md);
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.sidebar-tooltip[hidden] {
+    display: none;
+}
+
+/* ==============================================
+   TÍTULOS DE SEÇÃO (Mesmo eixo X = --nav-pad-x)
+   ============================================== */
+.app-nav ::deep .nav-section-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-on-dark-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 0.75rem 0 0.25rem 0;
+    padding: 0 var(--nav-pad-x);
+    opacity: 0.7;
+}
+
+/* ==============================================
+   DIVISORES
+   ============================================== */
+.app-nav ::deep .nav-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 50%, transparent 100%);
+    margin: 0.5rem var(--nav-pad-x);
+}
+
+/* ==============================================
+   ÍCONES (Escopados em .app-nav ::deep .bi)
+   ============================================== */
+.app-nav ::deep .bi {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 1.35rem;
+    margin: 0;
+    color: var(--text-on-dark-muted);
+    transition: color var(--transition-fast), transform var(--transition-fast);
+    flex-shrink: 0;
+    filter: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.app-nav ::deep .chevron-icon.bi {
+    width: auto;
+    height: auto;
+    font-size: 0.75rem;
+    margin-left: auto;
+}
+
 /* ==============================================
    SUBMENUS (Acordeão)
    ============================================== */
-.nav-submenu {
+.app-nav ::deep .nav-submenu {
     background-color: rgba(0, 0, 0, 0.15);
     border-radius: var(--radius-sm);
-    margin: 0.2rem 0.4rem;
-    padding: 0.35rem 0;
+    margin: var(--nav-item-gap) 0 0.2rem 0.75rem;
+    padding: 0.25rem 0.35rem;
     border-left: 2px solid rgba(255, 117, 31, 0.15);
-    margin-left: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--nav-item-gap);
 }
 
-.nav-submenu ::deep .nav-link {
+.app-nav ::deep .nav-submenu .nav-link {
     height: 2.4rem;
     font-size: 0.85rem;
-    margin: 0.05rem 0.4rem;
-    padding-left: 1rem;
-    border-left: none;
+    margin: 0;
+    padding: 0 0.5rem;
+    gap: 0.65rem;
 }
 
-.nav-submenu ::deep .nav-link:hover {
-    border-left: none;
+.app-nav ::deep .nav-submenu .nav-link::before {
+    display: none;
 }
 
-.nav-submenu ::deep .nav-link .bi {
+.app-nav ::deep .nav-submenu .nav-link .bi {
     width: 1.25rem;
     height: 1.25rem;
-    margin-right: 0.7rem;
-    font-size: 1.1rem;
+    margin: 0;
+    font-size: 1.05rem;
 }
 
 /* ==============================================
@@ -232,23 +409,46 @@
 .nav-scrollable {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
 }
 
-/* Touch targets: todos os links de nav >= 44px em mobile */
+/* Touch targets: todos os links e botões de nav >= 44px em mobile */
 @media (max-width: 767.98px) {
-    .nav-item ::deep .nav-link {
+    /* Gaveta mobile: largura própria; o modo recolhido não existe aqui. */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        z-index: 1045;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+        box-shadow: 4px 0 25px rgba(0, 0, 0, 0.5);
+    }
+
+    /* O botão recolher/expandir só faz sentido no desktop */
+    .sidebar-toggle {
+        display: none;
+    }
+
+    .app-nav ::deep .nav-item .nav-link {
         height: auto;
         min-height: 44px;
         padding-top: 0.6rem;
         padding-bottom: 0.6rem;
     }
 
-    .nav-submenu ::deep .nav-link {
-        min-height: 40px;
+    .app-nav ::deep .nav-submenu .nav-link {
+        min-height: 44px;
     }
 
-    .nav-section-title {
+    .app-nav ::deep .nav-section-title {
         padding-top: 0.5rem;
     }
 }
@@ -257,8 +457,34 @@
    DESKTOP
    ============================================== */
 @media (min-width: 768px) {
+    .sidebar {
+        --sidebar-current-width: var(--sidebar-width);
+        width: var(--sidebar-current-width);
+        min-width: var(--sidebar-current-width);
+        flex: 0 0 var(--sidebar-current-width);
+        height: 100vh;
+        position: sticky;
+        top: 0;
+        transition: width var(--transition-smooth),
+                    min-width var(--transition-smooth),
+                    flex-basis var(--transition-smooth);
+    }
+
+    .sidebar.sidebar--collapsed {
+        --sidebar-current-width: var(--sidebar-width-collapsed);
+    }
+
     .nav-scrollable {
-        height: calc(100vh - 3.5rem);
+        height: calc(100vh - var(--topbar-height));
         padding: 0.5rem 0;
+    }
+
+    /* Recolhida: rola sem barra visível para manter o eixo dos ícones/botão no centro de 4.5rem */
+    .nav-scrollable.nav-scrollable--collapsed {
+        scrollbar-width: none;
+    }
+
+    .nav-scrollable.nav-scrollable--collapsed::-webkit-scrollbar {
+        display: none;
     }
 }
