@@ -7,15 +7,14 @@
 
 <PageTitle>Catálogo de Serviços — Mechsystem</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <div>
-        <h2 class="fw-bold mb-1">Catálogo de Serviços</h2>
-        <p class="text-muted mb-0">Gerencie os serviços oferecidos e seus valores padrão</p>
-    </div>
-    <a href="/servicos/cadastro" class="btn btn-accent shadow-sm">
-        <i class="bi bi-plus-circle me-2"></i>Novo Serviço
-    </a>
-</div>
+<div class="page-container">
+    <PageHeader Icon="bi-tools" Title="Catálogo de Serviços" Subtitle="Gerencie os serviços oferecidos e seus valores padrão">
+        <Actions>
+            <a href="/servicos/cadastro" class="btn btn-accent shadow-sm text-nowrap">
+                <i class="bi bi-plus-lg"></i> Novo Serviço
+            </a>
+        </Actions>
+    </PageHeader>
 
 <div class="card shadow-sm dash-card">
     <div class="card-header d-flex justify-content-between align-items-center bg-white p-3 border-bottom">
@@ -102,6 +101,7 @@
             </div>
         }
     </div>
+</div>
 </div>
 
 @* Modal de Confirmação de Exclusão Simples *@

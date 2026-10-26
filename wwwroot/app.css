@@ -129,17 +129,111 @@ a:hover, .btn-link:hover {
     box-shadow: none;
 }
 
+/* Botão de destaque principal padrão do MechSystem */
+.btn-accent {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: all var(--transition-normal);
+}
+
+.btn-accent:hover,
+.btn-accent:focus {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: #fff;
+    box-shadow: 0 4px 15px var(--accent-glow);
+    transform: translateY(-1px);
+}
+
+.btn-accent:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
     box-shadow: 0 0 0 0.15rem var(--accent-glow);
     border-color: var(--accent);
 }
 
 /* ==============================================
-   CONTEÚDO PRINCIPAL
+   CONTEÚDO PRINCIPAL & ESTRUTURA DE PÁGINA
    ============================================== */
 .content {
     padding-top: 1.5rem;
     background-color: var(--bg-body);
+}
+
+.page-container {
+    width: 100%;
+    max-width: 1600px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-bottom: 2rem;
+}
+
+/* ── Cabeçalho de Página Unificado (PageHeader) ── */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.page-header-title-block {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    line-height: 1.25;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.page-header-icon {
+    color: var(--accent);
+    font-size: 1.5rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.page-subtitle {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.page-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+@media (max-width: 576px) {
+    .page-header-actions {
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+    }
 }
 
 h1:focus {
