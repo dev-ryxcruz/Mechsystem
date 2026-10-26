@@ -25,6 +25,8 @@ namespace mechsystem.Models
         public int ClienteId { get; set; }
         public Cliente? Cliente { get; set; }
 
+        // Soft-delete: veículos inativos não aparecem nas buscas, mas mantêm o histórico
+        public bool Ativo { get; set; } = true;
 
     }
 }
