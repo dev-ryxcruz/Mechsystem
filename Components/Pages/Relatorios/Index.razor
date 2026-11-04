@@ -1,11 +1,16 @@
 @page "/relatorios"
 @rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @using mechsystem.Data
 @using mechsystem.Models
 @using mechsystem.Services
+@attribute [Authorize(Roles = "Administrador, Atendimento")]
 @inject AppDbContext DbContext
 @inject EstoqueService EstoqueService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JSRuntime
 
 <PageTitle>Relatórios — Mechsystem</PageTitle>
@@ -40,7 +45,13 @@
         </div>
     </div>
 
-    @if (carregando)
+    @if (!string.IsNullOrEmpty(erroPermissao))
+    {
+        <div class="alert alert-danger shadow-sm border-0 border-start border-danger border-4">
+            <i class="bi bi-shield-lock-fill me-2"></i>@erroPermissao
+        </div>
+    }
+    else if (carregando)
     {
         <div class="text-center py-5">
             <div class="spinner-border text-primary" role="status"></div>
@@ -56,7 +67,7 @@
                 var idx = i;
                 var rel = relatorios[i];
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link @(abaAtiva == idx ? "active" : "")" @onclick="() => abaAtiva = idx">
+                    <button class="nav-link @(abaAtiva == idx ? "active" : "")" @onclick="() => SelecionarAba(idx)">
                         <i class="bi @rel.GetIcone() me-1" style="color: @rel.GetCorTema();"></i>
                         @rel.Titulo
                     </button>
@@ -75,7 +86,7 @@
                     <i class="bi bi-printer-fill me-1"></i>Imprimir / PDF
                 </button>
                 <span class="text-muted small ms-3">
-                    <i class="bi bi-clock me-1"></i>@relAtivo.GetDataFormatada()
+                    <i class="bi bi-clock me-1"></i>Gerado em @relAtivo.GetDataFormatada() (Brasília) por <strong>@relAtivo.GeradoPor</strong>
                 </span>
             </div>
 
@@ -86,10 +97,7 @@
                 <div class="rel-doc-header">
                     <div>
                         <div class="rel-doc-empresa">@(config?.NomeFantasia ?? "MechSystem")</div>
-                        @if (!string.IsNullOrEmpty(config?.Cnpj))
-                        {
-                            <div class="rel-doc-info">CNPJ: @config.Cnpj</div>
-                        }
+                        <div class="rel-doc-info">CNPJ: @(FormatarCnpj(config?.Cnpj))</div>
                         @if (!string.IsNullOrEmpty(config?.Telefone))
                         {
                             <div class="rel-doc-info">Tel: @config.Telefone</div>
@@ -104,7 +112,11 @@
                         <div class="rel-doc-titulo" style="color: @relAtivo.GetCorTema();">
                             <i class="bi @relAtivo.GetIcone() me-1"></i>@relAtivo.Titulo
                         </div>
-                        <div class="rel-doc-periodo">@GetPeriodoLabel()</div>
+                        <div class="rel-doc-periodo">Período: @GetPeriodoLabel()</div>
+                        <div class="rel-doc-info mt-1">
+                            Emitido em @relAtivo.GetDataFormatada() (Horário de Brasília)<br />
+                            Responsável: <strong>@relAtivo.GeradoPor</strong>
+                        </div>
                     </div>
                 </div>
 
@@ -114,53 +126,56 @@
                 @if (relAtivo is RelatorioOS relOS)
                 {
                     <div class="rel-section">
-                        <div class="rel-section-title">RESUMO OPERACIONAL</div>
+                        <div class="rel-section-title">RESUMO OPERACIONAL NO PERÍODO (@GetPeriodoLabel())</div>
                         <div class="rel-kpi-grid">
                             <div class="rel-kpi">
                                 <span class="rel-kpi-valor" style="color: @relOS.GetCorTema();">@relOS.TotalOS</span>
-                                <span class="rel-kpi-label">Total de O.S.</span>
+                                <span class="rel-kpi-label">O.S. Emitidas no Período</span>
                             </div>
                             <div class="rel-kpi">
                                 <span class="rel-kpi-valor text-success">@relOS.TotalConcluidas</span>
-                                <span class="rel-kpi-label">Concluídas</span>
+                                <span class="rel-kpi-label">Concluídas no Período</span>
                             </div>
                             <div class="rel-kpi">
                                 <span class="rel-kpi-valor" style="color: #fd7e14;">@relOS.TotalEmAndamento</span>
-                                <span class="rel-kpi-label">Em Andamento</span>
+                                <span class="rel-kpi-label">Em Andamento (Período)</span>
                             </div>
                             <div class="rel-kpi">
                                 <span class="rel-kpi-valor text-warning">@relOS.TotalOrcamentos</span>
-                                <span class="rel-kpi-label">Orçamentos</span>
+                                <span class="rel-kpi-label">Orçamentos (Período)</span>
                             </div>
                             <div class="rel-kpi">
                                 <span class="rel-kpi-valor text-danger">@relOS.TotalCanceladas</span>
-                                <span class="rel-kpi-label">Canceladas</span>
+                                <span class="rel-kpi-label">Canceladas (Período)</span>
                             </div>
                             <div class="rel-kpi">
                                 <span class="rel-kpi-valor" style="color: #6f42c1;">@relOS.TaxaConversao.ToString("N1")%</span>
-                                <span class="rel-kpi-label">Conversão</span>
+                                <span class="rel-kpi-label">Conversão (Período)</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="rel-doc-divider"></div>
+                    @if (isAdmin)
+                    {
+                        <div class="rel-doc-divider"></div>
 
-                    <div class="rel-section">
-                        <div class="rel-section-title">INDICADORES FINANCEIROS</div>
-                        <table class="rel-table">
-                            <tbody>
-                                <tr><td>Faturamento Total</td><td class="text-end fw-bold">@relOS.FaturamentoTotal.ToString("C", ptBR)</td></tr>
-                                <tr><td>Ticket Médio por O.S.</td><td class="text-end">@relOS.TicketMedio.ToString("C", ptBR)</td></tr>
-                                <tr><td>Taxa de Conversão</td><td class="text-end">@relOS.TaxaConversao.ToString("N1")%</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
+                        <div class="rel-section">
+                            <div class="rel-section-title">INDICADORES FINANCEIROS DE O.S. CONCLUÍDAS NO PERÍODO</div>
+                            <table class="rel-table">
+                                <tbody>
+                                    <tr><td>Faturamento Total (O.S. Concluídas no Período)</td><td class="text-end fw-bold">@relOS.FaturamentoTotal.ToString("C", ptBR)</td></tr>
+                                    <tr><td>Ticket Médio por O.S. Concluída</td><td class="text-end">@relOS.TicketMedio.ToString("C", ptBR)</td></tr>
+                                    <tr><td>Taxa de Conversão de Orçamentos</td><td class="text-end">@relOS.TaxaConversao.ToString("N1")%</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    }
 
                     <div class="rel-doc-divider"></div>
 
                     <!-- Tabela detalhada de OS -->
                     <div class="rel-section">
-                        <div class="rel-section-title">DETALHAMENTO POR STATUS</div>
+                        <div class="rel-section-title">DETALHAMENTO POR STATUS (EMITIDAS NO PERÍODO)</div>
                         <table class="rel-table rel-table-detail">
                             <thead>
                                 <tr>
@@ -199,31 +214,51 @@
                 else if (relAtivo is RelatorioEstoque relEst)
                 {
                     <div class="rel-section">
-                        <div class="rel-section-title">VISÃO GERAL DO ESTOQUE</div>
+                        <div class="rel-section-title">POSIÇÃO ATUAL DO ESTOQUE (TEMPO REAL)</div>
                         <div class="rel-kpi-grid">
                             <div class="rel-kpi">
-                                <span class="rel-kpi-valor" style="color: @relEst.GetCorTema();">@relEst.TotalPecasCadastradas</span>
-                                <span class="rel-kpi-label">Peças Cadastradas</span>
+                                <span class="rel-kpi-valor text-success">@relEst.PecasAtivas</span>
+                                <span class="rel-kpi-label">Peças Ativas (Posição Atual)</span>
                             </div>
                             <div class="rel-kpi">
-                                <span class="rel-kpi-valor text-success">@relEst.PecasAtivas</span>
-                                <span class="rel-kpi-label">Ativas</span>
+                                <span class="rel-kpi-valor text-secondary">@relEst.PecasInativas</span>
+                                <span class="rel-kpi-label">Peças Inativas (Posição Atual)</span>
                             </div>
                             <div class="rel-kpi">
                                 <span class="rel-kpi-valor text-danger">@relEst.PecasAbaixoDoMinimo</span>
-                                <span class="rel-kpi-label">Em Ruptura</span>
+                                <span class="rel-kpi-label">Abaixo do Mínimo (Ativas)</span>
                             </div>
                             <div class="rel-kpi">
                                 <span class="rel-kpi-valor" style="color: #6f42c1;">@relEst.MargemLucroMedia.ToString("N1")%</span>
-                                <span class="rel-kpi-label">Margem Média</span>
-                            </div>
-                            <div class="rel-kpi">
-                                <span class="rel-kpi-valor text-dark">@relEst.TotalMovimentacoes</span>
-                                <span class="rel-kpi-label">Movimentações</span>
+                                <span class="rel-kpi-label">Margem Média (Peças Ativas)</span>
                             </div>
                             <div class="rel-kpi">
                                 <span class="rel-kpi-valor text-success">@relEst.CapitalImobilizado.ToString("C", ptBR)</span>
-                                <span class="rel-kpi-label">Capital Imobilizado</span>
+                                <span class="rel-kpi-label">Capital Imobilizado (Ativas)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rel-doc-divider"></div>
+
+                    <div class="rel-section">
+                        <div class="rel-section-title">MOVIMENTAÇÕES NO PERÍODO (@GetPeriodoLabel())</div>
+                        <div class="rel-kpi-grid">
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor text-dark">@relEst.TotalMovimentacoes</span>
+                                <span class="rel-kpi-label">Movimentações no Período</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor text-success">@relEst.MovimentacoesEntradaPeriodo</span>
+                                <span class="rel-kpi-label">Entradas no Período</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor text-danger">@relEst.MovimentacoesSaidaPeriodo</span>
+                                <span class="rel-kpi-label">Saídas no Período</span>
+                            </div>
+                            <div class="rel-kpi">
+                                <span class="rel-kpi-valor text-warning">@relEst.MovimentacoesAjustePeriodo</span>
+                                <span class="rel-kpi-label">Ajustes no Período</span>
                             </div>
                         </div>
                     </div>
@@ -234,7 +269,7 @@
                     @if (pecasRuptura != null && pecasRuptura.Any())
                     {
                         <div class="rel-section">
-                            <div class="rel-section-title">⚠ PEÇAS EM RUPTURA DE ESTOQUE</div>
+                            <div class="rel-section-title">⚠ PEÇAS ATIVAS EM RUPTURA DE ESTOQUE (POSIÇÃO ATUAL)</div>
                             <table class="rel-table rel-table-detail">
                                 <thead>
                                     <tr>
@@ -265,27 +300,27 @@
                         <div class="rel-section">
                             <div class="alert alert-success d-flex align-items-center gap-2 mb-0">
                                 <i class="bi bi-check-circle-fill fs-5"></i>
-                                <span>Estoque saudável — nenhuma peça abaixo do mínimo.</span>
+                                <span>Estoque saudável — nenhuma peça ativa abaixo do mínimo.</span>
                             </div>
                         </div>
                     }
                 }
-                else if (relAtivo is RelatorioFinanceiro relFin)
+                else if (relAtivo is RelatorioFinanceiro relFin && isAdmin)
                 {
                     <div class="rel-section">
-                        <div class="rel-section-title">PANORAMA FINANCEIRO</div>
+                        <div class="rel-section-title">PANORAMA FINANCEIRO NO PERÍODO (@GetPeriodoLabel())</div>
                         <div class="rel-kpi-grid">
                             <div class="rel-kpi">
                                 <span class="rel-kpi-valor text-success">@relFin.ReceitaTotal.ToString("C", ptBR)</span>
-                                <span class="rel-kpi-label">Receita Total</span>
+                                <span class="rel-kpi-label">Receita Total (No Período)</span>
                             </div>
                             <div class="rel-kpi">
                                 <span class="rel-kpi-valor" style="color: @relFin.GetCorTema();">@relFin.TotalOSPagas</span>
-                                <span class="rel-kpi-label">O.S. Pagas</span>
+                                <span class="rel-kpi-label">O.S. Concluídas (No Período)</span>
                             </div>
                             <div class="rel-kpi">
                                 <span class="rel-kpi-valor" style="color: #6f42c1;">@relFin.LucroRealPecas.ToString("C", ptBR)</span>
-                                <span class="rel-kpi-label">Lucro Real (Peças)</span>
+                                <span class="rel-kpi-label">Lucro Real Peças (No Período)</span>
                             </div>
                         </div>
                     </div>
@@ -293,7 +328,7 @@
                     <div class="rel-doc-divider"></div>
 
                     <div class="rel-section">
-                        <div class="rel-section-title">COMPOSIÇÃO DA RECEITA</div>
+                        <div class="rel-section-title">COMPOSIÇÃO DA RECEITA NO PERÍODO</div>
                         <table class="rel-table">
                             <tbody>
                                 <tr>
@@ -318,15 +353,15 @@
                     <div class="rel-doc-divider"></div>
 
                     <div class="rel-section">
-                        <div class="rel-section-title">ANÁLISE DE LUCRATIVIDADE</div>
+                        <div class="rel-section-title">ANÁLISE DE LUCRATIVIDADE E POSIÇÃO PATRIMONIAL</div>
                         <table class="rel-table">
                             <tbody>
                                 <tr>
-                                    <td>Capital Imobilizado em Estoque</td>
+                                    <td>Capital Imobilizado em Estoque (Posição Atual — Peças Ativas)</td>
                                     <td class="text-end">@relFin.CapitalImobilizado.ToString("C", ptBR)</td>
                                 </tr>
                                 <tr>
-                                    <td>Lucro Real em Peças (Venda - Custo)</td>
+                                    <td>Lucro Real em Peças no Período (Venda - Custo Snapshot)</td>
                                     <td class="text-end fw-bold text-success">@relFin.LucroRealPecas.ToString("C", ptBR)</td>
                                 </tr>
                             </tbody>
@@ -361,6 +396,9 @@
     private int selectedYear = DateTimeExtensions.TodayBrasilia().Year;
     private bool carregando = false;
     private int abaAtiva = 0;
+    private bool isAdmin = false;
+    private string usuarioLogado = "Sistema";
+    private string? erroPermissao;
 
     private Configuracao? config;
     private List<Relatorio> relatorios = new();
@@ -371,10 +409,36 @@
         await CarregarDados();
     }
 
+    private void SelecionarAba(int idx)
+    {
+        if (idx < 0 || idx >= relatorios.Count) return;
+        if (relatorios[idx] is RelatorioFinanceiro && !isAdmin)
+        {
+            erroPermissao = "Apenas Administradores possuem permissão para acessar o relatório Financeiro.";
+            return;
+        }
+        abaAtiva = idx;
+    }
+
     private async Task CarregarDados()
     {
         carregando = true;
+        erroPermissao = null;
         StateHasChanged();
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated != true || (!user.IsInRole("Administrador") && !user.IsInRole("Atendimento")))
+        {
+            erroPermissao = "Acesso negado: apenas Administradores e Atendimento possuem permissão para acessar os relatórios.";
+            carregando = false;
+            return;
+        }
+
+        isAdmin = user.IsInRole("Administrador");
+        usuarioLogado = user.FindFirst(ClaimTypes.GivenName)?.Value
+            ?? user.Identity?.Name
+            ?? "Usuário";
 
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();
 
@@ -406,30 +470,38 @@
         int totalDecididas = totalAprovadas + totalCanceladas;
         double taxaConversao = totalDecididas > 0 ? (totalAprovadas * 100.0) / totalDecididas : 0;
 
-        // Estoque
+        // Estoque — Posição Atual (Peças Ativas e Inativas)
         pecasRuptura = await EstoqueService.GetAlertasRupturaAsync();
         var capitalImob = await EstoqueService.GetCapitalImobilizadoAsync();
-        var totalPecas = await DbContext.Pecas.CountAsync();
-        var pecasAtivas = await DbContext.Pecas.CountAsync(p => p.Ativo);
-        var margemMedia = await DbContext.Pecas.Where(p => p.Ativo && p.PrecoVenda > 0)
+        var pecasAtivas = await DbContext.Pecas.Ativos().CountAsync();
+        var pecasInativas = await DbContext.Pecas.Inativos().CountAsync();
+        var totalPecas = pecasAtivas + pecasInativas;
+        var margemMedia = await DbContext.Pecas.Ativos().Where(p => p.PrecoVenda > 0)
             .Select(p => new { p.PrecoVenda, p.PrecoCusto })
             .ToListAsync();
         var mm = margemMedia.Any()
             ? margemMedia.Average(p => p.PrecoVenda > 0 ? ((double)(p.PrecoVenda - p.PrecoCusto) / (double)p.PrecoVenda) * 100 : 0)
             : 0;
-        var totalMov = await DbContext.MovimentacoesEstoque.CountAsync();
 
-        // Financeiro
-        var faturamentoMDO = osConcluidas.Sum(o => o.ValorMaoDeObraEfetivo);
-        var faturamentoPecas = osConcluidas.Sum(o => o.ValorPecasEfetivo);
-        var (lucro, _) = await EstoqueService.GetMargemLucroRealAsync(inicio, fim);
+        // Estoque — Movimentações no Período Selecionado
+        var movsPeriodo = await DbContext.MovimentacoesEstoque
+            .Where(m => m.DataHora >= inicio && m.DataHora < fim)
+            .Select(m => m.Tipo)
+            .ToListAsync();
+        var totalMovPeriodo = movsPeriodo.Count;
+        var entradasPeriodo = movsPeriodo.Count(t => t == TipoMovimentacao.Entrada);
+        var saidasPeriodo = movsPeriodo.Count(t => t == TipoMovimentacao.Saida);
+        var ajustesPeriodo = movsPeriodo.Count(t => t == TipoMovimentacao.Ajuste);
 
-        // ─── POLIMORFISMO: instanciação de classes filhas armazenadas como Relatorio ───
+        var agoraUtc = DateTime.UtcNow;
+
         relatorios = new List<Relatorio>
         {
             new RelatorioOS
             {
                 Titulo = "Ordens de Serviço",
+                DataGeracao = agoraUtc,
+                GeradoPor = usuarioLogado,
                 TotalOS = osPeriodo.Count,
                 TotalConcluidas = osConcluidas.Count,
                 TotalCanceladas = totalCanceladas,
@@ -442,24 +514,46 @@
             new RelatorioEstoque
             {
                 Titulo = "Controle de Estoque",
+                DataGeracao = agoraUtc,
+                GeradoPor = usuarioLogado,
                 TotalPecasCadastradas = totalPecas,
                 PecasAtivas = pecasAtivas,
+                PecasInativas = pecasInativas,
                 PecasAbaixoDoMinimo = pecasRuptura.Count,
                 CapitalImobilizado = capitalImob,
                 MargemLucroMedia = (decimal)mm,
-                TotalMovimentacoes = totalMov
-            },
-            new RelatorioFinanceiro
+                TotalMovimentacoes = totalMovPeriodo,
+                MovimentacoesEntradaPeriodo = entradasPeriodo,
+                MovimentacoesSaidaPeriodo = saidasPeriodo,
+                MovimentacoesAjustePeriodo = ajustesPeriodo
+            }
+        };
+
+        // Aba Financeiro: exclusiva para Administrador no servidor
+        if (isAdmin)
+        {
+            var faturamentoMDO = osConcluidas.Sum(o => o.ValorMaoDeObraEfetivo);
+            var faturamentoPecas = osConcluidas.Sum(o => o.ValorPecasEfetivo);
+            var (lucro, _) = await EstoqueService.GetMargemLucroRealAsync(inicio, fim);
+
+            relatorios.Add(new RelatorioFinanceiro
             {
                 Titulo = "Panorama Financeiro",
+                DataGeracao = agoraUtc,
+                GeradoPor = usuarioLogado,
                 ReceitaMaoDeObra = faturamentoMDO,
                 ReceitaPecas = faturamentoPecas,
                 ReceitaTotal = faturamento,
                 LucroRealPecas = lucro,
                 CapitalImobilizado = capitalImob,
                 TotalOSPagas = osConcluidas.Count
-            }
-        };
+            });
+        }
+
+        if (abaAtiva >= relatorios.Count)
+        {
+            abaAtiva = 0;
+        }
 
         carregando = false;
     }
@@ -478,5 +572,16 @@
     {
         return new DateTime(selectedYear, selectedMonth, 1)
             .ToString("MMMM 'de' yyyy", ptBR).ToUpper();
+    }
+
+    private static string FormatarCnpj(string? cnpj)
+    {
+        if (string.IsNullOrWhiteSpace(cnpj)) return "00.000.000/0001-00";
+        var digits = new string(cnpj.Where(char.IsDigit).ToArray());
+        if (digits.Length == 14)
+        {
+            return $"{digits[..2]}.{digits[2..5]}.{digits[5..8]}/{digits[8..12]}-{digits[12..14]}";
+        }
+        return cnpj;
     }
 }

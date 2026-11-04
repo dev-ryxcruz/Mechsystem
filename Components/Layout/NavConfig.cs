@@ -145,8 +145,8 @@ public static class NavConfig
 
         NavSectionDefinition.Create(
             "Gestão",
-            roles: null,
-            NavItemDefinition.Link("Relatórios", "/relatorios", "bi-file-earmark-bar-graph-fill")),
+            AdminOrAtendimento,
+            NavItemDefinition.Link("Relatórios", "/relatorios", "bi-file-earmark-bar-graph-fill", NavLinkMatch.Prefix, AdminOrAtendimento)),
 
         NavSectionDefinition.Create(
             "Administrativo",
