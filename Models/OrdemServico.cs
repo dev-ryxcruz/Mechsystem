@@ -120,6 +120,16 @@ namespace mechsystem.Models
         [Display(Name = "Data da Conclusão")]
         public DateTime? DataConclusao { get; set; }
 
+        [MaxLength(500)]
+        [Display(Name = "Motivo do Cancelamento")]
+        public string? MotivoCancelamento { get; set; }
+
+        [Display(Name = "Data do Cancelamento")]
+        public DateTime? DataCancelamento { get; set; }
+
+        public int? CanceladaPorUsuarioId { get; set; }
+        public Usuario? CanceladaPorUsuario { get; set; }
+
         [Display(Name = "Validade do Orçamento")]
         public DateTime GetValidadeOrcamento(int validadeDias) => DataEmissao.AddDays(validadeDias);
 

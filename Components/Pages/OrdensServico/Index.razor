@@ -121,6 +121,8 @@ else
             .Include(o => o.Veiculo)
                 .ThenInclude(v => v!.Cliente)
             .Include(o => o.Vistoria)
+            .Include(o => o.PecasUtilizadas)
+            .Include(o => o.ServicosAExecutarList)
             .OrderByDescending(o => o.Id)
             .ToListAsync();
     }

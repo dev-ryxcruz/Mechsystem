@@ -174,7 +174,7 @@ public class OrdemServicoStabilizationTests
         Assert.Equal(10, (await db.Pecas.FindAsync(peca1.Id))!.EstoqueAtual);
 
         // 6. Cancelar a O.S. deve estornar apenas peca2 que permaneceu na O.S. (3 -> 5), sem duplicar estorno de peca1
-        await osService.CancelarOSAsync(os.Id, admin.Id, PerfilUsuario.Administrador);
+        await osService.CancelarOSAsync(os.Id, "Cliente desistiu do reparo", admin.Id, PerfilUsuario.Administrador);
         Assert.Equal(OrdemServicoStatus.Cancelada, (await db.OrdensServico.FindAsync(os.Id))!.Status);
         Assert.Equal(10, (await db.Pecas.FindAsync(peca1.Id))!.EstoqueAtual);
         Assert.Equal(5, (await db.Pecas.FindAsync(peca2.Id))!.EstoqueAtual);
@@ -338,6 +338,194 @@ public class OrdemServicoStabilizationTests
 
         Assert.Equal(90m, receitaPecas); // 2 * 45
         Assert.Equal(50m, lucroReal);    // 2 * (45 - 20)
+    }
+
+    [Fact]
+    public async Task CancelarOS_DeveExigirMotivo_ERegistrarAuditoriaDeCancelamento()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (admin, atendente, mecanico, veiculo, _, _) = await SeedBasicScenarioAsync(db);
+
+        var os = new OrdemServico
+        {
+            VeiculoId = veiculo.Id,
+            DescricaoProblemaRelatado = "Barulho na suspensão",
+            DataEmissao = DateTime.UtcNow.Date,
+            DataPrevisaoEntrega = DateTime.UtcNow.Date.AddDays(2),
+            Status = OrdemServicoStatus.Orcamento
+        };
+        db.OrdensServico.Add(os);
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.CancelarOSAsync(os.Id, "", atendente.Id, PerfilUsuario.Atendimento));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.CancelarOSAsync(os.Id, "1234", atendente.Id, PerfilUsuario.Atendimento));
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.CancelarOSAsync(os.Id, "Motivo válido pelo mecânico", mecanico.Id, PerfilUsuario.Mecanico));
+
+        await osService.CancelarOSAsync(os.Id, "Cliente optou por vender o veículo", admin.Id, PerfilUsuario.Administrador);
+
+        var osCancelada = await db.OrdensServico.FindAsync(os.Id);
+        Assert.NotNull(osCancelada);
+        Assert.Equal(OrdemServicoStatus.Cancelada, osCancelada!.Status);
+        Assert.Equal("Cliente optou por vender o veículo", osCancelada.MotivoCancelamento);
+        Assert.NotNull(osCancelada.DataCancelamento);
+        Assert.Equal(DateTimeKind.Utc, osCancelada.DataCancelamento!.Value.Kind);
+        Assert.Equal(admin.Id, osCancelada.CanceladaPorUsuarioId);
+    }
+
+    [Fact]
+    public async Task AtualizarOS_RegrasOrcamentoPosAprovacaoDescontoAdminESomenteLeitura()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (admin, atendente, mecanico, veiculo, _, _) = await SeedBasicScenarioAsync(db);
+
+        var emissao = new DateTime(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc);
+        var entregaInicial = emissao.AddDays(3);
+
+        var os = new OrdemServico
+        {
+            VeiculoId = veiculo.Id,
+            DescricaoProblemaRelatado = "Diagnóstico inicial",
+            ServicoAExecutar = "Avaliação preliminar",
+            DataEmissao = emissao,
+            DataPrevisaoInicio = emissao.AddDays(1),
+            DataPrevisaoEntrega = entregaInicial,
+            ValorMaoDeObra = 200m,
+            ValorDesconto = 0m,
+            Status = OrdemServicoStatus.Orcamento
+        };
+        db.OrdensServico.Add(os);
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.AtualizarOSAsync(os.Id, "Novo diag", "Novo serv", emissao.AddDays(1), entregaInicial, 200m, 0m, mecanico.Id, PerfilUsuario.Mecanico));
+
+        await osService.AtualizarOSAsync(
+            os.Id,
+            "Diagnóstico atualizado pelo atendente",
+            "Troca de correia dentada",
+            emissao.AddDays(1),
+            emissao.AddDays(4),
+            350m,
+            0m,
+            atendente.Id,
+            PerfilUsuario.Atendimento);
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.AtualizarOSAsync(
+                os.Id,
+                "Diagnóstico atualizado pelo atendente",
+                "Troca de correia dentada",
+                emissao.AddDays(1),
+                emissao.AddDays(4),
+                350m,
+                50m,
+                atendente.Id,
+                PerfilUsuario.Atendimento));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.AtualizarOSAsync(
+                os.Id,
+                "Diagnóstico atualizado pelo atendente",
+                "Troca de correia dentada",
+                emissao.AddDays(1),
+                emissao.AddDays(-1),
+                350m,
+                50m,
+                admin.Id,
+                PerfilUsuario.Administrador));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.AtualizarOSAsync(
+                os.Id,
+                "Diagnóstico atualizado pelo atendente",
+                "Troca de correia dentada",
+                emissao.AddDays(1),
+                emissao.AddDays(4),
+                350m,
+                400m,
+                admin.Id,
+                PerfilUsuario.Administrador));
+
+        await osService.AtualizarOSAsync(
+            os.Id,
+            "Diagnóstico revisado pelo admin",
+            "Troca de correia dentada + tensor",
+            emissao.AddDays(1),
+            emissao.AddDays(4),
+            350m,
+            50m,
+            admin.Id,
+            PerfilUsuario.Administrador);
+
+        var osOrcamento = await db.OrdensServico.FindAsync(os.Id);
+        Assert.Equal("Diagnóstico revisado pelo admin", osOrcamento!.DescricaoProblemaRelatado);
+        Assert.Equal("Troca de correia dentada + tensor", osOrcamento.ServicoAExecutar);
+        Assert.Equal(350m, osOrcamento.ValorMaoDeObra);
+        Assert.Equal(50m, osOrcamento.ValorDesconto);
+        Assert.Equal(300m, osOrcamento.ValorTotal);
+
+        await osService.AprovarOSAsync(os.Id, "Cliente Teste", "Presencial", admin.Id, PerfilUsuario.Administrador);
+        var osAprovada = await db.OrdensServico.FindAsync(os.Id);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.AtualizarOSAsync(
+                os.Id,
+                "Tentativa de mudar diagnóstico após aprovação",
+                osAprovada!.ServicoAExecutar,
+                osAprovada.DataPrevisaoInicio,
+                osAprovada.DataPrevisaoEntrega,
+                osAprovada.ValorMaoDeObra,
+                osAprovada.ValorDesconto,
+                admin.Id,
+                PerfilUsuario.Administrador));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.AtualizarOSAsync(
+                os.Id,
+                osAprovada!.DescricaoProblemaRelatado,
+                osAprovada.ServicoAExecutar,
+                osAprovada.DataPrevisaoInicio,
+                osAprovada.DataPrevisaoEntrega,
+                osAprovada.ValorMaoDeObra,
+                20m,
+                admin.Id,
+                PerfilUsuario.Administrador));
+
+        var novaPrevisao = emissao.AddDays(7);
+        await osService.AtualizarOSAsync(
+            os.Id,
+            osAprovada!.DescricaoProblemaRelatado,
+            osAprovada.ServicoAExecutar,
+            osAprovada.DataPrevisaoInicio,
+            novaPrevisao,
+            osAprovada.ValorMaoDeObra,
+            osAprovada.ValorDesconto,
+            atendente.Id,
+            PerfilUsuario.Atendimento,
+            "Atendente Teste");
+
+        var contatos = await db.ContatosOS.Where(c => c.OrdemServicoId == os.Id).ToListAsync();
+        Assert.Single(contatos);
+        Assert.Equal(
+            $"Previsão alterada de {emissao.AddDays(4):dd/MM/yyyy} para {novaPrevisao:dd/MM/yyyy} por Atendente Teste",
+            contatos[0].Descricao);
+
+        await osService.ConcluirOSAsync(os.Id, PerfilUsuario.Mecanico, mecanico.Id);
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.AtualizarOSAsync(
+                os.Id,
+                osAprovada.DescricaoProblemaRelatado,
+                osAprovada.ServicoAExecutar,
+                osAprovada.DataPrevisaoInicio,
+                emissao.AddDays(10),
+                osAprovada.ValorMaoDeObra,
+                osAprovada.ValorDesconto,
+                admin.Id,
+                PerfilUsuario.Administrador));
     }
 
     [Fact]

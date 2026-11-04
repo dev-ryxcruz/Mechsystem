@@ -257,9 +257,17 @@ namespace mechsystem.Migrations
                         .HasColumnType("text")
                         .HasColumnName("autorizado_por");
 
+                    b.Property<int?>("CanceladaPorUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("cancelada_por_usuario_id");
+
                     b.Property<DateTime?>("DataAutorizacao")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_autorizacao");
+
+                    b.Property<DateTime?>("DataCancelamento")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_cancelamento");
 
                     b.Property<DateTime?>("DataConclusao")
                         .HasColumnType("timestamp with time zone")
@@ -289,6 +297,11 @@ namespace mechsystem.Migrations
                     b.Property<string>("MeioAutorizacao")
                         .HasColumnType("text")
                         .HasColumnName("meio_autorizacao");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_cancelamento");
 
                     b.Property<string>("ServicoAExecutar")
                         .HasColumnType("text")
@@ -324,6 +337,9 @@ namespace mechsystem.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_ordens_servico");
+
+                    b.HasIndex("CanceladaPorUsuarioId")
+                        .HasDatabaseName("ix_ordens_servico_cancelada_por_usuario_id");
 
                     b.HasIndex("TokenAcompanhamento")
                         .IsUnique()
@@ -797,12 +813,20 @@ namespace mechsystem.Migrations
 
             modelBuilder.Entity("mechsystem.Models.OrdemServico", b =>
                 {
+                    b.HasOne("mechsystem.Models.Usuario", "CanceladaPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("CanceladaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ordens_servico_usuarios_cancelada_por_usuario_id");
+
                     b.HasOne("mechsystem.Models.Veiculo", "Veiculo")
                         .WithMany()
                         .HasForeignKey("VeiculoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_ordens_servico_veiculos_veiculo_id");
+
+                    b.Navigation("CanceladaPorUsuario");
 
                     b.Navigation("Veiculo");
                 });

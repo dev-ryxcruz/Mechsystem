@@ -169,6 +169,12 @@ namespace mechsystem.Data
                 .WithMany()
                 .HasForeignKey(s => s.InativadoPorUsuarioId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrdemServico>()
+                .HasOne(o => o.CanceladaPorUsuario)
+                .WithMany()
+                .HasForeignKey(o => o.CanceladaPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 

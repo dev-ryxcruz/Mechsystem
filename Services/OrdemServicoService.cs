@@ -112,6 +112,142 @@ public class OrdemServicoService
         });
     }
 
+    public async Task AtualizarOSAsync(
+        int osId,
+        string? descricaoProblemaRelatado,
+        string? servicoAExecutar,
+        DateTime? dataPrevisaoInicio,
+        DateTime dataPrevisaoEntrega,
+        decimal valorMaoDeObra,
+        decimal valorDesconto,
+        int usuarioId,
+        PerfilUsuario? perfilUsuario = null,
+        string? nomeUsuario = null)
+    {
+        var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
+        if (!EhPerfilValido(perfil) || (perfil.Value != PerfilUsuario.Administrador && perfil.Value != PerfilUsuario.Atendimento))
+        {
+            throw new UnauthorizedAccessException("Apenas Administradores e Atendimento possuem permissão para editar ordens de serviço.");
+        }
+
+        await ExecutarEmTransacaoAsync(async () =>
+        {
+            var os = await _db.OrdensServico
+                .Include(o => o.PecasUtilizadas)
+                .Include(o => o.ServicosAExecutarList)
+                .Include(o => o.Contatos)
+                .FirstOrDefaultAsync(o => o.Id == osId)
+                ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
+
+            if (os.Status == OrdemServicoStatus.Concluida || os.Status == OrdemServicoStatus.Cancelada)
+            {
+                throw new InvalidOperationException(
+                    $"Não é permitido editar uma O.S. com status '{os.Status}' (somente leitura).");
+            }
+
+            if (dataPrevisaoEntrega.Date < os.DataEmissao.Date)
+            {
+                throw new InvalidOperationException(
+                    "A data de previsão de entrega não pode ser anterior à data de emissão.");
+            }
+
+            if (os.Status == OrdemServicoStatus.Orcamento)
+            {
+                if (string.IsNullOrWhiteSpace(descricaoProblemaRelatado))
+                {
+                    throw new InvalidOperationException("O diagnóstico/problema relatado é obrigatório.");
+                }
+
+                if (valorMaoDeObra < 0)
+                {
+                    throw new InvalidOperationException("O valor da mão de obra não pode ser negativo.");
+                }
+
+                if (valorDesconto < 0)
+                {
+                    throw new InvalidOperationException("O valor de desconto não pode ser negativo.");
+                }
+
+                if (valorDesconto != os.ValorDesconto && perfil.Value != PerfilUsuario.Administrador)
+                {
+                    throw new UnauthorizedAccessException(
+                        "Apenas Administradores podem definir ou alterar o desconto da Ordem de Serviço.");
+                }
+
+                var maoDeObraEfetiva = os.ServicosAExecutarList.Any()
+                    ? os.ServicosAExecutarList.Sum(s => s.Subtotal)
+                    : valorMaoDeObra;
+                var subtotalBruto = maoDeObraEfetiva + os.ValorPecasEfetivo;
+
+                if (valorDesconto > subtotalBruto)
+                {
+                    throw new InvalidOperationException(
+                        $"O desconto ({valorDesconto:C}) não pode ser maior que o valor bruto da Ordem de Serviço ({subtotalBruto:C}).");
+                }
+
+                os.DescricaoProblemaRelatado = descricaoProblemaRelatado.Trim();
+                os.ServicoAExecutar = string.IsNullOrWhiteSpace(servicoAExecutar) ? null : servicoAExecutar.Trim();
+                os.DataPrevisaoInicio = dataPrevisaoInicio?.Date;
+                os.DataPrevisaoEntrega = dataPrevisaoEntrega.Date;
+                os.ValorMaoDeObra = valorMaoDeObra;
+                os.ValorDesconto = valorDesconto;
+
+                await _db.SaveChangesAsync();
+                return;
+            }
+
+            // Após aprovação (EmAndamento, Pausada, AguardandoPecas): somente a Previsão de Entrega pode ser alterada
+            var descNorm = (descricaoProblemaRelatado ?? string.Empty).Trim();
+            var descAtual = (os.DescricaoProblemaRelatado ?? string.Empty).Trim();
+            var servNorm = (servicoAExecutar ?? string.Empty).Trim();
+            var servAtual = (os.ServicoAExecutar ?? string.Empty).Trim();
+            var inicioNorm = dataPrevisaoInicio?.Date;
+            var inicioAtual = os.DataPrevisaoInicio?.Date;
+
+            if (descNorm != descAtual
+                || servNorm != servAtual
+                || inicioNorm != inicioAtual
+                || valorMaoDeObra != os.ValorMaoDeObra
+                || valorDesconto != os.ValorDesconto)
+            {
+                throw new InvalidOperationException(
+                    "Após a aprovação do orçamento, apenas a Previsão de Entrega pode ser alterada.");
+            }
+
+            if (dataPrevisaoEntrega.Date != os.DataPrevisaoEntrega.Date)
+            {
+                var dataAntiga = os.DataPrevisaoEntrega.ToString("dd/MM/yyyy");
+                var dataNova = dataPrevisaoEntrega.Date.ToString("dd/MM/yyyy");
+                os.DataPrevisaoEntrega = dataPrevisaoEntrega.Date;
+
+                var nomeOperador = nomeUsuario?.Trim();
+                if (string.IsNullOrWhiteSpace(nomeOperador))
+                {
+                    nomeOperador = await _db.Usuarios
+                        .AsNoTracking()
+                        .Where(u => u.Id == usuarioId)
+                        .Select(u => u.NomeCompleto)
+                        .FirstOrDefaultAsync()
+                        ?? "Usuário";
+                }
+
+                var contato = new ContatoOS
+                {
+                    OrdemServicoId = os.Id,
+                    Tipo = TipoContato.Outro,
+                    Descricao = $"Previsão alterada de {dataAntiga} para {dataNova} por {nomeOperador}",
+                    RegistradoPor = nomeOperador,
+                    DataContato = DateTime.UtcNow
+                };
+
+                _db.ContatosOS.Add(contato);
+                os.Contatos.Add(contato);
+
+                await _db.SaveChangesAsync();
+            }
+        });
+    }
+
     public async Task IniciarOuRetomarServicoAsync(int osId, PerfilUsuario? perfilUsuario = null, int usuarioId = 0)
     {
         var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
@@ -201,12 +337,18 @@ public class OrdemServicoService
         await _db.SaveChangesAsync();
     }
 
-    public async Task CancelarOSAsync(int osId, int usuarioId, PerfilUsuario? perfilUsuario = null)
+    public async Task CancelarOSAsync(int osId, string? motivo, int usuarioId, PerfilUsuario? perfilUsuario = null)
     {
         var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
         if (!EhPerfilValido(perfil) || (perfil.Value != PerfilUsuario.Administrador && perfil.Value != PerfilUsuario.Atendimento))
         {
             throw new UnauthorizedAccessException("Apenas Administradores e Atendimento possuem permissão para cancelar ordens de serviço.");
+        }
+
+        var motivoLimpo = motivo?.Trim() ?? string.Empty;
+        if (motivoLimpo.Length < 5)
+        {
+            throw new InvalidOperationException("O motivo do cancelamento é obrigatório e deve ter pelo menos 5 caracteres.");
         }
 
         await ExecutarEmTransacaoAsync(async () =>
@@ -226,6 +368,9 @@ public class OrdemServicoService
 
             AcumularTempoExecucao(os);
             os.Status = OrdemServicoStatus.Cancelada;
+            os.MotivoCancelamento = motivoLimpo;
+            os.DataCancelamento = DateTime.UtcNow;
+            os.CanceladaPorUsuarioId = usuarioId;
             await _db.SaveChangesAsync();
         });
     }
@@ -382,8 +527,8 @@ public class OrdemServicoService
             if (transacao != null)
             {
                 await transacao.RollbackAsync();
+                _db.ChangeTracker.Clear();
             }
-            _db.ChangeTracker.Clear();
 
             throw new InvalidOperationException(
                 "Conflito de concorrência: o estoque ou a O.S. foi alterada simultaneamente por outro usuário. Atualize a página e tente novamente.",
@@ -394,8 +539,8 @@ public class OrdemServicoService
             if (transacao != null)
             {
                 await transacao.RollbackAsync();
+                _db.ChangeTracker.Clear();
             }
-            _db.ChangeTracker.Clear();
             throw;
         }
     }
