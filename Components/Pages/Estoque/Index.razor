@@ -43,18 +43,14 @@
     </div>
 }
 
-<div class="card shadow-sm dash-card">
-    <div class="card-header d-flex justify-content-between align-items-center bg-white p-3 border-bottom">
-        <div class="search-box">
-            <i class="bi bi-search text-muted"></i>
-            <input type="text" class="form-control form-control-sm border-0 shadow-none" 
-                   placeholder="Buscar por SKU, nome ou marca..." @bind="termoBusca" @bind:event="oninput" />
-        </div>
-        <span class="badge bg-light text-dark border px-3 py-2">
-            <i class="bi bi-box me-1"></i>@(pecasFiltradas.Count()) peça(s)
-        </span>
-    </div>
+<ListToolbar Placeholder="Buscar peça por SKU, nome ou marca..."
+             @bind-SearchTerm="termoBusca"
+             TotalCount="@(pecasFiltradas.Count())"
+             CountLabel="peça(s)"
+             CountIcon="bi-box">
+</ListToolbar>
 
+<div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         @if (pecas == null)
         {
@@ -75,17 +71,17 @@
         else
         {
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-custom align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>SKU</th>
-                            <th>Peça</th>
-                            <th>Marca</th>
-                            <th class="text-end">Custo</th>
-                            <th class="text-end">Venda</th>
-                            <th class="text-center">Estoque</th>
-                            <th>Localização</th>
-                            <th class="text-center" style="width: 150px;">Ações</th>
+                            <th width="12%" class="text-start">SKU</th>
+                            <th width="24%" class="text-start">Peça</th>
+                            <th width="14%" class="text-start">Marca</th>
+                            <th width="10%" class="text-end">Custo</th>
+                            <th width="10%" class="text-end">Venda</th>
+                            <th width="10%" class="text-end">Estoque</th>
+                            <th width="10%" class="text-start">Localização</th>
+                            <th width="10%" class="actions-col text-end">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -107,7 +103,7 @@
                                 <td class="text-end fw-bold text-success">
                                     @peca.PrecoVenda.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
                                 </td>
-                                <td class="text-center">
+                                <td class="text-end">
                                     @if (peca.AbaixoDoMinimo)
                                     {
                                         <span class="badge bg-danger px-3 py-2 d-inline-flex align-items-center gap-1">
@@ -134,7 +130,7 @@
                                         <span class="text-muted"><small>—</small></span>
                                     }
                                 </td>
-                                <td class="text-center">
+                                <td class="text-end text-nowrap">
                                     <div class="btn-group btn-group-sm">
                                         <a href="/estoque/cadastro/@peca.Id" class="btn btn-outline-primary" title="Editar">
                                             <i class="bi bi-pencil"></i>
@@ -243,70 +239,6 @@
         </div>
     </div>
 }
-
-<style>
-    .search-box {
-        display: flex;
-        align-items: center;
-        background: #f8f9fa;
-        border-radius: 8px;
-        padding: 0.25rem 0.75rem;
-        width: 350px;
-        border: 1px solid #e9ecef;
-        transition: width var(--transition-normal);
-    }
-    .search-box input { background: transparent; }
-    .search-box input:focus { background: transparent; }
-
-    /* Modal Blazor */
-    .blazor-modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1040; }
-    .blazor-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; z-index: 1050; }
-    .blazor-modal-content { background: white; border-radius: 0.5rem; width: 90%; box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.3); }
-    .blazor-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-radius: 0.5rem 0.5rem 0 0; }
-    .blazor-modal-header h5 { margin: 0; }
-    .blazor-modal-body { padding: 1.25rem; }
-    .blazor-modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 1rem 1.25rem; border-top: 1px solid #dee2e6; }
-
-    /* ── Responsividade Mobile ── */
-    @@media (max-width: 768px) {
-        /* Header: empilhar título e botões */
-        .d-flex.justify-content-between.align-items-center.mb-4 {
-            flex-wrap: wrap;
-            gap: 0.75rem;
-        }
-        .d-flex.justify-content-between.align-items-center.mb-4 > div:last-child {
-            width: 100%;
-        }
-        .d-flex.justify-content-between.align-items-center.mb-4 .btn {
-            flex: 1;
-            justify-content: center;
-        }
-
-        /* Search box: largura total */
-        .search-box {
-            width: 100%;
-        }
-
-        /* Card header: empilhar search e badge */
-        .card-header.d-flex {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 0.5rem;
-        }
-
-        /* Alert de ruptura: empilhar ícone e texto */
-        .alert .d-flex.align-items-center {
-            flex-wrap: wrap;
-        }
-
-        /* Modal de histórico: altura máxima */
-        .blazor-modal-content {
-            max-height: 85vh;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-    }
-</style>
 
 @code {
     private IEnumerable<Peca>? pecas;

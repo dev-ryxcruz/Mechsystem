@@ -272,6 +272,103 @@ h1:focus {
     margin-top: 0.25rem;
 }
 
+/* ── Barra de Ferramentas Unificada (ListToolbar) ── */
+.list-toolbar-card {
+    background: #ffffff;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    background: #f8f9fa;
+    border-radius: var(--radius-sm);
+    padding: 0.35rem 0.75rem;
+    border: 1px solid #dee2e6;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+}
+
+.search-box:focus-within {
+    background: #ffffff;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.15rem var(--accent-glow);
+}
+
+.search-box input {
+    background: transparent;
+    border: 0;
+    outline: none;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+}
+
+.list-count-chip {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background-color: #f8f9fa;
+    border-color: #dee2e6 !important;
+}
+
+/* ==============================================
+   MODAIS CUSTOMIZADOS (Blazor Modal)
+   ============================================== */
+.blazor-modal-backdrop { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background: rgba(0, 0, 0, 0.5); 
+    z-index: 1040; 
+}
+.blazor-modal { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    z-index: 1050; 
+}
+.blazor-modal-content { 
+    background: white; 
+    border-radius: var(--radius-md); 
+    width: 90%; 
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.3); 
+}
+.blazor-modal-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    padding: 1rem 1.25rem; 
+    border-radius: var(--radius-md) var(--radius-md) 0 0; 
+}
+.blazor-modal-header h5 { 
+    margin: 0; 
+}
+.blazor-modal-body { 
+    padding: 1.25rem; 
+}
+.blazor-modal-footer { 
+    display: flex; 
+    justify-content: flex-end; 
+    gap: 0.5rem; 
+    padding: 1rem 1.25rem; 
+    border-top: 1px solid #dee2e6; 
+}
+
+@media (max-width: 768px) {
+    .blazor-modal-content {
+        max-height: 85vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
 /* ==============================================
    CARDS & TABELAS
    ============================================== */
@@ -284,6 +381,51 @@ h1:focus {
 
 .table {
     font-size: 0.9rem;
+}
+
+/* ── Estilo Unificado de Tabela de Listagem ── */
+.table-custom {
+    margin-bottom: 0;
+    vertical-align: middle;
+}
+
+.table-custom thead th {
+    background-color: #f8f9fa;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.8125rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border-bottom: 1px solid #dee2e6;
+    padding: 0.85rem 1rem;
+    white-space: nowrap;
+}
+
+.table-custom tbody tr {
+    transition: background-color var(--transition-fast);
+}
+
+.table-custom tbody td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #f1f3f5;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.table-custom tbody tr:hover td {
+    background-color: var(--accent-subtle);
+}
+
+.table-custom td.text-end,
+.table-custom th.text-end {
+    text-align: right;
+}
+
+.table-custom td.actions-col,
+.table-custom th.actions-col {
+    text-align: right;
+    white-space: nowrap;
+    width: 1%;
 }
 
 .table thead.table-dark th {

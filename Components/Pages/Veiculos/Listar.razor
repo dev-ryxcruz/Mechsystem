@@ -24,39 +24,38 @@
         </Actions>
     </PageHeader>
 
-    @* Barra de ferramentas: pesquisa ocupa o espaço disponível, filtros à direita *@
-    <div class="d-flex gap-2 align-items-center flex-wrap mb-4">
-        <div class="input-group flex-grow-1" style="min-width: 240px; max-width: 520px;">
-            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-            <input type="text" id="pesquisa-veiculo" class="form-control border-start-0 ps-0 shadow-none" placeholder="Pesquisar veículo..." @bind="termoPesquisa" @bind:event="oninput" />
-        </div>
-        <div class="d-flex gap-2 ms-auto flex-wrap">
+    <ListToolbar Placeholder="Buscar veículo..."
+                 @bind-SearchTerm="termoPesquisa"
+                 TotalCount="@(VeiculosFiltrados?.Count() ?? 0)"
+                 CountLabel="veículo(s)"
+                 CountIcon="bi-car-front">
+        <Filters>
             <AuthorizeView Roles="Administrador">
                 <div class="btn-group" role="group" aria-label="Filtrar por estado">
-                    <button type="button" id="btn-filtro-veiculos-ativos" class="btn btn-outline-success text-nowrap @(!MostrarInativos ? "active" : "")" @onclick="() => AlternarFiltro(false)">
+                    <button type="button" id="btn-filtro-veiculos-ativos" class="btn btn-sm btn-outline-success text-nowrap @(!MostrarInativos ? "active" : "")" @onclick="() => AlternarFiltro(false)">
                         <i class="bi bi-check-circle"></i> Ativos
                     </button>
-                    <button type="button" id="btn-filtro-veiculos-inativos" class="btn btn-outline-secondary text-nowrap @(MostrarInativos ? "active" : "")" @onclick="() => AlternarFiltro(true)">
+                    <button type="button" id="btn-filtro-veiculos-inativos" class="btn btn-sm btn-outline-secondary text-nowrap @(MostrarInativos ? "active" : "")" @onclick="() => AlternarFiltro(true)">
                         <i class="bi bi-archive"></i> Inativos
                     </button>
                 </div>
             </AuthorizeView>
             <div class="btn-group" role="group" aria-label="Alternar visualização">
-                <button type="button" class="btn btn-outline-secondary @(!IsGridView ? "active" : "")" @onclick="() => ToggleView(false)">
+                <button type="button" class="btn btn-sm btn-outline-secondary @(!IsGridView ? "active" : "")" @onclick="() => ToggleView(false)" title="Visualização em Lista">
                     <i class="bi bi-list-ul"></i>
                 </button>
-                <button type="button" class="btn btn-outline-secondary @(IsGridView ? "active" : "")" @onclick="() => ToggleView(true)">
+                <button type="button" class="btn btn-sm btn-outline-secondary @(IsGridView ? "active" : "")" @onclick="() => ToggleView(true)" title="Visualização em Grade">
                     <i class="bi bi-grid-fill"></i>
                 </button>
             </div>
-        </div>
-    </div>
+        </Filters>
+    </ListToolbar>
 
     @if (veiculos == null)
     {
-        <div class="text-center">
-            <div class="spinner-border text-success" role="status"></div>
-            <p class="mt-2">Carregando veículos...</p>
+        <div class="text-center p-5">
+            <div class="spinner-border text-accent" role="status"></div>
+            <p class="mt-2 text-muted">Carregando veículos...</p>
         </div>
     }
     else if (!veiculos.Any())
@@ -116,7 +115,7 @@
         <div class="card border-0 shadow-sm">
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover table-borderless align-middle mb-0">
+                    <table class="table table-custom align-middle mb-0">
                     <thead class="table-light">
                         <tr>
                             <th width="5%" class="text-center">ID</th>
@@ -125,24 +124,24 @@
                             </AuthorizeView>
                             <th width="15%" class="text-start">Placa</th>
                             <th width="25%" class="text-start">Marca/Modelo</th>
-                            <th width="10%" class="text-center">Ano</th>
-                            <th width="10%" class="text-center">Cor</th>
-                            <th width="15%" class="text-center">Ações</th>
+                            <th width="10%" class="text-end">Ano</th>
+                            <th width="10%" class="text-start">Cor</th>
+                            <th width="15%" class="actions-col text-end">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var veiculo in VeiculosFiltrados!)
                         {
                             <tr>
-                                <td class="text-center">@veiculo.Id</td>
+                                <td class="text-center text-muted fw-bold">#@veiculo.Id</td>
                                 <AuthorizeView Roles="Administrador, Atendimento">
                                     <td class="text-start"><strong>@(veiculo.Cliente != null ? veiculo.Cliente.Nome : "Sem dono")</strong></td>
                                 </AuthorizeView>
                                 <td class="text-start"><span class="text-uppercase border px-2 py-1 rounded bg-light">@veiculo.Placa</span></td>
                                 <td class="text-start">@veiculo.Marca @veiculo.Modelo</td>
-                                <td class="text-center">@veiculo.Ano</td>
-                                <td class="text-center">@veiculo.Cor</td>
-                                <td class="text-center">
+                                <td class="text-end">@veiculo.Ano</td>
+                                <td class="text-start">@veiculo.Cor</td>
+                                <td class="text-end text-nowrap">
                                     <button class="btn btn-sm btn-outline-info me-1" title="Prontuário" @onclick="() => IrParaDetalhes(veiculo.Id)">
                                         <i class="bi bi-journal-medical"></i>
                                     </button>
