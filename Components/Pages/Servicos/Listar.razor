@@ -1,8 +1,15 @@
 @page "/servicos"
 @using mechsystem.Interfaces
 @using mechsystem.Models
+@using mechsystem.Services
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@attribute [Authorize(Roles = "Administrador, Atendimento, Mecanico")]
 @inject IServicoRepository ServicoRepository
+@inject InativacaoService InativacaoService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
+@inject ILogger<Listar> Logger
 @rendermode InteractiveServer
 
 <PageTitle>Catálogo de Serviços — Mechsystem</PageTitle>
@@ -10,9 +17,11 @@
 <div class="page-container">
     <PageHeader Icon="bi-tools" Title="Catálogo de Serviços" Subtitle="Gerencie os serviços oferecidos e seus valores padrão">
         <Actions>
-            <a href="/servicos/cadastro" class="btn btn-accent shadow-sm text-nowrap">
-                <i class="bi bi-plus-lg"></i> Novo Serviço
-            </a>
+            <AuthorizeView Roles="Administrador, Atendimento">
+                <a href="/servicos/cadastro" class="btn btn-accent shadow-sm text-nowrap">
+                    <i class="bi bi-plus-lg"></i> Novo Serviço
+                </a>
+            </AuthorizeView>
         </Actions>
     </PageHeader>
 
@@ -20,119 +29,191 @@
                  @bind-SearchTerm="termoBusca"
                  TotalCount="@(servicosFiltrados.Count())"
                  CountLabel="serviço(s)"
-                 CountIcon="bi-tools" />
-
-<div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
-        @if (servicos == null)
-        {
-            <div class="text-center p-5">
-                <div class="spinner-border text-accent" role="status">
-                    <span class="visually-hidden">Carregando...</span>
+                 CountIcon="bi-tools">
+        <Filters>
+            <AuthorizeView Roles="Administrador">
+                <div class="btn-group" role="group" aria-label="Filtrar por estado">
+                    <button type="button" id="btn-filtro-servicos-ativos" class="btn btn-sm btn-outline-success text-nowrap @(!MostrarInativos ? "active" : "")" @onclick="() => AlternarFiltro(false)">
+                        <i class="bi bi-check-circle"></i> Ativos
+                    </button>
+                    <button type="button" id="btn-filtro-servicos-inativos" class="btn btn-sm btn-outline-secondary text-nowrap @(MostrarInativos ? "active" : "")" @onclick="() => AlternarFiltro(true)">
+                        <i class="bi bi-archive"></i> Inativos
+                    </button>
                 </div>
-            </div>
-        }
-        else if (!servicosFiltrados.Any())
-        {
-            <div class="text-center p-5 text-muted">
-                <i class="bi bi-tools fs-1 mb-3"></i>
-                <h5>Nenhum serviço encontrado.</h5>
-                <p>Nenhum serviço corresponde à sua busca ou o catálogo está vazio.</p>
-            </div>
-        }
-        else
-        {
-            <div class="table-responsive">
-                <table class="table table-custom align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th width="10%" class="text-start">Cód</th>
-                            <th width="40%" class="text-start">Nome do Serviço</th>
-                            <th width="20%" class="text-end">Tempo Est.</th>
-                            <th width="15%" class="text-end">Valor Padrão</th>
-                            <th width="15%" class="actions-col text-end">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var servico in servicosFiltrados)
-                        {
+            </AuthorizeView>
+        </Filters>
+    </ListToolbar>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            @if (servicos == null)
+            {
+                <div class="text-center p-5">
+                    <div class="spinner-border text-accent" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </div>
+            }
+            else if (!servicosFiltrados.Any())
+            {
+                <div class="text-center p-5 text-muted">
+                    <i class="bi bi-tools fs-1 mb-3"></i>
+                    <h5>@(MostrarInativos ? "Nenhum serviço inativo encontrado." : "Nenhum serviço encontrado.")</h5>
+                    <p>@(MostrarInativos ? "Não há serviços inativos que correspondam à sua busca." : "Nenhum serviço corresponde à sua busca ou o catálogo está vazio.")</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle mb-0">
+                        <thead class="table-light">
                             <tr>
-                                <td class="fw-bold text-muted">#@servico.Id.ToString("D3")</td>
-                                <td>
-                                    <div class="fw-bold text-dark">@servico.Nome</div>
-                                    @if (!string.IsNullOrEmpty(servico.Descricao))
-                                    {
-                                        <small class="text-muted text-truncate d-inline-block" style="max-width: 300px;">
-                                            @servico.Descricao
-                                        </small>
-                                    }
-                                </td>
-                                <td class="text-end">
-                                    @if (servico.TempoEstimadoMinutos.HasValue)
-                                    {
-                                        <span class="badge bg-light text-dark border">
-                                            <i class="bi bi-clock me-1"></i> @servico.TempoEstimadoMinutos min
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted"><small>N/A</small></span>
-                                    }
-                                </td>
-                                <td class="text-end fw-bold text-success">
-                                    @servico.ValorPadrao.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
-                                </td>
-                                <td class="text-end text-nowrap">
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="/servicos/editar/@servico.Id" class="btn btn-outline-primary" title="Editar">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <button class="btn btn-outline-danger" @onclick="() => ConfirmarExclusao(servico.Id)" title="Excluir">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
+                                <th width="10%" class="text-start">Cód</th>
+                                <th width="40%" class="text-start">Nome do Serviço</th>
+                                <th width="20%" class="text-end">Tempo Est.</th>
+                                <th width="15%" class="text-end">Valor Padrão</th>
+                                <th width="15%" class="actions-col text-end">Ações</th>
                             </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
+                        </thead>
+                        <tbody>
+                            @foreach (var servico in servicosFiltrados)
+                            {
+                                <tr>
+                                    <td class="fw-bold text-muted">#@servico.Id.ToString("D3")</td>
+                                    <td>
+                                        <div class="fw-bold text-dark">@servico.Nome</div>
+                                        @if (!string.IsNullOrEmpty(servico.Descricao))
+                                        {
+                                            <small class="text-muted text-truncate d-inline-block" style="max-width: 300px;">
+                                                @servico.Descricao
+                                            </small>
+                                        }
+                                        @if (!servico.Ativo && !string.IsNullOrWhiteSpace(servico.MotivoInativacao))
+                                        {
+                                            <small class="text-muted d-block">Motivo: @servico.MotivoInativacao</small>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        @if (servico.TempoEstimadoMinutos.HasValue)
+                                        {
+                                            <span class="badge bg-light text-dark border">
+                                                <i class="bi bi-clock me-1"></i> @servico.TempoEstimadoMinutos min
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted"><small>N/A</small></span>
+                                        }
+                                    </td>
+                                    <td class="text-end fw-bold text-success">
+                                        @servico.ValorPadrao.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <div class="btn-group btn-group-sm">
+                                            <AuthorizeView Roles="Administrador, Atendimento">
+                                                <a href="/servicos/editar/@servico.Id" class="btn btn-outline-primary" title="Editar">
+                                                    <i class="bi bi-pencil"></i>
+                                                </a>
+                                            </AuthorizeView>
+                                            <AuthorizeView Roles="Administrador">
+                                                @if (servico.Ativo)
+                                                {
+                                                    <button class="btn btn-outline-warning" @onclick="() => ConfirmarInativacao(servico)" title="Inativar">
+                                                        <i class="bi bi-archive"></i>
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-outline-success" @onclick="() => AbrirModalReativar(servico)" title="Reativar">
+                                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                                    </button>
+                                                }
+                                            </AuthorizeView>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
     </div>
 </div>
-</div>
 
-@* Modal de Confirmação de Exclusão Simples *@
-@if (mostrarModalExclusao)
+@if (mostrarModalInativacao && servicoParaInativar != null)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
-                <div class="modal-header border-bottom-0 bg-danger text-white">
-                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Exclusão</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="CancelarExclusao"></button>
+                <div class="modal-header border-bottom-0 bg-warning text-dark">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Inativação de Serviço</h5>
+                    <button type="button" class="btn-close" @onclick="CancelarInativacao"></button>
                 </div>
                 <div class="modal-body py-4">
-                    <p class="mb-0 fs-5">Atenção!</p>
-                    <p class="text-muted">Tem certeza que deseja excluir este serviço? Esta ação não pode ser desfeita.</p>
+                    @if (!string.IsNullOrEmpty(erroModal))
+                    {
+                        <div class="alert alert-danger py-2">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>@erroModal
+                        </div>
+                    }
+                    <p class="mb-2 fs-5">Deseja inativar o serviço "<strong>@servicoParaInativar.Nome</strong>"?</p>
+                    <p class="text-muted small mb-3">
+                        O serviço deixará de aparecer no catálogo de criação de novas Ordens de Serviço, mas continuará visível em todas as O.S. antigas.
+                    </p>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold">Motivo da inativação <span class="text-danger">*</span></label>
+                        <textarea class="form-control" rows="2" placeholder="Informe o motivo (mínimo de 5 caracteres)..." @bind="motivoInativacao" @bind:event="oninput"></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer border-top-0 bg-light">
-                    <button type="button" class="btn btn-secondary" @onclick="CancelarExclusao">Cancelar</button>
-                    <button type="button" class="btn btn-danger" @onclick="ExcluirServico">Excluir Serviço</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelarInativacao">Cancelar</button>
+                    <button type="button" class="btn btn-warning fw-bold" disabled="@( string.IsNullOrWhiteSpace(motivoInativacao) || motivoInativacao.Trim().Length < 5 )" @onclick="InativarServico">Inativar Serviço</button>
                 </div>
             </div>
         </div>
     </div>
 }
 
-
+@if (mostrarModalReativar && servicoParaReativar != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-bottom-0 bg-success text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-arrow-counterclockwise me-2"></i> Reativar Serviço</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="FecharModalReativar"></button>
+                </div>
+                <div class="modal-body py-4">
+                    @if (!string.IsNullOrEmpty(erroModal))
+                    {
+                        <div class="alert alert-danger py-2">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>@erroModal
+                        </div>
+                    }
+                    <p class="mb-2 fs-5">Deseja reativar o serviço "<strong>@servicoParaReativar.Nome</strong>"?</p>
+                    <p class="text-muted small mb-0">Ele voltará a aparecer no catálogo de serviços para novas Ordens de Serviço.</p>
+                </div>
+                <div class="modal-footer border-top-0 bg-light">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="FecharModalReativar">Cancelar</button>
+                    <button type="button" class="btn btn-success" @onclick="ConfirmarReativarServico">Reativar Serviço</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private IEnumerable<Servico>? servicos;
     private string termoBusca = "";
-    
-    private bool mostrarModalExclusao = false;
-    private int servicoIdParaExcluir = 0;
+    private bool MostrarInativos = false;
+
+    private bool mostrarModalInativacao = false;
+    private Servico? servicoParaInativar;
+    private bool mostrarModalReativar = false;
+    private Servico? servicoParaReativar;
+    private string motivoInativacao = "";
+    private string? erroModal;
 
     protected override async Task OnInitializedAsync()
     {
@@ -141,36 +222,102 @@
 
     private async Task CarregarServicos()
     {
-        servicos = await ServicoRepository.GetAllAsync();
+        servicos = MostrarInativos
+            ? await ServicoRepository.GetInativosAsync()
+            : await ServicoRepository.GetAllAsync(apenasAtivos: true);
+    }
+
+    private async Task AlternarFiltro(bool inativos)
+    {
+        if (MostrarInativos == inativos) return;
+        MostrarInativos = inativos;
+        servicos = null;
+        await CarregarServicos();
     }
 
     private IEnumerable<Servico> servicosFiltrados =>
         string.IsNullOrWhiteSpace(termoBusca)
             ? servicos ?? Array.Empty<Servico>()
-            : servicos?.Where(s => 
-                s.Nome.Contains(termoBusca, StringComparison.OrdinalIgnoreCase) || 
-                (s.Descricao != null && s.Descricao.Contains(termoBusca, StringComparison.OrdinalIgnoreCase))) 
+            : servicos?.Where(s =>
+                s.Nome.Contains(termoBusca, StringComparison.OrdinalIgnoreCase) ||
+                (s.Descricao != null && s.Descricao.Contains(termoBusca, StringComparison.OrdinalIgnoreCase)))
               ?? Array.Empty<Servico>();
 
-    private void ConfirmarExclusao(int id)
+    private void ConfirmarInativacao(Servico servico)
     {
-        servicoIdParaExcluir = id;
-        mostrarModalExclusao = true;
+        servicoParaInativar = servico;
+        motivoInativacao = "";
+        erroModal = null;
+        mostrarModalInativacao = true;
     }
 
-    private void CancelarExclusao()
+    private void CancelarInativacao()
     {
-        mostrarModalExclusao = false;
-        servicoIdParaExcluir = 0;
+        mostrarModalInativacao = false;
+        servicoParaInativar = null;
+        motivoInativacao = "";
+        erroModal = null;
     }
 
-    private async Task ExcluirServico()
+    private async Task InativarServico()
     {
-        if (servicoIdParaExcluir > 0)
+        if (servicoParaInativar == null) return;
+
+        try
         {
-            await ServicoRepository.DeleteAsync(servicoIdParaExcluir);
+            erroModal = null;
+            var (usuarioId, perfil) = await ObterUsuarioLogadoAsync();
+            await InativacaoService.InativarServicoAsync(servicoParaInativar.Id, motivoInativacao, usuarioId, perfil);
             await CarregarServicos();
-            CancelarExclusao();
+            CancelarInativacao();
         }
+        catch (Exception ex)
+        {
+            erroModal = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível inativar o serviço.");
+        }
+    }
+
+    private void AbrirModalReativar(Servico servico)
+    {
+        servicoParaReativar = servico;
+        erroModal = null;
+        mostrarModalReativar = true;
+    }
+
+    private void FecharModalReativar()
+    {
+        mostrarModalReativar = false;
+        servicoParaReativar = null;
+        erroModal = null;
+    }
+
+    private async Task ConfirmarReativarServico()
+    {
+        if (servicoParaReativar == null) return;
+
+        try
+        {
+            erroModal = null;
+            var (usuarioId, perfil) = await ObterUsuarioLogadoAsync();
+            await InativacaoService.ReativarServicoAsync(servicoParaReativar.Id, usuarioId, perfil);
+            await CarregarServicos();
+            FecharModalReativar();
+        }
+        catch (Exception ex)
+        {
+            erroModal = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível reativar o serviço.");
+        }
+    }
+
+    private async Task<(int usuarioId, PerfilUsuario? perfil)> ObterUsuarioLogadoAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var idStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var roleStr = user.FindFirst(ClaimTypes.Role)?.Value;
+
+        int.TryParse(idStr, out var usuarioId);
+        PerfilUsuario? perfil = Enum.TryParse<PerfilUsuario>(roleStr, out var p) ? p : null;
+        return (usuarioId, perfil);
     }
 }

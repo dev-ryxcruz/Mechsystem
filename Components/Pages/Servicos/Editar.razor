@@ -1,6 +1,8 @@
 @page "/servicos/editar/{id:int}"
 @using mechsystem.Interfaces
 @using mechsystem.Models
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador, Atendimento")]
 @inject IServicoRepository ServicoRepository
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer

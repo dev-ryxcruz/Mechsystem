@@ -16,13 +16,20 @@ namespace mechsystem.Repositories
 
         public async Task<List<Veiculo>> Listar()
         {
-            // O Include traz os dados do Cliente dono do veículo automaticamente
-            return await _context.Veiculos.Include(v => v.Cliente).Where(v => v.Ativo).ToListAsync();
+            return await _context.Veiculos
+                .Include(v => v.Cliente)
+                .Ativos()
+                .OrderBy(v => v.Placa)
+                .ToListAsync();
         }
 
         public async Task<List<Veiculo>> ListarInativos()
         {
-            return await _context.Veiculos.Include(v => v.Cliente).Where(v => !v.Ativo).ToListAsync();
+            return await _context.Veiculos
+                .Include(v => v.Cliente)
+                .Inativos()
+                .OrderBy(v => v.Placa)
+                .ToListAsync();
         }
 
         public async Task<Veiculo?> BuscarPorId(int id)
@@ -34,8 +41,18 @@ namespace mechsystem.Repositories
         {
             veiculo.Placa = NormalizarPlaca(veiculo.Placa);
 
-            if (await _context.Veiculos.AnyAsync(v => v.Placa == veiculo.Placa))
+            var existente = await _context.Veiculos
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Placa == veiculo.Placa);
+
+            if (existente != null)
             {
+                if (!existente.Ativo)
+                {
+                    var descricao = $"{existente.Marca} {existente.Modelo}".Trim();
+                    throw new InvalidOperationException(
+                        $"Já existe um veículo inativo com esta placa: {(string.IsNullOrWhiteSpace(descricao) ? existente.Placa : descricao)}. Reative-o em Veículos > Inativos.");
+                }
                 throw new InvalidOperationException("Já existe um veículo cadastrado com esta placa.");
             }
 
@@ -47,8 +64,18 @@ namespace mechsystem.Repositories
         {
             veiculo.Placa = NormalizarPlaca(veiculo.Placa);
 
-            if (await _context.Veiculos.AnyAsync(v => v.Placa == veiculo.Placa && v.Id != veiculo.Id))
+            var existente = await _context.Veiculos
+                .AsNoTracking()
+                .FirstOrDefaultAsync(v => v.Placa == veiculo.Placa && v.Id != veiculo.Id);
+
+            if (existente != null)
             {
+                if (!existente.Ativo)
+                {
+                    var descricao = $"{existente.Marca} {existente.Modelo}".Trim();
+                    throw new InvalidOperationException(
+                        $"Já existe um veículo inativo com esta placa: {(string.IsNullOrWhiteSpace(descricao) ? existente.Placa : descricao)}. Reative-o em Veículos > Inativos.");
+                }
                 throw new InvalidOperationException("Já existe outro veículo cadastrado com esta placa.");
             }
 
@@ -61,28 +88,6 @@ namespace mechsystem.Repositories
             return string.IsNullOrEmpty(placa)
                 ? string.Empty
                 : placa.Replace("-", "").Trim().ToUpperInvariant();
-        }
-
-        public async Task Deletar(int id)
-        {
-            var veiculo = await BuscarPorId(id);
-            if (veiculo != null)
-            {
-                veiculo.Ativo = false; // Soft-delete: mantém o histórico das ordens de serviço
-                _context.Veiculos.Update(veiculo);
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task Reativar(int id)
-        {
-            var veiculo = await BuscarPorId(id);
-            if (veiculo != null)
-            {
-                veiculo.Ativo = true;
-                _context.Veiculos.Update(veiculo);
-                await _context.SaveChangesAsync();
-            }
         }
     }
 }

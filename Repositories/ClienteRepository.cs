@@ -16,12 +16,12 @@ namespace mechsystem.Repositories
 
         public async Task<List<Cliente>> Listar()
         {
-            return await _context.Clientes.Where(c => c.Ativo).ToListAsync();
+            return await _context.Clientes.Ativos().OrderBy(c => c.Nome).ToListAsync();
         }
 
         public async Task<List<Cliente>> ListarInativos()
         {
-            return await _context.Clientes.Where(c => !c.Ativo).ToListAsync();
+            return await _context.Clientes.Inativos().OrderBy(c => c.Nome).ToListAsync();
         }
 
         public async Task<Cliente?> BuscarPorId(int id)
@@ -33,8 +33,17 @@ namespace mechsystem.Repositories
         {
             cliente.Cpf = NormalizarCpf(cliente.Cpf);
 
-            if (await _context.Clientes.IgnoreQueryFilters().AnyAsync(c => c.Cpf == cliente.Cpf))
+            var existente = await _context.Clientes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Cpf == cliente.Cpf);
+
+            if (existente != null)
             {
+                if (!existente.Ativo)
+                {
+                    throw new InvalidOperationException(
+                        $"Já existe um cliente inativo com este CPF: {existente.Nome}. Reative-o em Clientes > Inativos.");
+                }
                 throw new InvalidOperationException("Já existe um cliente cadastrado com este CPF.");
             }
 
@@ -46,8 +55,17 @@ namespace mechsystem.Repositories
         {
             cliente.Cpf = NormalizarCpf(cliente.Cpf);
 
-            if (await _context.Clientes.IgnoreQueryFilters().AnyAsync(c => c.Cpf == cliente.Cpf && c.Id != cliente.Id))
+            var existente = await _context.Clientes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Cpf == cliente.Cpf && c.Id != cliente.Id);
+
+            if (existente != null)
             {
+                if (!existente.Ativo)
+                {
+                    throw new InvalidOperationException(
+                        $"Já existe um cliente inativo com este CPF: {existente.Nome}. Reative-o em Clientes > Inativos.");
+                }
                 throw new InvalidOperationException("Já existe outro cliente cadastrado com este CPF.");
             }
 
@@ -60,28 +78,6 @@ namespace mechsystem.Repositories
             return string.IsNullOrEmpty(cpf)
                 ? string.Empty
                 : new string(cpf.Where(char.IsDigit).ToArray());
-        }
-
-        public async Task Deletar(int id)
-        {
-            var cliente = await BuscarPorId(id);
-            if (cliente != null)
-            {
-                cliente.Ativo = false;
-                _context.Clientes.Update(cliente);
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        public async Task Reativar(int id)
-        {
-            var cliente = await BuscarPorId(id);
-            if (cliente != null)
-            {
-                cliente.Ativo = true;
-                _context.Clientes.Update(cliente);
-                await _context.SaveChangesAsync();
-            }
         }
     }
 }

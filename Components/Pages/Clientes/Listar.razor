@@ -3,13 +3,17 @@
 
 @using mechsystem.Models
 @using mechsystem.Interfaces
+@using mechsystem.Services
 @using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 @attribute [Authorize(Roles = "Administrador, Atendimento")]
 
 @inject IClienteRepository ClienteRepository
+@inject InativacaoService InativacaoService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JS
+@inject ILogger<Listar> Logger
 
 <PageTitle>Clientes Cadastrados — Mechsystem</PageTitle>
 
@@ -51,7 +55,6 @@
         </Filters>
     </ListToolbar>
 
-    @* Se a lista ainda estiver nula, mostramos que está a carregar *@
     @if (clientes == null)
     {
         <div class="text-center p-5">
@@ -59,14 +62,12 @@
             <p class="mt-2 text-muted">Carregando clientes...</p>
         </div>
     }
-    @* Se a lista estiver vazia, damos um aviso amigável *@
     else if (!clientes.Any())
     {
         <div class="alert alert-info" role="alert">
             @(MostrarInativos ? "Nenhum cliente inativo." : "Nenhum cliente cadastrado no sistema ainda.")
         </div>
     }
-    @* Se existirem clientes, montamos a tabela *@
     else
     {
         @if (IsGridView)
@@ -80,6 +81,12 @@
                                 <h5>@cliente.Nome</h5>
                                 <p class="mb-1 text-muted"><i class="bi bi-person-vcard"></i> @FormatCpf(cliente.Cpf)</p>
                                 <p class="mb-0 text-muted"><i class="bi bi-telephone"></i> @FormatTelefone(cliente.Telefone)</p>
+                                @if (!cliente.Ativo && !string.IsNullOrWhiteSpace(cliente.MotivoInativacao))
+                                {
+                                    <small class="text-muted d-block mt-2">
+                                        <i class="bi bi-info-circle me-1"></i>Motivo: @cliente.MotivoInativacao
+                                    </small>
+                                }
                             </div>
                             <div class="card-footer bg-transparent border-0 d-flex justify-content-end gap-2">
                                 <button class="btn btn-sm btn-outline-primary" title="Editar" @onclick="() => IrParaEdicao(cliente.Id)">
@@ -89,13 +96,13 @@
                                     <Authorized>
                                         @if (cliente.Ativo)
                                         {
-                                            <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => ApagarCliente(cliente.Id)">
+                                            <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => AbrirModalInativar(cliente)">
                                                 <i class="bi bi-archive"></i>
                                             </button>
                                         }
                                         else
                                         {
-                                            <button class="btn btn-sm btn-outline-success" title="Reativar" @onclick="() => ReativarCliente(cliente.Id)">
+                                            <button class="btn btn-sm btn-outline-success" title="Reativar" @onclick="() => AbrirModalReativar(cliente)">
                                                 <i class="bi bi-arrow-counterclockwise"></i>
                                             </button>
                                         }
@@ -109,87 +116,113 @@
         }
         else
         {
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-custom align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th width="5%" class="text-center">ID</th>
-                            <th width="40%" class="text-start">Nome</th>
-                            <th width="20%" class="text-start">CPF</th>
-                            <th width="20%" class="text-start">Telefone</th>
-                            <th width="15%" class="actions-col text-end">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var cliente in ClientesFiltrados!)
-                        {
-                            <tr>
-                                <td class="text-center text-muted fw-bold">#@cliente.Id</td>
-                                <td class="text-start"><strong>@cliente.Nome</strong></td>
-                                <td class="text-start">@FormatCpf(cliente.Cpf)</td>
-                                <td class="text-start">@FormatTelefone(cliente.Telefone)</td>
-
-                            <td class="text-end text-nowrap">
-                                @* O botão Editar vai enviar o Id do cliente pela barra de endereço *@
-                                <button class="btn btn-sm btn-outline-primary me-1" title="Editar" @onclick="() => IrParaEdicao(cliente.Id)">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                
-                                <AuthorizeView Roles="Administrador">
-                                    <Authorized>
-                                        @if (cliente.Ativo)
-                                        {
-                                            @* O botão Inativar abre o modal de confirmação *@
-                                            <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => ApagarCliente(cliente.Id)">
-                                                <i class="bi bi-archive"></i>
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-custom align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%" class="text-center">ID</th>
+                                    <th width="40%" class="text-start">Nome</th>
+                                    <th width="20%" class="text-start">CPF</th>
+                                    <th width="20%" class="text-start">Telefone</th>
+                                    <th width="15%" class="actions-col text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var cliente in ClientesFiltrados!)
+                                {
+                                    <tr>
+                                        <td class="text-center text-muted fw-bold">#@cliente.Id</td>
+                                        <td class="text-start">
+                                            <strong>@cliente.Nome</strong>
+                                            @if (!cliente.Ativo && !string.IsNullOrWhiteSpace(cliente.MotivoInativacao))
+                                            {
+                                                <small class="text-muted d-block">Motivo: @cliente.MotivoInativacao</small>
+                                            }
+                                        </td>
+                                        <td class="text-start">@FormatCpf(cliente.Cpf)</td>
+                                        <td class="text-start">@FormatTelefone(cliente.Telefone)</td>
+                                        <td class="text-end text-nowrap">
+                                            <button class="btn btn-sm btn-outline-primary me-1" title="Editar" @onclick="() => IrParaEdicao(cliente.Id)">
+                                                <i class="bi bi-pencil"></i>
                                             </button>
-                                        }
-                                        else
-                                        {
-                                            @* O botão Reativar devolve o cliente à lista de ativos *@
-                                            <button class="btn btn-sm btn-outline-success" title="Reativar" @onclick="() => ReativarCliente(cliente.Id)">
-                                                <i class="bi bi-arrow-counterclockwise"></i>
-                                            </button>
-                                        }
-                                    </Authorized>
-                                </AuthorizeView>
-                            </td>                                
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                                            <AuthorizeView Roles="Administrador">
+                                                <Authorized>
+                                                    @if (cliente.Ativo)
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => AbrirModalInativar(cliente)">
+                                                            <i class="bi bi-archive"></i>
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <button class="btn btn-sm btn-outline-success" title="Reativar" @onclick="() => AbrirModalReativar(cliente)">
+                                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                                        </button>
+                                                    }
+                                                </Authorized>
+                                            </AuthorizeView>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
         }
     }
 </div>
 
-@if (ShowConfirmModal)
+@if (ShowConfirmModal && clienteSelecionado != null)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow-lg border-0">
                 <div class="modal-header bg-warning text-dark border-0">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Inativação</h5>
+                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Inativação de Cliente</h5>
                     <button type="button" class="btn-close" @onclick="CloseConfirmModal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-0 fs-5">Tem certeza que deseja inativar este cliente?</p>
-                    <p class="text-muted mt-2 mb-0"><small>Ele não aparecerá mais nas buscas, mas o seu histórico será mantido e permanecerá associado às ordens de serviço existentes.</small></p>
+                    @if (!string.IsNullOrEmpty(erroModal))
+                    {
+                        <div class="alert alert-danger py-2">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>@erroModal
+                        </div>
+                    }
+                    <p class="mb-2 fs-5">Deseja inativar o cliente <strong>@clienteSelecionado.Nome</strong>?</p>
+                    <div class="alert @(veiculosAtivosImpactados > 0 ? "alert-warning" : "alert-secondary") py-2 mb-3">
+                        <i class="bi bi-car-front-fill me-1"></i>
+                        @if (veiculosAtivosImpactados > 0)
+                        {
+                            <span><strong>Impacto em cascata:</strong> este cliente possui <strong>@veiculosAtivosImpactados veículo(s) ativo(s)</strong> que também serão inativados automaticamente.</span>
+                        }
+                        else
+                        {
+                            <span>Este cliente não possui veículos ativos vinculados no momento.</span>
+                        }
+                    </div>
+                    <p class="text-muted small mb-3">
+                        O histórico de Ordens de Serviço será preservado. Caso o cliente seja reativado futuramente, seus veículos permanecerão inativos até serem reativados individualmente.
+                    </p>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold">Motivo da inativação <span class="text-danger">*</span></label>
+                        <textarea class="form-control" rows="2" placeholder="Informe o motivo (mínimo de 5 caracteres)..." @bind="motivoInativacao" @bind:event="oninput"></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-outline-secondary" @onclick="CloseConfirmModal">Cancelar</button>
-                    <button type="button" class="btn btn-warning" @onclick="ConfirmInativar">Inativar Cliente</button>
+                    <button type="button" class="btn btn-warning fw-bold" disabled="@( string.IsNullOrWhiteSpace(motivoInativacao) || motivoInativacao.Trim().Length < 5 )" @onclick="ConfirmInativar">
+                        Inativar Cliente
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 }
 
-@if (ShowReativarModal)
+@if (ShowReativarModal && clienteSelecionado != null)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-dialog-centered">
@@ -199,8 +232,14 @@
                     <button type="button" class="btn-close btn-close-white" @onclick="CloseReativarModal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-0 fs-5">Tem certeza que deseja reativar este cliente?</p>
-                    <p class="text-muted mt-2 mb-0"><small>Ele voltará a aparecer nas buscas e poderá ser utilizado em novas ordens de serviço.</small></p>
+                    @if (!string.IsNullOrEmpty(erroModal))
+                    {
+                        <div class="alert alert-danger py-2">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>@erroModal
+                        </div>
+                    }
+                    <p class="mb-2 fs-5">Deseja reativar o cliente <strong>@clienteSelecionado.Nome</strong>?</p>
+                    <p class="text-muted mb-0"><small>Ele voltará a aparecer nas buscas e poderá ser utilizado em novas ordens de serviço. Seus veículos inativos não são reativados automaticamente.</small></p>
                 </div>
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-outline-secondary" @onclick="CloseReativarModal">Cancelar</button>
@@ -214,28 +253,30 @@
 @code {
     private List<Cliente>? clientes;
     private string termoPesquisa = "";
-    private IEnumerable<Cliente>? ClientesFiltrados => string.IsNullOrWhiteSpace(termoPesquisa) 
-        ? clientes 
-        : clientes?.Where(c => 
+    private IEnumerable<Cliente>? ClientesFiltrados => string.IsNullOrWhiteSpace(termoPesquisa)
+        ? clientes
+        : clientes?.Where(c =>
             (c.Nome != null && c.Nome.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)) ||
             (c.Cpf != null && c.Cpf.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)) ||
             (c.Telefone != null && c.Telefone.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)));
 
-    private Cliente _cliente = new Cliente();
     private bool IsGridView = false;
     private bool MostrarInativos = false;
 
+    private bool ShowConfirmModal = false;
+    private bool ShowReativarModal = false;
+    private Cliente? clienteSelecionado;
+    private int veiculosAtivosImpactados = 0;
+    private string motivoInativacao = "";
+    private string? erroModal;
+
     private void ToggleView(bool gridView) => IsGridView = gridView;
 
-
-    // Este método nativo do Blazor corre sozinho assim que o ecrã é aberto
     protected override async Task OnInitializedAsync()
     {
-        // Pede ao repositório para ir à base de dados e trazer todos os clientes
         await CarregarClientes();
     }
 
-    // Carrega os clientes ativos ou inativos conforme o filtro selecionado
     private async Task CarregarClientes()
     {
         clientes = MostrarInativos
@@ -264,81 +305,86 @@
         }
     }
 
-    private void NovoCliente()
-    {
-        NavigationManager.NavigateTo("/clientes/cadastro");
-    }
+    private void NovoCliente() => NavigationManager.NavigateTo("/clientes/cadastro");
+    private void IrParaEdicao(int id) => NavigationManager.NavigateTo($"/clientes/editar/{id}");
 
-private void IrParaEdicao(int id)
+    private async Task AbrirModalInativar(Cliente cliente)
     {
-        // Redireciona para o ecrã de edição passando o ID do cliente
-        NavigationManager.NavigateTo($"/clientes/editar/{id}");
-    }
-
-    private bool ShowConfirmModal = false;
-    private int ClienteIdToInactivate = 0;
-
-    private void ApagarCliente(int id)
-    {
-        ClienteIdToInactivate = id;
+        clienteSelecionado = cliente;
+        motivoInativacao = "";
+        erroModal = null;
+        veiculosAtivosImpactados = await InativacaoService.ContarVeiculosAtivosDoClienteAsync(cliente.Id);
         ShowConfirmModal = true;
     }
 
     private void CloseConfirmModal()
     {
         ShowConfirmModal = false;
-        ClienteIdToInactivate = 0;
+        clienteSelecionado = null;
+        motivoInativacao = "";
+        erroModal = null;
     }
 
     private async Task ConfirmInativar()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        if (!authState.User.IsInRole("Administrador"))
-        {
-            CloseConfirmModal();
-            return;
-        }
+        if (clienteSelecionado == null) return;
 
-        // 1. Vai à base de dados e inativa o cliente
-        await ClienteRepository.Deletar(ClienteIdToInactivate);
-        
-        // 2. Consulta a base de dados novamente para atualizar a tabela no ecrã
-        await CarregarClientes();
-        
-        CloseConfirmModal();
+        try
+        {
+            erroModal = null;
+            var (usuarioId, perfil) = await ObterUsuarioLogadoAsync();
+            await InativacaoService.InativarClienteAsync(clienteSelecionado.Id, motivoInativacao, usuarioId, perfil);
+            await CarregarClientes();
+            CloseConfirmModal();
+        }
+        catch (Exception ex)
+        {
+            erroModal = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível inativar o cliente.");
+        }
     }
 
-    private bool ShowReativarModal = false;
-    private int ClienteIdToReactivate = 0;
-
-    private void ReativarCliente(int id)
+    private void AbrirModalReativar(Cliente cliente)
     {
-        ClienteIdToReactivate = id;
+        clienteSelecionado = cliente;
+        erroModal = null;
         ShowReativarModal = true;
     }
 
     private void CloseReativarModal()
     {
         ShowReativarModal = false;
-        ClienteIdToReactivate = 0;
+        clienteSelecionado = null;
+        erroModal = null;
     }
 
     private async Task ConfirmReativar()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        if (!authState.User.IsInRole("Administrador"))
+        if (clienteSelecionado == null) return;
+
+        try
         {
+            erroModal = null;
+            var (usuarioId, perfil) = await ObterUsuarioLogadoAsync();
+            await InativacaoService.ReativarClienteAsync(clienteSelecionado.Id, usuarioId, perfil);
+            await CarregarClientes();
             CloseReativarModal();
-            return;
         }
+        catch (Exception ex)
+        {
+            erroModal = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível reativar o cliente.");
+        }
+    }
 
-        // 1. Vai à base de dados e reativa o cliente
-        await ClienteRepository.Reativar(ClienteIdToReactivate);
+    private async Task<(int usuarioId, PerfilUsuario? perfil)> ObterUsuarioLogadoAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var idStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var roleStr = user.FindFirst(ClaimTypes.Role)?.Value;
 
-        // 2. Atualiza a lista no ecrã (o cliente sai da lista de inativos)
-        await CarregarClientes();
-
-        CloseReativarModal();
+        int.TryParse(idStr, out var usuarioId);
+        PerfilUsuario? perfil = Enum.TryParse<PerfilUsuario>(roleStr, out var p) ? p : null;
+        return (usuarioId, perfil);
     }
 
     private string FormatCpf(string? cpf)

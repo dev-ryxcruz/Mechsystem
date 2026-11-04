@@ -381,11 +381,12 @@
         
         veiculos = await DbContext.Veiculos
             .Include(v => v.Cliente)
-            .Where(v => v.Ativo)
+            .Ativos()
+            .Where(v => v.Cliente != null && v.Cliente.Ativo)
             .OrderBy(v => v.Cliente!.Nome)
             .ToListAsync();
             
-        catalogoServicos = await DbContext.Servicos.OrderBy(s => s.Nome).ToListAsync();
+        catalogoServicos = await DbContext.Servicos.Ativos().OrderBy(s => s.Nome).ToListAsync();
             
         isLoading = false;
     }
@@ -505,7 +506,8 @@
             // Recarregar a lista de veículos
             veiculos = await DbContext.Veiculos
                 .Include(v => v.Cliente)
-                .Where(v => v.Ativo)
+                .Ativos()
+            .Where(v => v.Cliente != null && v.Cliente.Ativo)
                 .OrderBy(v => v.Cliente!.Nome)
                 .ToListAsync();
 

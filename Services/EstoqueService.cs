@@ -100,23 +100,24 @@ namespace mechsystem.Services
         }
 
         /// <summary>
-        /// Retorna peças com estoque abaixo ou igual ao estoque mínimo (Alerta de Ruptura).
+        /// Retorna peças ativas com estoque abaixo ou igual ao estoque mínimo (Alerta de Ruptura).
         /// </summary>
         public async Task<List<Peca>> GetAlertasRupturaAsync()
         {
             return await _context.Pecas
-                .Where(p => p.Ativo && p.EstoqueAtual <= p.EstoqueMinimo)
+                .Ativos()
+                .Where(p => p.EstoqueAtual <= p.EstoqueMinimo)
                 .OrderBy(p => p.EstoqueAtual)
                 .ToListAsync();
         }
 
         /// <summary>
-        /// Calcula o Capital Imobilizado em Estoque: Σ(EstoqueAtual × PrecoCusto).
+        /// Calcula o Capital Imobilizado em Estoque de peças ativas: Σ(EstoqueAtual × PrecoCusto).
         /// </summary>
         public async Task<decimal> GetCapitalImobilizadoAsync()
         {
             return await _context.Pecas
-                .Where(p => p.Ativo)
+                .Ativos()
                 .SumAsync(p => p.EstoqueAtual * p.PrecoCusto);
         }
 

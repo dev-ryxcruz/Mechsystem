@@ -14,9 +14,20 @@ namespace mechsystem.Repositories
             _context = context;
         }
 
-        public async Task<IEnumerable<Servico>> GetAllAsync()
+        public async Task<IEnumerable<Servico>> GetAllAsync(bool apenasAtivos = true)
         {
-            return await _context.Servicos.ToListAsync();
+            var query = _context.Servicos.AsQueryable();
+            if (apenasAtivos)
+                query = query.Ativos();
+            return await query.OrderBy(s => s.Nome).ToListAsync();
+        }
+
+        public async Task<IEnumerable<Servico>> GetInativosAsync()
+        {
+            return await _context.Servicos
+                .Inativos()
+                .OrderBy(s => s.Nome)
+                .ToListAsync();
         }
 
         public async Task<Servico?> GetByIdAsync(int id)
@@ -35,16 +46,6 @@ namespace mechsystem.Repositories
         {
             _context.Entry(servico).State = EntityState.Modified;
             await _context.SaveChangesAsync();
-        }
-
-        public async Task DeleteAsync(int id)
-        {
-            var servico = await _context.Servicos.FindAsync(id);
-            if (servico != null)
-            {
-                _context.Servicos.Remove(servico);
-                await _context.SaveChangesAsync();
-            }
         }
     }
 }

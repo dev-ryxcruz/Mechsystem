@@ -2,10 +2,15 @@
 @rendermode InteractiveServer
 @using mechsystem.Interfaces
 @using mechsystem.Models
+@using mechsystem.Services
 @using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 @attribute [Authorize(Roles = "Administrador, Atendimento")]
 @inject IPecaRepository PecaRepository
+@inject InativacaoService InativacaoService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
+@inject ILogger<Index> Logger
 
 <PageTitle>Estoque de Peças — Mechsystem</PageTitle>
 
@@ -26,134 +31,159 @@
         </Actions>
     </PageHeader>
 
-@* Alerta de ruptura rápido *@
-@if (pecasComAlerta != null && pecasComAlerta.Any())
-{
-    <div class="alert border-0 shadow-sm mb-4 d-flex align-items-center gap-3" 
-         style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; border-radius: 0.75rem;">
-        <i class="bi bi-exclamation-triangle-fill fs-3"></i>
-        <div>
-            <strong>Alerta de Ruptura!</strong>
-            <span class="ms-1">@pecasComAlerta.Count() peça(s) atingiram o nível mínimo de estoque:</span>
-            <span class="fw-bold ms-1">
-                @string.Join(", ", pecasComAlerta.Take(5).Select(p => p.Sku))
-                @(pecasComAlerta.Count() > 5 ? $" e mais {pecasComAlerta.Count() - 5}..." : "")
-            </span>
+    @if (pecasComAlerta != null && pecasComAlerta.Any())
+    {
+        <div class="alert border-0 shadow-sm mb-4 d-flex align-items-center gap-3"
+             style="background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); color: white; border-radius: 0.75rem;">
+            <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+            <div>
+                <strong>Alerta de Ruptura!</strong>
+                <span class="ms-1">@pecasComAlerta.Count() peça(s) ativa(s) atingiram o nível mínimo de estoque:</span>
+                <span class="fw-bold ms-1">
+                    @string.Join(", ", pecasComAlerta.Take(5).Select(p => p.Sku))
+                    @(pecasComAlerta.Count() > 5 ? $" e mais {pecasComAlerta.Count() - 5}..." : "")
+                </span>
+            </div>
+        </div>
+    }
+
+    <ListToolbar Placeholder="Buscar peça por SKU, nome ou marca..."
+                 @bind-SearchTerm="termoBusca"
+                 TotalCount="@(pecasFiltradas.Count())"
+                 CountLabel="peça(s)"
+                 CountIcon="bi-box">
+        <Filters>
+            <AuthorizeView Roles="Administrador">
+                <div class="btn-group" role="group" aria-label="Filtrar por estado">
+                    <button type="button" id="btn-filtro-pecas-ativas" class="btn btn-sm btn-outline-success text-nowrap @(!MostrarInativas ? "active" : "")" @onclick="() => AlternarFiltro(false)">
+                        <i class="bi bi-check-circle"></i> Ativas
+                    </button>
+                    <button type="button" id="btn-filtro-pecas-inativas" class="btn btn-sm btn-outline-secondary text-nowrap @(MostrarInativas ? "active" : "")" @onclick="() => AlternarFiltro(true)">
+                        <i class="bi bi-archive"></i> Inativas
+                    </button>
+                </div>
+            </AuthorizeView>
+        </Filters>
+    </ListToolbar>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            @if (pecas == null)
+            {
+                <div class="text-center p-5">
+                    <div class="spinner-border text-accent" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                </div>
+            }
+            else if (!pecasFiltradas.Any())
+            {
+                <div class="text-center p-5 text-muted">
+                    <i class="bi bi-box-seam fs-1 mb-3"></i>
+                    <h5>@(MostrarInativas ? "Nenhuma peça inativa encontrada." : "Nenhuma peça encontrada.")</h5>
+                    <p>@(MostrarInativas ? "Não há peças desativadas que correspondam à busca." : "Nenhuma peça corresponde à busca ou o estoque está vazio.")</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="12%" class="text-start">SKU</th>
+                                <th width="24%" class="text-start">Peça</th>
+                                <th width="14%" class="text-start">Marca</th>
+                                <th width="10%" class="text-end">Custo</th>
+                                <th width="10%" class="text-end">Venda</th>
+                                <th width="10%" class="text-end">Estoque</th>
+                                <th width="10%" class="text-start">Localização</th>
+                                <th width="10%" class="actions-col text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var peca in pecasFiltradas)
+                            {
+                                <tr class="@(peca.Ativo && peca.AbaixoDoMinimo ? "table-danger" : "")">
+                                    <td>
+                                        <span class="badge bg-dark font-monospace">@peca.Sku</span>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold text-dark">@peca.Nome</div>
+                                        @if (!peca.Ativo && !string.IsNullOrWhiteSpace(peca.MotivoInativacao))
+                                        {
+                                            <small class="text-muted d-block">Motivo: @peca.MotivoInativacao</small>
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="text-muted">@(peca.Marca ?? "—")</span>
+                                    </td>
+                                    <td class="text-end text-muted">
+                                        @peca.PrecoCusto.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+                                    </td>
+                                    <td class="text-end fw-bold text-success">
+                                        @peca.PrecoVenda.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
+                                    </td>
+                                    <td class="text-end">
+                                        @if (peca.Ativo && peca.AbaixoDoMinimo)
+                                        {
+                                            <span class="badge bg-danger px-3 py-2 d-inline-flex align-items-center gap-1">
+                                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                                @peca.EstoqueAtual / @peca.EstoqueMinimo
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge @(peca.Ativo ? "bg-success" : "bg-secondary") px-3 py-2">
+                                                @peca.EstoqueAtual
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(peca.Localizacao))
+                                        {
+                                            <span class="badge bg-light text-dark border" title="@peca.Localizacao">
+                                                <i class="bi bi-geo-alt me-1"></i>@peca.Localizacao
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted"><small>—</small></span>
+                                        }
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="/estoque/cadastro/@peca.Id" class="btn btn-outline-primary" title="Editar">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button class="btn btn-outline-info" @onclick="() => VerHistorico(peca.Id)" title="Histórico">
+                                                <i class="bi bi-clock-history"></i>
+                                            </button>
+                                            <AuthorizeView Roles="Administrador">
+                                                @if (peca.Ativo)
+                                                {
+                                                    <button class="btn btn-outline-warning" @onclick="() => ConfirmarExclusao(peca)" title="Inativar">
+                                                        <i class="bi bi-archive"></i>
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-outline-success" @onclick="() => AbrirModalReativar(peca)" title="Reativar">
+                                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                                    </button>
+                                                }
+                                            </AuthorizeView>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
         </div>
     </div>
-}
-
-<ListToolbar Placeholder="Buscar peça por SKU, nome ou marca..."
-             @bind-SearchTerm="termoBusca"
-             TotalCount="@(pecasFiltradas.Count())"
-             CountLabel="peça(s)"
-             CountIcon="bi-box">
-</ListToolbar>
-
-<div class="card border-0 shadow-sm">
-    <div class="card-body p-0">
-        @if (pecas == null)
-        {
-            <div class="text-center p-5">
-                <div class="spinner-border text-accent" role="status">
-                    <span class="visually-hidden">Carregando...</span>
-                </div>
-            </div>
-        }
-        else if (!pecasFiltradas.Any())
-        {
-            <div class="text-center p-5 text-muted">
-                <i class="bi bi-box-seam fs-1 mb-3"></i>
-                <h5>Nenhuma peça encontrada.</h5>
-                <p>Nenhuma peça corresponde à busca ou o estoque está vazio.</p>
-            </div>
-        }
-        else
-        {
-            <div class="table-responsive">
-                <table class="table table-custom align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th width="12%" class="text-start">SKU</th>
-                            <th width="24%" class="text-start">Peça</th>
-                            <th width="14%" class="text-start">Marca</th>
-                            <th width="10%" class="text-end">Custo</th>
-                            <th width="10%" class="text-end">Venda</th>
-                            <th width="10%" class="text-end">Estoque</th>
-                            <th width="10%" class="text-start">Localização</th>
-                            <th width="10%" class="actions-col text-end">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var peca in pecasFiltradas)
-                        {
-                            <tr class="@(peca.AbaixoDoMinimo ? "table-danger" : "")">
-                                <td>
-                                    <span class="badge bg-dark font-monospace">@peca.Sku</span>
-                                </td>
-                                <td>
-                                    <div class="fw-bold text-dark">@peca.Nome</div>
-                                </td>
-                                <td>
-                                    <span class="text-muted">@(peca.Marca ?? "—")</span>
-                                </td>
-                                <td class="text-end text-muted">
-                                    @peca.PrecoCusto.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
-                                </td>
-                                <td class="text-end fw-bold text-success">
-                                    @peca.PrecoVenda.ToString("C", new System.Globalization.CultureInfo("pt-BR"))
-                                </td>
-                                <td class="text-end">
-                                    @if (peca.AbaixoDoMinimo)
-                                    {
-                                        <span class="badge bg-danger px-3 py-2 d-inline-flex align-items-center gap-1">
-                                            <i class="bi bi-exclamation-triangle-fill"></i>
-                                            @peca.EstoqueAtual / @peca.EstoqueMinimo
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-success px-3 py-2">
-                                            @peca.EstoqueAtual
-                                        </span>
-                                    }
-                                </td>
-                                <td>
-                                    @if (!string.IsNullOrEmpty(peca.Localizacao))
-                                    {
-                                        <span class="badge bg-light text-dark border" title="@peca.Localizacao">
-                                            <i class="bi bi-geo-alt me-1"></i>@peca.Localizacao
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted"><small>—</small></span>
-                                    }
-                                </td>
-                                <td class="text-end text-nowrap">
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="/estoque/cadastro/@peca.Id" class="btn btn-outline-primary" title="Editar">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <button class="btn btn-outline-info" @onclick="() => VerHistorico(peca.Id)" title="Histórico">
-                                            <i class="bi bi-clock-history"></i>
-                                        </button>
-                                        <button class="btn btn-outline-danger" @onclick="() => ConfirmarExclusao(peca)" title="Desativar">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
-    </div>
-</div>
 </div>
 
-@* Modal Histórico *@
 @if (mostrarHistorico)
 {
     <div class="blazor-modal-backdrop" @onclick="FecharHistorico"></div>
@@ -186,7 +216,7 @@
                                 <tr>
                                     <td><small>@mov.DataHora.ToBrasiliaTime().ToString("dd/MM/yy HH:mm")</small></td>
                                     <td>
-                                        @switch(mov.Tipo)
+                                        @switch (mov.Tipo)
                                         {
                                             case TipoMovimentacao.Entrada:
                                                 <span class="badge bg-success">Entrada</span>
@@ -217,23 +247,67 @@
     </div>
 }
 
-@* Modal Exclusão *@
-@if (mostrarModalExclusao)
+@if (mostrarModalExclusao && pecaParaExcluir != null)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
-                <div class="modal-header border-bottom-0 bg-danger text-white">
-                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Desativar Peça</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="CancelarExclusao"></button>
+                <div class="modal-header border-bottom-0 bg-warning text-dark">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Inativar Peça</h5>
+                    <button type="button" class="btn-close" @onclick="CancelarExclusao"></button>
                 </div>
                 <div class="modal-body py-4">
-                    <p class="mb-1 fs-5">Desativar "<strong>@pecaParaExcluir?.Nome</strong>"?</p>
-                    <p class="text-muted">A peça será ocultada das listagens mas manterá seu histórico de movimentações.</p>
+                    @if (!string.IsNullOrEmpty(erroModal))
+                    {
+                        <div class="alert alert-danger py-2">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>@erroModal
+                        </div>
+                    }
+                    <p class="mb-2 fs-5">Deseja inativar a peça "<strong>@pecaParaExcluir.Nome</strong>" (SKU: <code>@pecaParaExcluir.Sku</code>)?</p>
+                    @if (pecaParaExcluir.EstoqueAtual > 0)
+                    {
+                        <div class="alert alert-warning py-2">
+                            <i class="bi bi-box-seam me-1"></i><strong>Saldo atual: @pecaParaExcluir.EstoqueAtual un.</strong>
+                            Zere o saldo por <strong>Ajuste</strong> antes de desativar (o capital imobilizado contabiliza apenas peças ativas).
+                        </div>
+                    }
+                    <p class="text-muted small mb-3">A peça será ocultada da seleção de novas Ordens de Serviço, mantendo seu histórico de movimentações e O.S. anteriores.</p>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold">Motivo da inativação <span class="text-danger">*</span></label>
+                        <textarea class="form-control" rows="2" placeholder="Informe o motivo (mínimo de 5 caracteres)..." @bind="motivoInativacao" @bind:event="oninput"></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer border-top-0 bg-light">
-                    <button type="button" class="btn btn-secondary" @onclick="CancelarExclusao">Cancelar</button>
-                    <button type="button" class="btn btn-danger" @onclick="DesativarPeca">Confirmar</button>
+                    <button type="button" class="btn btn-outline-secondary" @onclick="CancelarExclusao">Cancelar</button>
+                    <button type="button" class="btn btn-warning fw-bold" disabled="@( string.IsNullOrWhiteSpace(motivoInativacao) || motivoInativacao.Trim().Length < 5 )" @onclick="DesativarPeca">Confirmar Inativação</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (mostrarModalReativar && pecaParaReativar != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-bottom-0 bg-success text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-arrow-counterclockwise me-2"></i>Reativar Peça</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="FecharModalReativar"></button>
+                </div>
+                <div class="modal-body py-4">
+                    @if (!string.IsNullOrEmpty(erroModal))
+                    {
+                        <div class="alert alert-danger py-2">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>@erroModal
+                        </div>
+                    }
+                    <p class="mb-2 fs-5">Deseja reativar a peça "<strong>@pecaParaReativar.Nome</strong>" (SKU: <code>@pecaParaReativar.Sku</code>)?</p>
+                    <p class="text-muted small mb-0">Ela voltará a ficar disponível para movimentações de estoque e vinculação em Ordens de Serviço.</p>
+                </div>
+                <div class="modal-footer border-top-0 bg-light">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="FecharModalReativar">Cancelar</button>
+                    <button type="button" class="btn btn-success" @onclick="ConfirmarReativarPeca">Reativar Peça</button>
                 </div>
             </div>
         </div>
@@ -244,15 +318,20 @@
     private IEnumerable<Peca>? pecas;
     private IEnumerable<Peca>? pecasComAlerta;
     private string termoBusca = "";
+    private bool MostrarInativas = false;
 
     // Histórico
     private bool mostrarHistorico = false;
     private Peca? pecaHistorico;
     private IEnumerable<MovimentacaoEstoque>? historico;
 
-    // Exclusão
+    // Inativação / Reativação
     private bool mostrarModalExclusao = false;
     private Peca? pecaParaExcluir;
+    private bool mostrarModalReativar = false;
+    private Peca? pecaParaReativar;
+    private string motivoInativacao = "";
+    private string? erroModal;
 
     protected override async Task OnInitializedAsync()
     {
@@ -261,8 +340,19 @@
 
     private async Task CarregarPecas()
     {
-        pecas = await PecaRepository.GetAllAsync();
-        pecasComAlerta = pecas.Where(p => p.AbaixoDoMinimo);
+        var ativas = await PecaRepository.GetAllAsync(apenasAtivas: true);
+        pecasComAlerta = ativas.Where(p => p.AbaixoDoMinimo);
+        pecas = MostrarInativas
+            ? await PecaRepository.GetInativasAsync()
+            : ativas;
+    }
+
+    private async Task AlternarFiltro(bool inativas)
+    {
+        if (MostrarInativas == inativas) return;
+        MostrarInativas = inativas;
+        pecas = null;
+        await CarregarPecas();
     }
 
     private IEnumerable<Peca> pecasFiltradas =>
@@ -274,7 +364,6 @@
                 (p.Marca != null && p.Marca.Contains(termoBusca, StringComparison.OrdinalIgnoreCase)))
               ?? Array.Empty<Peca>();
 
-    // Histórico
     private async Task VerHistorico(int pecaId)
     {
         pecaHistorico = await PecaRepository.GetByIdAsync(pecaId);
@@ -288,10 +377,11 @@
         historico = null;
     }
 
-    // Exclusão (soft-delete)
     private void ConfirmarExclusao(Peca peca)
     {
         pecaParaExcluir = peca;
+        motivoInativacao = "";
+        erroModal = null;
         mostrarModalExclusao = true;
     }
 
@@ -299,15 +389,69 @@
     {
         mostrarModalExclusao = false;
         pecaParaExcluir = null;
+        motivoInativacao = "";
+        erroModal = null;
     }
 
     private async Task DesativarPeca()
     {
-        if (pecaParaExcluir != null)
+        if (pecaParaExcluir == null) return;
+
+        try
         {
-            await PecaRepository.DeleteAsync(pecaParaExcluir.Id);
+            erroModal = null;
+            var (usuarioId, perfil) = await ObterUsuarioLogadoAsync();
+            await InativacaoService.InativarPecaAsync(pecaParaExcluir.Id, motivoInativacao, usuarioId, perfil);
             await CarregarPecas();
             CancelarExclusao();
         }
+        catch (Exception ex)
+        {
+            erroModal = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível desativar a peça.");
+        }
+    }
+
+    private void AbrirModalReativar(Peca peca)
+    {
+        pecaParaReativar = peca;
+        erroModal = null;
+        mostrarModalReativar = true;
+    }
+
+    private void FecharModalReativar()
+    {
+        mostrarModalReativar = false;
+        pecaParaReativar = null;
+        erroModal = null;
+    }
+
+    private async Task ConfirmarReativarPeca()
+    {
+        if (pecaParaReativar == null) return;
+
+        try
+        {
+            erroModal = null;
+            var (usuarioId, perfil) = await ObterUsuarioLogadoAsync();
+            await InativacaoService.ReativarPecaAsync(pecaParaReativar.Id, usuarioId, perfil);
+            await CarregarPecas();
+            FecharModalReativar();
+        }
+        catch (Exception ex)
+        {
+            erroModal = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível reativar a peça.");
+        }
+    }
+
+    private async Task<(int usuarioId, PerfilUsuario? perfil)> ObterUsuarioLogadoAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var idStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var roleStr = user.FindFirst(ClaimTypes.Role)?.Value;
+
+        int.TryParse(idStr, out var usuarioId);
+        PerfilUsuario? perfil = Enum.TryParse<PerfilUsuario>(roleStr, out var p) ? p : null;
+        return (usuarioId, perfil);
     }
 }

@@ -8,13 +8,14 @@
 @inject IVeiculoRepository VeiculoRepository
 @inject IClienteRepository ClienteRepository
 @inject NavigationManager NavigationManager
+@inject ILogger<Cadastro> Logger
 
 <PageTitle>Novo Veículo — Mechsystem</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h2 class="fw-bold mb-1">Novo Veículo</h2>
-        <p class="text-muted mb-0">Associe e registre um novo veículo no sistema</p>
+        <p class="text-muted mb-0">Associe e cadastre um novo veículo no sistema</p>
     </div>
     <a href="/veiculos" class="btn btn-outline-secondary shadow-sm">
         <i class="bi bi-arrow-left me-2"></i>Voltar
@@ -30,7 +31,7 @@
             </div>
         }
 
-        <EditForm Model="@veiculo" OnValidSubmit="GuardarVeiculo">
+        <EditForm Model="@veiculo" OnValidSubmit="SalvarVeiculo">
             <DataAnnotationsValidator />
 
             <div class="row g-4">
@@ -105,29 +106,25 @@
             <div class="d-flex justify-content-end gap-2">
                 <a href="/veiculos" class="btn btn-light px-4 border">Cancelar</a>
                 <button type="submit" class="btn btn-success px-4 shadow-sm">
-                    <i class="bi bi-save me-1"></i> Guardar Veículo
+                    <i class="bi bi-save me-1"></i> Salvar Veículo
                 </button>
             </div>
-
         </EditForm>
     </div>
 </div>
 
 @code
 {
-    private Veiculo veiculo = new Veiculo();
+    private Veiculo veiculo = new Veiculo { Ano = DateTime.UtcNow.Year };
     private string? erroMensagem;
-
-    // Lista para guardar clientes
     private List<Cliente>? clientes;
 
     protected override async Task OnInitializedAsync()
     {
-        // Pegar clientes do repositório
         clientes = await ClienteRepository.Listar();
     }
 
-    private async Task GuardarVeiculo()
+    private async Task SalvarVeiculo()
     {
         if (veiculo.ClienteId == 0)
         {
@@ -139,15 +136,11 @@
         {
             erroMensagem = null;
             await VeiculoRepository.Salvar(veiculo);
-            NavigationManager.NavigateTo("/veiculos"); // Redireciona para lista de veiculos
+            NavigationManager.NavigateTo("/veiculos");
         }
-        catch (InvalidOperationException ex)
+        catch (Exception ex)
         {
-            erroMensagem = ex.Message;
-        }
-        catch
-        {
-            erroMensagem = "Ocorreu um erro ao salvar o veículo. Verifique se a placa já está cadastrada.";
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Ocorreu um erro ao salvar o veículo. Verifique se a placa já está cadastrada.");
         }
     }
 }

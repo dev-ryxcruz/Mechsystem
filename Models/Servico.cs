@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace mechsystem.Models
 {
-    public class Servico
+    public class Servico : IInativavel
     {
         public int Id { get; set; }
 
@@ -22,5 +22,13 @@ namespace mechsystem.Models
         [Display(Name = "Tempo Estimado (Minutos)")]
         [Range(0, 10000, ErrorMessage = "O tempo estimado deve ser um valor positivo.")]
         public int? TempoEstimadoMinutos { get; set; }
+
+        public bool Ativo { get; set; } = true;
+        public DateTime? DataInativacao { get; set; }
+        public int? InativadoPorUsuarioId { get; set; }
+        public Usuario? InativadoPorUsuario { get; set; }
+
+        [MaxLength(500)]
+        public string? MotivoInativacao { get; set; }
     }
 }

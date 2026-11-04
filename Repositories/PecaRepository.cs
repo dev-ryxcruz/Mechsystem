@@ -18,8 +18,16 @@ namespace mechsystem.Repositories
         {
             var query = _context.Pecas.AsQueryable();
             if (apenasAtivas)
-                query = query.Where(p => p.Ativo);
+                query = query.Ativos();
             return await query.OrderBy(p => p.Nome).ToListAsync();
+        }
+
+        public async Task<IEnumerable<Peca>> GetInativasAsync()
+        {
+            return await _context.Pecas
+                .Inativos()
+                .OrderBy(p => p.Nome)
+                .ToListAsync();
         }
 
         public async Task<Peca?> GetByIdAsync(int id)
@@ -34,6 +42,22 @@ namespace mechsystem.Repositories
 
         public async Task<Peca> AddAsync(Peca peca)
         {
+            peca.Sku = peca.Sku.Trim().ToUpperInvariant();
+
+            var existente = await _context.Pecas
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Sku.ToUpper() == peca.Sku);
+
+            if (existente != null)
+            {
+                if (!existente.Ativo)
+                {
+                    throw new InvalidOperationException(
+                        $"Já existe uma peça inativa com este SKU: {existente.Nome}. Reative-a em Estoque > Inativos.");
+                }
+                throw new InvalidOperationException("Já existe uma peça cadastrada com este código SKU.");
+            }
+
             _context.Pecas.Add(peca);
             await _context.SaveChangesAsync();
             return peca;
@@ -41,6 +65,22 @@ namespace mechsystem.Repositories
 
         public async Task UpdateAsync(Peca peca)
         {
+            peca.Sku = peca.Sku.Trim().ToUpperInvariant();
+
+            var existente = await _context.Pecas
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Sku.ToUpper() == peca.Sku && p.Id != peca.Id);
+
+            if (existente != null)
+            {
+                if (!existente.Ativo)
+                {
+                    throw new InvalidOperationException(
+                        $"Já existe uma peça inativa com este SKU: {existente.Nome}. Reative-a em Estoque > Inativos.");
+                }
+                throw new InvalidOperationException("Já existe outra peça cadastrada com este código SKU.");
+            }
+
             var existingEntity = _context.ChangeTracker.Entries<Peca>()
                 .FirstOrDefault(e => e.Entity.Id == peca.Id);
             if (existingEntity != null)
@@ -50,16 +90,6 @@ namespace mechsystem.Repositories
 
             _context.Entry(peca).State = EntityState.Modified;
             await SaveWithConcurrencyHandlingAsync();
-        }
-
-        public async Task DeleteAsync(int id)
-        {
-            var peca = await _context.Pecas.FindAsync(id);
-            if (peca != null)
-            {
-                peca.Ativo = false; // Soft-delete
-                await SaveWithConcurrencyHandlingAsync();
-            }
         }
 
         public async Task<IEnumerable<MovimentacaoEstoque>> GetHistoricoAsync(int pecaId)

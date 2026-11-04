@@ -140,6 +140,35 @@ namespace mechsystem.Data
                 .WithMany()
                 .HasForeignKey(os => os.ServicoId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Soft-delete padronizado (IInativavel) — sem HasQueryFilter global para preservar histórico
+            modelBuilder.Entity<Servico>()
+                .Property(s => s.Ativo)
+                .HasDefaultValue(true);
+
+            modelBuilder.Entity<Cliente>()
+                .HasOne(c => c.InativadoPorUsuario)
+                .WithMany()
+                .HasForeignKey(c => c.InativadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Veiculo>()
+                .HasOne(v => v.InativadoPorUsuario)
+                .WithMany()
+                .HasForeignKey(v => v.InativadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Peca>()
+                .HasOne(p => p.InativadoPorUsuario)
+                .WithMany()
+                .HasForeignKey(p => p.InativadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Servico>()
+                .HasOne(s => s.InativadoPorUsuario)
+                .WithMany()
+                .HasForeignKey(s => s.InativadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 

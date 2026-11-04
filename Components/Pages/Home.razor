@@ -162,7 +162,7 @@
                     <div>
                         <span class="kpi-label">Idade Média da Frota</span>
                         <span class="kpi-value text-dark d-block">@idadeMediaFrota.ToString("0.#") Anos</span>
-                        <span class="stat-subtext mt-1 text-muted">@totalVeiculos Veículos na base</span>
+                        <span class="stat-subtext mt-1 text-muted">@totalVeiculos Veículos ativos na base</span>
                     </div>
                     <div class="stat-icon bg-light text-dark fs-3 opacity-75">
                         <i class="bi bi-car-front"></i>
@@ -782,7 +782,7 @@
         DateTime? filtroFim = isAllTime ? null : filtroInicio?.AddMonths(1);
 
         // 1. Idade Média da Frota (sempre geral)
-        var veiculosComAno = await DbContext.Veiculos.Where(v => v.Ano > 1900 && v.Ano <= hoje.Year).ToListAsync();
+        var veiculosComAno = await DbContext.Veiculos.Ativos().Where(v => v.Ano > 1900 && v.Ano <= hoje.Year).ToListAsync();
         totalVeiculos = veiculosComAno.Count;
         idadeMediaFrota = veiculosComAno.Any() ? (decimal)veiculosComAno.Average(v => hoje.Year - v.Ano) : 0;
 
@@ -902,8 +902,8 @@
 
         // 2. Relatório de Estoque (RelatorioEstoque : Relatorio)
         var totalPecas = DbContext.Pecas.Count();
-        var pecasAtivas = DbContext.Pecas.Count(p => p.Ativo);
-        var margemMedia = DbContext.Pecas.Where(p => p.Ativo && p.PrecoVenda > 0)
+        var pecasAtivas = DbContext.Pecas.Ativos().Count();
+        var margemMedia = DbContext.Pecas.Ativos().Where(p => p.PrecoVenda > 0)
             .AsEnumerable()
             .Select(p => p.MargemLucro)
             .DefaultIfEmpty(0)

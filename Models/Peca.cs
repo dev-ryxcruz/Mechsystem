@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace mechsystem.Models
 {
-    public class Peca
+    public class Peca : IInativavel
     {
         public int Id { get; set; }
 
@@ -48,6 +48,12 @@ namespace mechsystem.Models
         public string? Localizacao { get; set; }
 
         public bool Ativo { get; set; } = true;
+        public DateTime? DataInativacao { get; set; }
+        public int? InativadoPorUsuarioId { get; set; }
+        public Usuario? InativadoPorUsuario { get; set; }
+
+        [MaxLength(500)]
+        public string? MotivoInativacao { get; set; }
 
         [Timestamp]
         public uint Version { get; set; }

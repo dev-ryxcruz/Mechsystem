@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace mechsystem.Models
 {
-    public class Veiculo
+    public class Veiculo : IInativavel
     {
         public int Id { get; set; }
 
@@ -27,6 +27,11 @@ namespace mechsystem.Models
 
         // Soft-delete: veículos inativos não aparecem nas buscas, mas mantêm o histórico
         public bool Ativo { get; set; } = true;
+        public DateTime? DataInativacao { get; set; }
+        public int? InativadoPorUsuarioId { get; set; }
+        public Usuario? InativadoPorUsuario { get; set; }
 
+        [MaxLength(500)]
+        public string? MotivoInativacao { get; set; }
     }
 }

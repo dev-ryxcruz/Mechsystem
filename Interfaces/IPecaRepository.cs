@@ -5,11 +5,11 @@ namespace mechsystem.Interfaces
     public interface IPecaRepository
     {
         Task<IEnumerable<Peca>> GetAllAsync(bool apenasAtivas = true);
+        Task<IEnumerable<Peca>> GetInativasAsync();
         Task<Peca?> GetByIdAsync(int id);
         Task<Peca?> GetBySkuAsync(string sku);
         Task<Peca> AddAsync(Peca peca);
         Task UpdateAsync(Peca peca);
-        Task DeleteAsync(int id);
         Task<IEnumerable<MovimentacaoEstoque>> GetHistoricoAsync(int pecaId);
 
         // Movimentações

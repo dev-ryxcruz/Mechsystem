@@ -9,7 +9,5 @@ namespace mechsystem.Interfaces
         Task<Cliente?> BuscarPorId(int id);
         Task Salvar(Cliente cliente);
         Task Atualizar(Cliente cliente);
-        Task Deletar(int id);
-        Task Reativar(int id);
     }
 }

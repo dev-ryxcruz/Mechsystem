@@ -9,7 +9,5 @@ namespace mechsystem.Interfaces
         Task<Veiculo?> BuscarPorId(int id);
         Task Salvar(Veiculo veiculo);
         Task Atualizar(Veiculo veiculo);
-        Task Deletar(int id);
-        Task Reativar(int id);
     }
 }
