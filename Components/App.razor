@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 
 <head>
     <meta charset="utf-8" />
@@ -57,6 +57,18 @@
             document.querySelector('.sidebar-backdrop')?.classList.remove('show');
         };
         window.isMobileScreen = () => window.innerWidth < 768;
+        window.downloadCsvUtf8Bom = (fileName, csvContent) => {
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        };
     </script>
 </body>
 
