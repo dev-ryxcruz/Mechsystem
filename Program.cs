@@ -31,6 +31,7 @@ builder.Services.AddScoped<ConfiguracaoService>();
 builder.Services.AddScoped<EstoqueService>();
 builder.Services.AddScoped<OrdemServicoService>();
 builder.Services.AddScoped<InativacaoService>();
+builder.Services.AddScoped<RelatorioService>();
 builder.Services.AddScoped<mechsystem.Components.Layout.SidebarState>();
 
 // Authentication via Cookies

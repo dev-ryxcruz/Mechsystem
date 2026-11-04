@@ -2,11 +2,15 @@
 @page "/home"
 @rendermode InteractiveServer
 @using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @using mechsystem.Data
 @using mechsystem.Models
 @using mechsystem.Services
 @inject AppDbContext DbContext
 @inject EstoqueService EstoqueService
+@inject RelatorioService RelatorioService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Painel Estratégico (BI) — Mechsystem</PageTitle>
 
@@ -127,7 +131,7 @@
                     <div>
                         <span class="kpi-label">Capital Imobilizado</span>
                         <span class="kpi-value text-dark d-block">@capitalImobilizado.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</span>
-                        <span class="stat-subtext mt-1 text-muted">Valor parado em peças</span>
+                        <span class="stat-subtext mt-1 text-muted">Valor parado em peças ativas</span>
                     </div>
                     <div class="stat-icon bg-light text-dark fs-3 opacity-75">
                         <i class="bi bi-box-seam"></i>
@@ -219,8 +223,9 @@
                     <h6 class="fw-bold mb-3 text-start text-muted"><i class="bi bi-pie-chart me-2"></i>Distribuição de Receita</h6>
                     
                     @{
-                        var pctMaoObra = faturamentoMes > 0 ? (faturamentoMaoDeObra / faturamentoMes) * 100 : 0;
-                        var pctPecas = faturamentoMes > 0 ? (faturamentoPecas / faturamentoMes) * 100 : 0;
+                        var somaBruta = faturamentoMaoDeObra + faturamentoPecas;
+                        var pctMaoObra = somaBruta > 0 ? (faturamentoMaoDeObra / somaBruta) * 100 : 0;
+                        var pctPecas = somaBruta > 0 ? (faturamentoPecas / somaBruta) * 100 : 0;
                     }
 
                     <div class="d-flex justify-content-center mb-4 mt-2">
@@ -450,7 +455,6 @@
 </div>
 
 <style>
-    /* Clean Exec Dashboard Styles */
     :root {
         --dark-bg: #1e222d;
         --light-primary: #e6f0ff;
@@ -460,7 +464,7 @@
     }
 
     body {
-        background-color: #f8f9fc; /* Super soft background */
+        background-color: #f8f9fc;
     }
 
     .border-top-accent { border-top: 4px solid var(--accent) !important; }
@@ -495,14 +499,13 @@
     .bg-light-success { background-color: var(--light-success); }
     .text-accent { color: var(--accent); }
 
-    /* Standard KPI Card */
     .kpi-card {
         display: flex;
         align-items: center;
         padding: 1.5rem;
         border-radius: 0.75rem;
         background: #fff;
-        border: 1px solid rgba(0,0,0,0.05); /* Soft border instead of all white */
+        border: 1px solid rgba(0,0,0,0.05);
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         height: 100%;
     }
@@ -538,7 +541,7 @@
     }
     .kpi-label {
         font-size: 0.75rem;
-        color: #858796; /* Clean crisp gray */
+        color: #858796;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -551,7 +554,6 @@
         display: block;
     }
 
-    /* Donut Charts */
     .donut-chart {
         width: 160px;
         height: 160px;
@@ -576,17 +578,15 @@
         display: inline-block;
     }
 
-    /* Dash Cards */
     .dash-card {
         border: 1px solid rgba(0,0,0,0.05);
-        border-radius: 0.5rem; /* Slightly tighter radius for formal look */
+        border-radius: 0.5rem;
         transition: box-shadow 0.2s;
     }
     .dash-card:hover {
         box-shadow: 0 8px 15px rgba(0,0,0,0.05) !important;
     }
 
-    /* Funnel Layout */
     .funnel-container {
         position: relative;
     }
@@ -599,7 +599,6 @@
         box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
     }
 
-    /* Animations */
     .pulse-alert {
         animation: pulse-red 2s infinite;
     }
@@ -610,10 +609,7 @@
         100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
     }
 
-    /* ── Responsividade Mobile ── */
     @@media (max-width: 768px) {
-
-        /* Dashboard header: empilhar e centralizar botão */
         .dash-header {
             flex-direction: column;
             align-items: stretch;
@@ -625,31 +621,21 @@
             width: 100%;
             justify-content: center;
         }
-
-        /* Pulse alerts: empilhar */
         .pulse-alert {
             width: 100%;
             justify-content: center;
         }
-
-        /* KPI values: reduzir fonte */
         .kpi-value {
             font-size: 1.25rem;
         }
-
-        /* KPI card: padding menor */
         .kpi-card {
             padding: 1rem;
         }
-
-        /* Stat icon: menor */
         .stat-icon {
             width: 40px;
             height: 40px;
             font-size: 1.2rem !important;
         }
-
-        /* Donut charts: reduzir tamanho */
         .donut-chart {
             width: 120px;
             height: 120px;
@@ -658,8 +644,6 @@
             width: 88px;
             height: 88px;
         }
-
-        /* Funnel: labels menores, sem nowrap */
         .funnel-label {
             font-size: 0.62rem !important;
             white-space: normal !important;
@@ -674,7 +658,6 @@
         .kpi-value {
             font-size: 1.1rem;
         }
-
         .donut-chart {
             width: 100px;
             height: 100px;
@@ -683,14 +666,11 @@
             width: 72px;
             height: 72px;
         }
-
-        /* Donut center text: reduzir */
         .donut-hole .fs-4 {
             font-size: 0.95rem !important;
         }
     }
 
-    /* Period Filter Bar */
     .period-filter .btn-group .btn {
         border-color: #dee2e6;
         font-size: 0.82rem;
@@ -702,7 +682,6 @@
         opacity: 0.5;
     }
 
-    /* Report Cards (POO: Polimorfismo) */
     .report-card {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
         border-radius: 0.5rem;
@@ -714,7 +693,6 @@
     .report-icon {
         border-radius: 0.5rem;
     }
-
 </style>
 
 @code {
@@ -781,61 +759,71 @@
         DateTime? filtroInicio = isAllTime ? null : new DateTime(selectedYear, selectedMonth, 1, 0, 0, 0, DateTimeKind.Utc);
         DateTime? filtroFim = isAllTime ? null : filtroInicio?.AddMonths(1);
 
-        // 1. Idade Média da Frota (sempre geral)
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var usuarioLogado = user.FindFirst(ClaimTypes.GivenName)?.Value ?? user.Identity?.Name ?? "Sistema";
+        var isAdmin = user.IsInRole("Administrador");
+
+        // 1. Idade Média da Frota (apenas veículos ativos)
         var veiculosComAno = await DbContext.Veiculos.Ativos().Where(v => v.Ano > 1900 && v.Ano <= hoje.Year).ToListAsync();
         totalVeiculos = veiculosComAno.Count;
         idadeMediaFrota = veiculosComAno.Any() ? (decimal)veiculosComAno.Average(v => hoje.Year - v.Ano) : 0;
 
-        // 2. Faturamento e Ticket Médio (OS Concluídas no período)
-        var queryConc = DbContext.OrdensServico
-            .Include(o => o.PecasUtilizadas)
-            .Include(o => o.ServicosAExecutarList)
-            .Where(o => o.Status == OrdemServicoStatus.Concluida);
-        if (filtroInicio != null) queryConc = queryConc.Where(o => o.DataConclusao >= filtroInicio);
-        if (filtroFim != null) queryConc = queryConc.Where(o => o.DataConclusao < filtroFim);
-        var osConcluidas = await queryConc.ToListAsync();
-            
-        totalOSConcluidasMes = osConcluidas.Count;
-        faturamentoMaoDeObra = osConcluidas.Sum(o => o.ValorMaoDeObraEfetivo);
-        faturamentoPecas = osConcluidas.Sum(o => o.ValorPecasEfetivo);
-        faturamentoMes = osConcluidas.Sum(o => o.ValorTotal);
-        ticketMedio = totalOSConcluidasMes > 0 ? faturamentoMes / totalOSConcluidasMes : 0;
+        // 2. RelatorioService único (O.S. concluídas por DataConclusao, funil por DataEmissao e estoque)
+        var (pacoteRelatorios, concluidas, funil, estoque) = await RelatorioService.GerarPacoteRelatoriosAsync(
+            filtroInicio,
+            filtroFim,
+            usuarioLogado,
+            incluirFinanceiro: isAdmin);
 
-        // 3. Previsão de Caixa (Em Andamento — sempre real-time)
+        totalOSConcluidasMes = concluidas.TotalConcluidas;
+        faturamentoMaoDeObra = concluidas.ReceitaMaoDeObra;
+        faturamentoPecas = concluidas.ReceitaPecas;
+        faturamentoMes = concluidas.FaturamentoTotal;
+        ticketMedio = concluidas.TicketMedio;
+        margemLucroReal = concluidas.LucroRealPecas;
+
+        pecasEmRuptura = estoque.PecasEmRuptura;
+        capitalImobilizado = estoque.CapitalImobilizado;
+
+        funilData[0] = funil.TotalOrcamentos;
+        funilData[1] = funil.TotalAguardandoPecas;
+        funilData[2] = funil.TotalEmAndamento;
+        funilData[3] = funil.TotalConcluidasEmitidas;
+        funilData[4] = funil.TotalCanceladas;
+        maxFunil = funilData.Max();
+        if (maxFunil == 0) maxFunil = 1;
+
+        totalAprovadasMes = funil.TotalAprovadas;
+        totalCanceladasMes = funil.TotalCanceladas;
+        taxaConversao = funil.TaxaConversao;
+
+        relatoriosGerados = pacoteRelatorios;
+
+        // 3. Previsão de Caixa (Em Andamento — sempre real-time, preservando fallback)
         var osEmAndamento = await DbContext.OrdensServico
+            .AsNoTracking()
             .Where(o => o.Status == OrdemServicoStatus.EmAndamento)
+            .Select(o => new
+            {
+                MaoDeObra = o.ServicosAExecutarList.Any()
+                    ? o.ServicosAExecutarList.Sum(s => (decimal?)(s.Quantidade * s.ValorCobrado)) ?? 0m
+                    : o.ValorMaoDeObra,
+                Pecas = o.PecasUtilizadas.Any()
+                    ? o.PecasUtilizadas.Sum(p => (decimal?)(p.Quantidade * p.ValorCobrado)) ?? 0m
+                    : o.ValorPecas,
+                Desconto = o.ValorDesconto
+            })
             .ToListAsync();
         totalEmAndamento = osEmAndamento.Count;
-        dinheiroNaMesa = osEmAndamento.Sum(o => o.ValorTotal);
+        dinheiroNaMesa = osEmAndamento.Sum(o => (o.MaoDeObra + o.Pecas) - o.Desconto);
 
         // 4. Atrasos Operacionais (sempre real-time)
         totalAtrasadas = await DbContext.OrdensServico
             .CountAsync(o => (o.Status == OrdemServicoStatus.EmAndamento || o.Status == OrdemServicoStatus.AguardandoPecas) 
                               && o.DataPrevisaoEntrega < hoje);
 
-        // 5. Funil de OS (período selecionado)
-        var queryFunil = DbContext.OrdensServico.AsQueryable();
-        if (filtroInicio != null) queryFunil = queryFunil.Where(o => o.DataEmissao >= filtroInicio);
-        if (filtroFim != null) queryFunil = queryFunil.Where(o => o.DataEmissao < filtroFim);
-        var osPeriodo = await queryFunil
-            .Select(o => new { o.Status, o.ServicoAExecutar, o.Veiculo })
-            .ToListAsync();
-
-        funilData[0] = osPeriodo.Count(o => o.Status == OrdemServicoStatus.Orcamento);
-        funilData[1] = osPeriodo.Count(o => o.Status == OrdemServicoStatus.AguardandoPecas);
-        funilData[2] = osPeriodo.Count(o => o.Status == OrdemServicoStatus.EmAndamento);
-        funilData[3] = osPeriodo.Count(o => o.Status == OrdemServicoStatus.Concluida);
-        funilData[4] = osPeriodo.Count(o => o.Status == OrdemServicoStatus.Cancelada);
-        maxFunil = funilData.Max();
-        if(maxFunil == 0) maxFunil = 1;
-
-        // 6. Taxa de Conversão
-        totalAprovadasMes = funilData[1] + funilData[2] + funilData[3];
-        totalCanceladasMes = funilData[4];
-        var totalDecididas = totalAprovadasMes + totalCanceladasMes;
-        taxaConversao = totalDecididas > 0 ? (totalAprovadasMes * 100.0) / totalDecididas : 0;
-
-        // 7. Top Marcas (período selecionado)
+        // 5. Top Marcas (período selecionado)
         var queryMarcas = DbContext.OrdensServico
             .Include(o => o.Veiculo)
             .Where(o => o.Veiculo != null && !string.IsNullOrEmpty(o.Veiculo.Marca));
@@ -850,90 +838,12 @@
             .Take(5)
             .ToList();
 
-        // 8. Top 5 Serviços Realizados
-        topServicos = osPeriodo
-            .Where(o => !string.IsNullOrEmpty(o.ServicoAExecutar))
-            .GroupBy(o => o.ServicoAExecutar!.Trim().ToUpper())
-            .Select(g => new TopRankingItem { Nome = System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(g.Key.ToLower()), Quantidade = g.Count() })
-            .OrderByDescending(x => x.Quantidade)
+        // 6. Top 5 Serviços Realizados (via RelatorioService)
+        var rankingServicos = await RelatorioService.ObterRankingServicosPeriodoAsync(filtroInicio, filtroFim);
+        topServicos = rankingServicos
             .Take(5)
+            .Select(r => new TopRankingItem { Nome = r.NomeServico, Quantidade = r.QuantidadeExecucoes })
             .ToList();
-
-        // 9. Estoque — Alertas de Ruptura (sempre real-time)
-        pecasEmRuptura = await EstoqueService.GetAlertasRupturaAsync();
-
-        // 10. Capital Imobilizado (sempre real-time)
-        capitalImobilizado = await EstoqueService.GetCapitalImobilizadoAsync();
-
-        // 11. Margem de Lucro Real (período selecionado)
-        var margemInicio = filtroInicio ?? DateTime.MinValue;
-        var margemFim = filtroFim ?? DateTime.MaxValue;
-        var (lucro, _) = await EstoqueService.GetMargemLucroRealAsync(margemInicio, margemFim);
-        margemLucroReal = lucro;
-
-        // 12. Gerar Relatórios via Polimorfismo (POO: abstract + override)
-        GerarRelatorios();
-    }
-
-    /// <summary>
-    /// Demonstração de POLIMORFISMO: instancia classes filhas (RelatorioOS, RelatorioEstoque, RelatorioFinanceiro)
-    /// e as armazena em uma lista do tipo base (List<Relatorio>).
-    /// Ao renderizar no HTML, chamamos GerarResumo(), GetIcone() e GetCorTema() —
-    /// métodos abstratos que cada classe filha sobrescreve (override).
-    /// </summary>
-    private void GerarRelatorios()
-    {
-        relatoriosGerados = new List<Relatorio>();
-
-        // 1. Relatório de Ordens de Serviço (RelatorioOS : Relatorio)
-        var relOS = new RelatorioOS
-        {
-            Titulo = "Ordens de Serviço",
-            TotalOS = funilData.Sum(),
-            TotalConcluidas = funilData[3],
-            TotalCanceladas = funilData[4],
-            TotalEmAndamento = funilData[2],
-            TotalOrcamentos = funilData[0],
-            FaturamentoTotal = faturamentoMes,
-            TicketMedio = ticketMedio,
-            TaxaConversao = taxaConversao
-        };
-        relatoriosGerados.Add(relOS); // Adicionado como Relatorio (tipo base)
-
-        // 2. Relatório de Estoque (RelatorioEstoque : Relatorio)
-        var totalPecas = DbContext.Pecas.Count();
-        var pecasAtivas = DbContext.Pecas.Ativos().Count();
-        var margemMedia = DbContext.Pecas.Ativos().Where(p => p.PrecoVenda > 0)
-            .AsEnumerable()
-            .Select(p => p.MargemLucro)
-            .DefaultIfEmpty(0)
-            .Average();
-        var totalMov = DbContext.MovimentacoesEstoque.Count();
-
-        var relEstoque = new RelatorioEstoque
-        {
-            Titulo = "Controle de Estoque",
-            TotalPecasCadastradas = totalPecas,
-            PecasAtivas = pecasAtivas,
-            PecasAbaixoDoMinimo = pecasEmRuptura?.Count ?? 0,
-            CapitalImobilizado = capitalImobilizado,
-            MargemLucroMedia = (decimal)margemMedia,
-            TotalMovimentacoes = totalMov
-        };
-        relatoriosGerados.Add(relEstoque); // Adicionado como Relatorio (tipo base)
-
-        // 3. Relatório Financeiro (RelatorioFinanceiro : Relatorio)
-        var relFinanceiro = new RelatorioFinanceiro
-        {
-            Titulo = "Panorama Financeiro",
-            ReceitaMaoDeObra = faturamentoMaoDeObra,
-            ReceitaPecas = faturamentoPecas,
-            ReceitaTotal = faturamentoMes,
-            LucroRealPecas = margemLucroReal,
-            CapitalImobilizado = capitalImobilizado,
-            TotalOSPagas = totalOSConcluidasMes
-        };
-        relatoriosGerados.Add(relFinanceiro); // Adicionado como Relatorio (tipo base)
     }
 
     // --- Navegação de Período ---
