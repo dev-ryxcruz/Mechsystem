@@ -339,4 +339,69 @@ public class InativacaoTests
             pecaRepo.AddAsync(new Peca { Sku = "oleo-5w30", Nome = "Outro Óleo", PrecoCusto = 30m, PrecoVenda = 60m, EstoqueAtual = 5, EstoqueMinimo = 1 }));
         Assert.Equal("Já existe uma peça inativa com este SKU: Óleo Sintético 5W30. Reative-a em Estoque > Inativos.", exSku.Message);
     }
+
+    [Fact]
+    public async Task PaginacaoEBuscaNoBanco_DeveFiltrarEPaginarCorretamenteNosCincoCruds()
+    {
+        using var db = CreateInMemoryContext();
+        var clienteRepo = new ClienteRepository(db);
+        var veiculoRepo = new VeiculoRepository(db);
+        var pecaRepo = new PecaRepository(db);
+        var servicoRepo = new ServicoRepository(db);
+        var osService = new OrdemServicoService(db, new EstoqueService(db, pecaRepo));
+
+        for (int i = 1; i <= 15; i++)
+        {
+            var cliente = new Cliente { Nome = $"Cliente {i:D2}", Cpf = $"{i:D11}", Telefone = $"1199999{i:D4}", Ativo = i <= 12 };
+            db.Clientes.Add(cliente);
+            await db.SaveChangesAsync();
+
+            var veiculo = new Veiculo { ClienteId = cliente.Id, Placa = $"AAA{i:D1}A{i:D2}", Marca = "MarcaX", Modelo = $"Modelo {i:D2}", Ano = 2020, Ativo = i <= 12 };
+            db.Veiculos.Add(veiculo);
+
+            db.Pecas.Add(new Peca { Sku = $"SKU-{i:D2}", Nome = $"Peça {i:D2}", PrecoCusto = 10m, PrecoVenda = 20m, EstoqueAtual = 5, EstoqueMinimo = 1, Ativo = i <= 12 });
+            db.Servicos.Add(new Servico { Nome = $"Serviço {i:D2}", ValorPadrao = 50m, Ativo = i <= 12 });
+            await db.SaveChangesAsync();
+
+            db.OrdensServico.Add(new OrdemServico
+            {
+                VeiculoId = veiculo.Id,
+                DescricaoProblemaRelatado = $"Problema {i:D2}",
+                DataEmissao = DateTime.UtcNow,
+                DataPrevisaoEntrega = DateTime.UtcNow.AddDays(1),
+                Status = OrdemServicoStatus.Orcamento
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // Clientes: 12 ativos, página 1 (10 itens) e página 2 (2 itens)
+        var (clientesP1, totalClientesAtivos) = await clienteRepo.ListarPaginadoAsync(inativos: false, termoBusca: null, pagina: 1, tamanhoPagina: 10);
+        var (clientesP2, _) = await clienteRepo.ListarPaginadoAsync(inativos: false, termoBusca: null, pagina: 2, tamanhoPagina: 10);
+        Assert.Equal(12, totalClientesAtivos);
+        Assert.Equal(10, clientesP1.Count);
+        Assert.Equal(2, clientesP2.Count);
+
+        // Busca específica no banco
+        var (clientesBusca, totalBuscaCliente) = await clienteRepo.ListarPaginadoAsync(inativos: false, termoBusca: "Cliente 05", pagina: 1, tamanhoPagina: 10);
+        Assert.Equal(1, totalBuscaCliente);
+        Assert.Single(clientesBusca);
+
+        var (veiculosP1, totalVeiculosInativos) = await veiculoRepo.ListarPaginadoAsync(inativos: true, termoBusca: null, pagina: 1, tamanhoPagina: 10);
+        Assert.Equal(3, totalVeiculosInativos);
+        Assert.Equal(3, veiculosP1.Count);
+
+        var (pecasBusca, totalPecasBusca) = await pecaRepo.GetPaginadoAsync(inativas: false, termoBusca: "SKU-07", pagina: 1, tamanhoPagina: 10);
+        Assert.Equal(1, totalPecasBusca);
+        Assert.Equal("SKU-07", pecasBusca[0].Sku);
+
+        var (servicosP1, totalServicosAtivos) = await servicoRepo.GetPaginadoAsync(inativos: false, termoBusca: null, pagina: 1, tamanhoPagina: 10);
+        Assert.Equal(12, totalServicosAtivos);
+        Assert.Equal(10, servicosP1.Count);
+
+        var (osP1, totalOs) = await osService.ListarPaginadoAsync(termoBusca: null, pagina: 1, tamanhoPagina: 10);
+        var (osP2, _) = await osService.ListarPaginadoAsync(termoBusca: null, pagina: 2, tamanhoPagina: 10);
+        Assert.Equal(15, totalOs);
+        Assert.Equal(10, osP1.Count);
+        Assert.Equal(5, osP2.Count);
+    }
 }

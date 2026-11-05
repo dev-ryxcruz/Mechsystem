@@ -43,6 +43,42 @@ public class OrdemServicoService
         _estoqueService = estoqueService;
     }
 
+    public async Task<(List<OrdemServico> Itens, int TotalCount)> ListarPaginadoAsync(string? termoBusca, int pagina, int tamanhoPagina)
+    {
+        if (pagina < 1) pagina = 1;
+        if (tamanhoPagina <= 0) tamanhoPagina = 10;
+
+        var query = _db.OrdensServico
+            .Include(o => o.Veiculo)
+                .ThenInclude(v => v!.Cliente)
+            .Include(o => o.Vistoria)
+            .Include(o => o.PecasUtilizadas)
+            .Include(o => o.ServicosAExecutarList)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(termoBusca))
+        {
+            var termo = termoBusca.Trim().ToLower();
+            var placaNorm = termoBusca.Replace("-", "").Trim().ToUpperInvariant();
+            var temId = int.TryParse(termoBusca.Trim().TrimStart('#', '0'), out var idBusca);
+
+            query = query.Where(o =>
+                (temId && o.Id == idBusca) ||
+                (!string.IsNullOrEmpty(placaNorm) && o.Veiculo != null && o.Veiculo.Placa.Contains(placaNorm)) ||
+                (o.Veiculo != null && o.Veiculo.Modelo != null && o.Veiculo.Modelo.ToLower().Contains(termo)) ||
+                (o.Veiculo != null && o.Veiculo.Cliente != null && o.Veiculo.Cliente.Nome.ToLower().Contains(termo)));
+        }
+
+        var totalCount = await query.CountAsync();
+        var itens = await query
+            .OrderByDescending(o => o.Id)
+            .Skip((pagina - 1) * tamanhoPagina)
+            .Take(tamanhoPagina)
+            .ToListAsync();
+
+        return (itens, totalCount);
+    }
+
     public static bool PodeTransicionar(OrdemServicoStatus origem, OrdemServicoStatus destino)
     {
         return TransicoesPermitidas.TryGetValue(origem, out var destinos) && destinos.Contains(destino);

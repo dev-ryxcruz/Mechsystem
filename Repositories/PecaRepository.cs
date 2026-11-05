@@ -30,6 +30,34 @@ namespace mechsystem.Repositories
                 .ToListAsync();
         }
 
+        public async Task<(List<Peca> Itens, int TotalCount)> GetPaginadoAsync(bool inativas, string? termoBusca, int pagina, int tamanhoPagina)
+        {
+            if (pagina < 1) pagina = 1;
+            if (tamanhoPagina <= 0) tamanhoPagina = 10;
+
+            var query = inativas
+                ? _context.Pecas.Inativos()
+                : _context.Pecas.Ativos();
+
+            if (!string.IsNullOrWhiteSpace(termoBusca))
+            {
+                var termo = termoBusca.Trim().ToLower();
+                query = query.Where(p =>
+                    p.Sku.ToLower().Contains(termo) ||
+                    p.Nome.ToLower().Contains(termo) ||
+                    (p.Marca != null && p.Marca.ToLower().Contains(termo)));
+            }
+
+            var totalCount = await query.CountAsync();
+            var itens = await query
+                .OrderBy(p => p.Nome)
+                .Skip((pagina - 1) * tamanhoPagina)
+                .Take(tamanhoPagina)
+                .ToListAsync();
+
+            return (itens, totalCount);
+        }
+
         public async Task<Peca?> GetByIdAsync(int id)
         {
             return await _context.Pecas.FindAsync(id);

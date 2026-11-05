@@ -24,6 +24,37 @@ namespace mechsystem.Repositories
             return await _context.Clientes.Inativos().OrderBy(c => c.Nome).ToListAsync();
         }
 
+        public async Task<(List<Cliente> Itens, int TotalCount)> ListarPaginadoAsync(bool inativos, string? termoBusca, int pagina, int tamanhoPagina)
+        {
+            if (pagina < 1) pagina = 1;
+            if (tamanhoPagina <= 0) tamanhoPagina = 10;
+
+            var query = inativos
+                ? _context.Clientes.Inativos()
+                : _context.Clientes.Ativos();
+
+            if (!string.IsNullOrWhiteSpace(termoBusca))
+            {
+                var termo = termoBusca.Trim().ToLower();
+                var digitos = new string(termoBusca.Where(char.IsDigit).ToArray());
+
+                query = query.Where(c =>
+                    c.Nome.ToLower().Contains(termo) ||
+                    (!string.IsNullOrEmpty(digitos) && c.Cpf.Contains(digitos)) ||
+                    (!string.IsNullOrEmpty(digitos) && c.Telefone != null && c.Telefone.Contains(digitos)) ||
+                    (c.Email != null && c.Email.ToLower().Contains(termo)));
+            }
+
+            var totalCount = await query.CountAsync();
+            var itens = await query
+                .OrderBy(c => c.Nome)
+                .Skip((pagina - 1) * tamanhoPagina)
+                .Take(tamanhoPagina)
+                .ToListAsync();
+
+            return (itens, totalCount);
+        }
+
         public async Task<Cliente?> BuscarPorId(int id)
         {
             return await _context.Clientes.FindAsync(id);

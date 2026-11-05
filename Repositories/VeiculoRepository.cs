@@ -32,6 +32,37 @@ namespace mechsystem.Repositories
                 .ToListAsync();
         }
 
+        public async Task<(List<Veiculo> Itens, int TotalCount)> ListarPaginadoAsync(bool inativos, string? termoBusca, int pagina, int tamanhoPagina)
+        {
+            if (pagina < 1) pagina = 1;
+            if (tamanhoPagina <= 0) tamanhoPagina = 10;
+
+            var query = (inativos ? _context.Veiculos.Inativos() : _context.Veiculos.Ativos())
+                .Include(v => v.Cliente)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(termoBusca))
+            {
+                var termo = termoBusca.Trim().ToLower();
+                var placaNorm = termoBusca.Replace("-", "").Trim().ToUpperInvariant();
+
+                query = query.Where(v =>
+                    (!string.IsNullOrEmpty(placaNorm) && v.Placa.Contains(placaNorm)) ||
+                    (v.Marca != null && v.Marca.ToLower().Contains(termo)) ||
+                    (v.Modelo != null && v.Modelo.ToLower().Contains(termo)) ||
+                    (v.Cliente != null && v.Cliente.Nome.ToLower().Contains(termo)));
+            }
+
+            var totalCount = await query.CountAsync();
+            var itens = await query
+                .OrderBy(v => v.Placa)
+                .Skip((pagina - 1) * tamanhoPagina)
+                .Take(tamanhoPagina)
+                .ToListAsync();
+
+            return (itens, totalCount);
+        }
+
         public async Task<Veiculo?> BuscarPorId(int id)
         {
             return await _context.Veiculos.FindAsync(id);

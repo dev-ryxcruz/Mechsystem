@@ -9,14 +9,14 @@
 ## 1. Definição do contexto do sistema
 
 ### 1.1 Nome / tema
-**MechSystem** — sistema web para gestão de oficinas mecânicas (clientes, veículos, ordens de serviço, vistoria de entrada e controle de estoque de peças).
+**MechSystem** — sistema web para gestão de oficinas mecânicas (clientes, veículos, ordens de serviço, vistoria de entrada, catálogo de serviços, controle de estoque de peças e relatórios gerenciais).
 
 ### 1.2 Problema / necessidade
 Oficinas pequenas e médias controlam orçamentos, ordens de serviço (OS) e estoque em papel ou planilhas. Isso gera:
 - perda de histórico do cliente e do veículo;
 - orçamentos sem registro de autorização (risco jurídico — CDC);
 - divergência entre estoque físico e real de peças;
-- falta de rastreio de quem alterou preços ou deu desconto;
+- falta de rastreio de quem alterou preços, deu desconto, inativou cadastros ou cancelou uma OS;
 - ausência de registro do estado do veículo na entrada (disputas por avarias).
 
 O sistema centraliza esses dados e garante que as regras da oficina sejam respeitadas.
@@ -24,38 +24,38 @@ O sistema centraliza esses dados e garante que as regras da oficina sejam respei
 ### 1.3 Principais usuários / envolvidos
 | Envolvido | Papel |
 |---|---|
-| **Administrador** | Configura a oficina, gerencia usuários, autoriza descontos |
-| **Atendimento** | Cadastra clientes/veículos, abre orçamentos e OS, registra contatos |
-| **Mecânico** | Executa serviços, registra tempo gasto, consome peças |
+| **Administrador** | Configura a oficina, gerencia usuários, autoriza descontos, inativa/reativa cadastros e acessa relatórios financeiros |
+| **Atendimento** | Cadastra clientes/veículos/peças/serviços, abre orçamentos e OS, registra contatos e consulta relatórios operacionais |
+| **Mecânico** | Executa serviços, registra tempo gasto, realiza vistoria e consome peças pelo preço base |
 | **Cliente** | Contrata serviços, autoriza orçamentos, acompanha a OS por token |
 
 ### 1.4 Principais funcionalidades relacionadas aos dados
-- Cadastro de clientes e seus veículos.
-- Catálogo de serviços (valor padrão e tempo estimado) e de peças (SKU, custo, venda, estoque).
-- Abertura de OS com peças e serviços, cálculo de total e controle de status.
+- Cadastro de clientes e seus veículos com inativação lógica auditável (`IInativavel`).
+- Catálogo de serviços (valor padrão e tempo estimado) e de peças (SKU, custo, venda, estoque) com inativação lógica auditável.
+- Abertura e edição de OS com peças, serviços, desconto (exclusivo para Administrador), cálculo de total e controle de status.
 - Vistoria de entrada (combustível, KM, itens do veículo, avarias).
-- Registro de contatos com o cliente sobre a OS.
-- Movimentação de estoque (entrada, saída, ajuste) com responsável.
+- Registro de contatos com o cliente sobre a OS (incluindo log automático quando a previsão de entrega é alterada após aprovação).
+- Movimentação de estoque (entrada, saída, ajuste, estorno) com responsável.
 - Controle de acesso por perfil e parâmetros globais da oficina.
 
 ### 1.5 Regras de negócio consideradas na modelagem
 | # | Regra |
 |---|---|
 | RN01 | Um cliente pode ter vários veículos, mas cada veículo pertence a apenas **um** cliente. |
-| RN02 | O CPF do cliente é obrigatório e **único**; a placa do veículo é obrigatória e **única**. |
+| RN02 | O CPF do cliente é obrigatório e **único**; a placa do veículo é obrigatória e **única**. Caso o identificador pertença a um registro inativo, o sistema informa e orienta a reativação. |
 | RN03 | Um veículo pode ter várias ordens de serviço ao longo do tempo; cada OS refere-se a **um único** veículo. |
 | RN04 | Toda OS exige problema relatado e **data de previsão de entrega** (CDC), que não pode ser anterior à emissão. |
 | RN05 | Uma OS tem no máximo **uma** vistoria de entrada; cada vistoria pertence a uma única OS. (A obrigatoriedade é parametrizável em `Configuracao`.) |
 | RN06 | Uma OS pode conter várias peças e vários serviços; a mesma peça/serviço pode aparecer em várias OS, com **quantidade** e **valores próprios** por OS (relacionamentos N:M com atributos → entidades associativas). |
-| RN07 | Ao incluir peça/serviço na OS, os valores de catálogo (preço base, custo, tempo) são **copiados** (snapshot); alterar o catálogo depois não altera OS antigas. |
-| RN08 | Valor cobrado abaixo do preço base é desconto e exige perfil **Administrador**. |
+| RN07 | Ao incluir peça/serviço na OS, os valores de catálogo (preço base, custo, tempo) são **copiados** (snapshot); alterar ou inativar o catálogo depois não altera OS antigas. |
+| RN08 | Valor cobrado abaixo do preço base ou `ValorDesconto > 0` na OS configura desconto e exige perfil **Administrador**. |
 | RN09 | Quantidades em OS e movimentações devem ser **≥ 1**; estoque atual e mínimo **não podem ser negativos**. |
-| RN10 | O SKU da peça é único. Peça com movimentação ou usada em OS **não pode ser excluída** (restrição). |
+| RN10 | O SKU da peça é único. Clientes, Veículos, Peças e Serviços não sofrem exclusão física (`DELETE`): utilizam *Soft Delete* padronizado (`IInativavel`) com bloqueio se houver OS em aberto (e se `EstoqueAtual > 0` para Peça). |
 | RN11 | Toda movimentação de estoque pertence a **uma** peça e é feita por **um** usuário (rastreabilidade). |
 | RN12 | O nome de usuário é único; cada usuário tem exatamente **um** perfil (Administrador, Atendimento, Mecânico). |
 | RN13 | Cada OS possui status único controlado por máquina de estados: `Orcamento`, `EmAndamento`, `Pausada`, `AguardandoPecas`, `Concluida` ou `Cancelada`. |
 | RN14 | Uma OS pode ter vários registros de contato com o cliente (ligação, WhatsApp, e-mail, presencial, outro). |
-| RN15 | Excluir uma OS remove seus itens (peças e serviços) em cascata. |
+| RN15 | Uma OS **nunca é excluída fisicamente**; quando interrompida, transita para `Cancelada` exigindo motivo (`MotivoCancelamento`), data (`DataCancelamento`) e usuário responsável (`CanceladaPorUsuarioId`). |
 | RN16 | Existe **um único** registro de configuração da oficina (nome, CNPJ, validade do orçamento, garantia padrão etc.). |
 | RN17 | Valor total da OS = mão de obra + peças − desconto (**atributo derivado**, não armazenado). |
 
@@ -88,6 +88,11 @@ erDiagram
     SERVICO ||--o{ ITEM_SERVICO_OS : "é executado em"
     PECA ||--o{ MOVIMENTACAO_ESTOQUE : "sofre"
     USUARIO ||--o{ MOVIMENTACAO_ESTOQUE : "realiza"
+    USUARIO ||--o{ CLIENTE : "inativa"
+    USUARIO ||--o{ VEICULO : "inativa"
+    USUARIO ||--o{ PECA : "inativa"
+    USUARIO ||--o{ SERVICO : "inativa"
+    USUARIO ||--o{ ORDEM_SERVICO : "cancela"
 
     CLIENTE {
         int id PK "identificador"
@@ -97,6 +102,9 @@ erDiagram
         string telefone
         string endereco
         boolean ativo
+        datetime data_inativacao
+        int inativado_por_usuario_id FK
+        string motivo_inativacao
     }
     VEICULO {
         int id PK "identificador"
@@ -106,12 +114,17 @@ erDiagram
         string cor
         int ano
         int quilometragem
+        boolean ativo
+        datetime data_inativacao
+        int inativado_por_usuario_id FK
+        string motivo_inativacao
     }
     ORDEM_SERVICO {
         int id PK "identificador"
         datetime data_emissao
         datetime data_previsao_inicio
         datetime data_previsao_entrega
+        datetime data_conclusao
         string problema_relatado
         string status
         decimal valor_mao_de_obra
@@ -121,6 +134,9 @@ erDiagram
         string autorizado_por
         string meio_autorizacao
         datetime data_autorizacao
+        string motivo_cancelamento
+        datetime data_cancelamento
+        int cancelada_por_usuario_id FK
         string token_acompanhamento
         decimal valor_total "derivado"
     }
@@ -156,6 +172,9 @@ erDiagram
         int estoque_minimo
         string localizacao
         boolean ativo
+        datetime data_inativacao
+        int inativado_por_usuario_id FK
+        string motivo_inativacao
     }
     SERVICO {
         int id PK "identificador"
@@ -163,6 +182,10 @@ erDiagram
         string descricao
         decimal valor_padrao
         int tempo_estimado_minutos
+        boolean ativo
+        datetime data_inativacao
+        int inativado_por_usuario_id FK
+        string motivo_inativacao
     }
     ITEM_PECA_OS {
         int quantidade
@@ -221,6 +244,8 @@ erDiagram
 | ORDEM_SERVICO **executa** SERVICO (assoc. ITEM_SERVICO_OS) | ORDEM_SERVICO (0,N) | SERVICO (0,N) | RN06 |
 | PECA **sofre** MOVIMENTACAO_ESTOQUE | PECA (0,N) | MOVIMENTACAO (1,1) | RN11 |
 | USUARIO **realiza** MOVIMENTACAO_ESTOQUE | USUARIO (0,N) | MOVIMENTACAO (1,1) | RN11 |
+| USUARIO **inativa** CLIENTE / VEICULO / PECA / SERVICO | USUARIO (0,N) | Entidade (0,1) | RN10 |
+| USUARIO **cancela** ORDEM_SERVICO | USUARIO (0,N) | ORDEM_SERVICO (0,1) | RN15 |
 | CONFIGURACAO | sem relacionamentos (parâmetros globais, registro único) | | RN16 |
 
 ---
@@ -242,6 +267,11 @@ erDiagram
     SERVICO ||--o{ ORDEM_SERVICO_SERVICO : "servico_id"
     PECA ||--o{ MOVIMENTACAO_ESTOQUE : "peca_id"
     USUARIO ||--o{ MOVIMENTACAO_ESTOQUE : "usuario_id"
+    USUARIO ||--o{ CLIENTE : "inativado_por_usuario_id"
+    USUARIO ||--o{ VEICULO : "inativado_por_usuario_id"
+    USUARIO ||--o{ PECA : "inativado_por_usuario_id"
+    USUARIO ||--o{ SERVICO : "inativado_por_usuario_id"
+    USUARIO ||--o{ ORDEM_SERVICO : "cancelada_por_usuario_id"
 
     CLIENTE {
         INT id PK
@@ -251,6 +281,9 @@ erDiagram
         VARCHAR20 telefone
         VARCHAR300 endereco
         BOOLEAN ativo "NOT NULL DEFAULT true"
+        TIMESTAMPTZ data_inativacao
+        INT inativado_por_usuario_id FK
+        VARCHAR300 motivo_inativacao
     }
     VEICULO {
         INT id PK
@@ -261,23 +294,31 @@ erDiagram
         VARCHAR30 cor
         INT ano "CHECK 1950..2100"
         INT quilometragem "CHECK >= 0"
+        BOOLEAN ativo "NOT NULL DEFAULT true"
+        TIMESTAMPTZ data_inativacao
+        INT inativado_por_usuario_id FK
+        VARCHAR300 motivo_inativacao
     }
     ORDEM_SERVICO {
         INT id PK
         INT veiculo_id FK "NOT NULL"
-        TIMESTAMP data_emissao "NOT NULL"
-        TIMESTAMP data_previsao_inicio
-        TIMESTAMP data_previsao_entrega "NOT NULL CHECK >= data_emissao"
+        TIMESTAMPTZ data_emissao "NOT NULL"
+        TIMESTAMPTZ data_previsao_inicio
+        TIMESTAMPTZ data_previsao_entrega "NOT NULL CHECK >= data_emissao"
+        TIMESTAMPTZ data_conclusao
         TEXT descricao_problema_relatado "NOT NULL"
         INT status "NOT NULL DEFAULT 0"
         DECIMAL valor_mao_de_obra "NOT NULL CHECK >= 0"
         DECIMAL valor_pecas "NOT NULL CHECK >= 0"
         DECIMAL valor_desconto "NOT NULL CHECK >= 0"
         INT tempo_gasto_minutos "NOT NULL DEFAULT 0"
-        TIMESTAMP inicio_ultima_execucao
+        TIMESTAMPTZ inicio_ultima_execucao
         VARCHAR150 autorizado_por
         VARCHAR30 meio_autorizacao
-        TIMESTAMP data_autorizacao
+        TIMESTAMPTZ data_autorizacao
+        VARCHAR500 motivo_cancelamento
+        TIMESTAMPTZ data_cancelamento
+        INT cancelada_por_usuario_id FK
         VARCHAR64 token_acompanhamento UK
     }
     VISTORIA {
@@ -293,12 +334,12 @@ erDiagram
         BOOLEAN tem_chave_roda "NOT NULL"
         TEXT avarias_json
         TEXT observacoes
-        TIMESTAMP data_vistoria "NOT NULL"
+        TIMESTAMPTZ data_vistoria "NOT NULL"
     }
     CONTATO_OS {
         INT id PK
         INT ordem_servico_id FK "NOT NULL"
-        TIMESTAMP data_contato "NOT NULL"
+        TIMESTAMPTZ data_contato "NOT NULL"
         INT tipo "NOT NULL"
         TEXT descricao "NOT NULL"
         VARCHAR100 registrado_por "NOT NULL"
@@ -314,6 +355,10 @@ erDiagram
         INT estoque_minimo "NOT NULL CHECK >= 0"
         VARCHAR200 localizacao
         BOOLEAN ativo "NOT NULL DEFAULT true"
+        TIMESTAMPTZ data_inativacao
+        INT inativado_por_usuario_id FK
+        VARCHAR300 motivo_inativacao
+        XID xmin "ROWVERSION"
     }
     SERVICO {
         INT id PK
@@ -321,6 +366,10 @@ erDiagram
         VARCHAR500 descricao
         DECIMAL valor_padrao "NOT NULL CHECK >= 0"
         INT tempo_estimado_minutos "CHECK 0..10000"
+        BOOLEAN ativo "NOT NULL DEFAULT true"
+        TIMESTAMPTZ data_inativacao
+        INT inativado_por_usuario_id FK
+        VARCHAR300 motivo_inativacao
     }
     ORDEM_SERVICO_PECA {
         INT id PK
@@ -344,9 +393,9 @@ erDiagram
         INT id PK
         INT peca_id FK "NOT NULL"
         INT usuario_id FK "NOT NULL"
-        INT tipo "NOT NULL 0=Entrada 1=Saida 2=Ajuste"
-        INT quantidade "NOT NULL CHECK >= 1"
-        TIMESTAMP data_hora "NOT NULL"
+        INT tipo "NOT NULL 0=Entrada 1=Saida 2=Ajuste 3=Estorno"
+        INT quantidade "NOT NULL"
+        TIMESTAMPTZ data_hora "NOT NULL"
         VARCHAR300 referencia
     }
     USUARIO {
@@ -356,7 +405,7 @@ erDiagram
         VARCHAR100 nome_completo
         INT perfil "NOT NULL 1=Admin 2=Atendimento 3=Mecanico"
         BOOLEAN ativo "NOT NULL DEFAULT true"
-        TIMESTAMP data_criacao "NOT NULL"
+        TIMESTAMPTZ data_criacao "NOT NULL"
     }
     CONFIGURACAO {
         INT id PK
@@ -391,12 +440,13 @@ erDiagram
 
 | FK | Ação | Regra |
 |---|---|---|
-| `ordem_servico_peca.ordem_servico_id` | **CASCADE** | RN15 |
-| `ordem_servico_servico.ordem_servico_id` | **CASCADE** | RN15 |
+| `ordem_servico_peca.ordem_servico_id` | **CASCADE** | integridade interna da OS |
+| `ordem_servico_servico.ordem_servico_id` | **CASCADE** | integridade interna da OS |
 | `ordem_servico_peca.peca_id` | **RESTRICT** | RN10 |
 | `movimentacao_estoque.peca_id` | **RESTRICT** | RN10 |
 | `movimentacao_estoque.usuario_id` | **RESTRICT** | RN11 |
-| `veiculo.cliente_id`, `ordem_servico.veiculo_id`, `vistoria.ordem_servico_id`, `contato_os.ordem_servico_id`, `ordem_servico_servico.servico_id` | RESTRICT (padrão) | preservar histórico |
+| `*.inativado_por_usuario_id`, `ordem_servico.cancelada_por_usuario_id` | **SET NULL** | preserva auditoria mesmo se conta de usuário for removida |
+| `veiculo.cliente_id`, `ordem_servico.veiculo_id`, `vistoria.ordem_servico_id`, `contato_os.ordem_servico_id`, `ordem_servico_servico.servico_id` | **RESTRICT** | preservar histórico |
 
 ### 3.3 Atributos derivados (não armazenados)
 - `ordem_servico.valor_total = (mão de obra efetiva + peças efetivas) − desconto`
@@ -418,28 +468,31 @@ Regras de negócio  →  Modelo Conceitual  →  Modelo Lógico
 | Relacionamento 1:N | FK no lado N | `VEICULO.cliente_id`, `ORDEM_SERVICO.veiculo_id`, `CONTATO_OS.ordem_servico_id`, `MOVIMENTACAO_ESTOQUE.peca_id/usuario_id` |
 | Relacionamento 1:(0,1) | FK + `UNIQUE` | `VISTORIA.ordem_servico_id UNIQUE` |
 | Relacionamento N:M com atributos | Entidade associativa → tabela com 2 FKs | `ITEM_PECA_OS` → `ORDEM_SERVICO_PECA`; `ITEM_SERVICO_OS` → `ORDEM_SERVICO_SERVICO` |
-| Cardinalidade mínima 1 (obrigatória) | `NOT NULL` na FK | todas as FKs |
+| Cardinalidade mínima 1 (obrigatória) | `NOT NULL` na FK | FKs estruturais |
+| Auditoria de inativação/cancelamento | FK opcional (`NULL` enquanto ativo/não cancelado) | `inativado_por_usuario_id`, `cancelada_por_usuario_id` |
 | Atributo derivado | não persistido | `valor_total` |
 | Entidade sem relacionamento | Tabela isolada | `CONFIGURACAO` |
 
 ---
 
-## 5. Observações de aderência ao código atual (Pós-Estabilização)
+## 5. Observações de aderência ao código atual (Entrega de CRUDs e Relatórios)
 
-Modelo derivado das entidades em `Models/` e do [AppDbContext.cs](../Data/AppDbContext.cs). Com o ciclo de estabilização:
-- `cliente.cpf`, `veiculo.placa` e `ordem_servico.token_acompanhamento` possuem índices `UNIQUE` no banco PostgreSQL (além de normalização automática na aplicação).
-- `ordem_servico.data_conclusao` foi adicionada (`TIMESTAMPTZ NULL`) e preenchida automaticamente na conclusão da OS para apuração financeira por competência de conclusão.
-- `peca.xmin` (`Version`) foi configurado como token nativo de concorrência otimista do PostgreSQL (`IsRowVersion()`).
+Modelo derivado das entidades em `Models/` e do [AppDbContext.cs](../Data/AppDbContext.cs):
+- `Cliente`, `Veiculo`, `Peca` e `Servico` implementam `IInativavel` (`Ativo`, `DataInativacao`, `InativadoPorUsuarioId`, `MotivoInativacao`), adicionados na migration `20261104224438_PadronizarSoftDeleteInativavel`. Sem `HasQueryFilter` global para preservar o histórico de O.S. antigas.
+- `OrdemServico` possui campos de auditoria de cancelamento (`MotivoCancelamento`, `DataCancelamento`, `CanceladaPorUsuarioId`), adicionados na migration `20261104230924_AddCancelamentoAuditoriaOrdemServico`.
+- `cliente.cpf`, `veiculo.placa`, `peca.sku` e `ordem_servico.token_acompanhamento` possuem índices `UNIQUE` no banco PostgreSQL (além de normalização automática na aplicação e detecção de duplicidade com registro inativo).
+- `ordem_servico.data_conclusao` (`TIMESTAMPTZ NULL`) é preenchida automaticamente na conclusão da OS para apuração financeira por competência de conclusão via `RelatorioService`.
+- `peca.xmin` (`Version`) é configurado como token nativo de concorrência otimista do PostgreSQL (`IsRowVersion()`).
 - Todas as colunas `DateTime` são persistidas em UTC (`timestamp with time zone`) via convenção global no `AppDbContext`.
 
-Fora do escopo de tabelas próprias: classes `Relatorio*` (consultas/relatórios; não possuem `DbSet` no contexto) e `Login` (DTO de autenticação).
+Fora do escopo de tabelas próprias: classes `Relatorio*` (DTOs de agregação e exportação CSV gerados por `RelatorioService`; não possuem `DbSet` no contexto) e `Login` (DTO de autenticação).
 
 ---
 
 ## 6. Roteiro sugerido para a apresentação (3–5 min)
 
 1. **Contexto (1 min):** nome, problema, usuários, funcionalidades (seção 1).
-2. **Regras de negócio (1 min):** destacar RN01, RN05, RN06, RN07 e RN08.
+2. **Regras de negócio (1 min):** destacar RN01, RN05, RN06, RN07, RN08, RN10 e RN15.
 3. **Conceitual (1–2 min):** entidades, identificadores, cardinalidades e as 2 associativas.
-4. **Lógico (1 min):** mostrar a conversão (seção 4), PKs/FKs, `UNIQUE`, `NOT NULL` e `ON DELETE`.
-5. **Coerência:** demonstrar RN01 do conceitual ao lógico.
+4. **Lógico (1 min):** mostrar a conversão (seção 4), PKs/FKs, `UNIQUE`, `NOT NULL`, auditoria de inativação/cancelamento e `ON DELETE`.
+5. **Coerência:** demonstrar RN01 e RN10 do conceitual ao lógico.

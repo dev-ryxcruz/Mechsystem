@@ -25,9 +25,10 @@
         </Actions>
     </PageHeader>
 
-    <ListToolbar Placeholder="Buscar serviço..."
-                 @bind-SearchTerm="termoBusca"
-                 TotalCount="@(servicosFiltrados.Count())"
+    <ListToolbar Placeholder="Buscar serviço por nome ou descrição..."
+                 SearchTerm="@termoBusca"
+                 SearchTermChanged="AoBuscar"
+                 TotalCount="@totalRegistros"
                  CountLabel="serviço(s)"
                  CountIcon="bi-tools">
         <Filters>
@@ -54,7 +55,7 @@
                     </div>
                 </div>
             }
-            else if (!servicosFiltrados.Any())
+            else if (!servicos.Any())
             {
                 <div class="text-center p-5 text-muted">
                     <i class="bi bi-tools fs-1 mb-3"></i>
@@ -76,7 +77,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var servico in servicosFiltrados)
+                            @foreach (var servico in servicos)
                             {
                                 <tr>
                                     <td class="fw-bold text-muted">#@servico.Id.ToString("D3")</td>
@@ -139,6 +140,12 @@
             }
         </div>
     </div>
+
+    <SimplePagination CurrentPage="@paginaAtual"
+                      PageSize="@tamanhoPagina"
+                      TotalItems="@totalRegistros"
+                      OnPageChanged="MudarPagina"
+                      OnPageSizeChanged="MudarTamanhoPagina" />
 </div>
 
 @if (mostrarModalInativacao && servicoParaInativar != null)
@@ -204,8 +211,11 @@
 }
 
 @code {
-    private IEnumerable<Servico>? servicos;
+    private List<Servico>? servicos;
     private string termoBusca = "";
+    private int paginaAtual = 1;
+    private int tamanhoPagina = 10;
+    private int totalRegistros = 0;
     private bool MostrarInativos = false;
 
     private bool mostrarModalInativacao = false;
@@ -222,26 +232,39 @@
 
     private async Task CarregarServicos()
     {
-        servicos = MostrarInativos
-            ? await ServicoRepository.GetInativosAsync()
-            : await ServicoRepository.GetAllAsync(apenasAtivos: true);
+        var resultado = await ServicoRepository.GetPaginadoAsync(MostrarInativos, termoBusca, paginaAtual, tamanhoPagina);
+        servicos = resultado.Itens;
+        totalRegistros = resultado.TotalCount;
+    }
+
+    private async Task AoBuscar(string termo)
+    {
+        termoBusca = termo;
+        paginaAtual = 1;
+        await CarregarServicos();
+    }
+
+    private async Task MudarPagina(int novaPagina)
+    {
+        paginaAtual = novaPagina;
+        await CarregarServicos();
+    }
+
+    private async Task MudarTamanhoPagina(int novoTamanho)
+    {
+        tamanhoPagina = novoTamanho;
+        paginaAtual = 1;
+        await CarregarServicos();
     }
 
     private async Task AlternarFiltro(bool inativos)
     {
         if (MostrarInativos == inativos) return;
         MostrarInativos = inativos;
+        paginaAtual = 1;
         servicos = null;
         await CarregarServicos();
     }
-
-    private IEnumerable<Servico> servicosFiltrados =>
-        string.IsNullOrWhiteSpace(termoBusca)
-            ? servicos ?? Array.Empty<Servico>()
-            : servicos?.Where(s =>
-                s.Nome.Contains(termoBusca, StringComparison.OrdinalIgnoreCase) ||
-                (s.Descricao != null && s.Descricao.Contains(termoBusca, StringComparison.OrdinalIgnoreCase)))
-              ?? Array.Empty<Servico>();
 
     private void ConfirmarInativacao(Servico servico)
     {

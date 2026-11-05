@@ -1,0 +1,87 @@
+@namespace mechsystem.Components.Shared
+
+@if (TotalItems > 0)
+{
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3 px-2 py-2 bg-white rounded shadow-sm border">
+        <div class="d-flex align-items-center gap-2 small text-muted">
+            <span>Exibindo <strong>@InicioItem–@FimItem</strong> de <strong>@TotalItems</strong></span>
+            <span class="mx-1">|</span>
+            <label class="mb-0 text-nowrap">Itens por página:</label>
+            <select class="form-select form-select-sm" style="width: auto;" value="@PageSize" @onchange="AlterarTamanhoPagina">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+            </select>
+        </div>
+
+        <nav aria-label="Paginação">
+            <ul class="pagination pagination-sm mb-0">
+                <li class="page-item @(CurrentPage <= 1 ? "disabled" : "")">
+                    <button type="button" class="page-link" @onclick="() => IrParaPagina(1)" disabled="@(CurrentPage <= 1)" title="Primeira página">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </button>
+                </li>
+                <li class="page-item @(CurrentPage <= 1 ? "disabled" : "")">
+                    <button type="button" class="page-link" @onclick="() => IrParaPagina(CurrentPage - 1)" disabled="@(CurrentPage <= 1)">
+                        Anterior
+                    </button>
+                </li>
+                <li class="page-item disabled">
+                    <span class="page-link text-dark fw-semibold bg-light">
+                        Página @CurrentPage de @TotalPages
+                    </span>
+                </li>
+                <li class="page-item @(CurrentPage >= TotalPages ? "disabled" : "")">
+                    <button type="button" class="page-link" @onclick="() => IrParaPagina(CurrentPage + 1)" disabled="@(CurrentPage >= TotalPages)">
+                        Próxima
+                    </button>
+                </li>
+                <li class="page-item @(CurrentPage >= TotalPages ? "disabled" : "")">
+                    <button type="button" class="page-link" @onclick="() => IrParaPagina(TotalPages)" disabled="@(CurrentPage >= TotalPages)" title="Última página">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </button>
+                </li>
+            </ul>
+        </nav>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int CurrentPage { get; set; } = 1;
+
+    [Parameter]
+    public int PageSize { get; set; } = 10;
+
+    [Parameter]
+    public int TotalItems { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnPageChanged { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnPageSizeChanged { get; set; }
+
+    private int TotalPages => TotalItems <= 0 ? 1 : (int)Math.Ceiling((double)TotalItems / PageSize);
+    private int InicioItem => TotalItems == 0 ? 0 : ((CurrentPage - 1) * PageSize) + 1;
+    private int FimItem => Math.Min(CurrentPage * PageSize, TotalItems);
+
+    private async Task IrParaPagina(int novaPagina)
+    {
+        if (novaPagina < 1 || novaPagina > TotalPages || novaPagina == CurrentPage)
+            return;
+
+        CurrentPage = novaPagina;
+        await OnPageChanged.InvokeAsync(novaPagina);
+    }
+
+    private async Task AlterarTamanhoPagina(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var novoTamanho) && (novoTamanho == 10 || novoTamanho == 25 || novoTamanho == 50))
+        {
+            PageSize = novoTamanho;
+            CurrentPage = 1;
+            await OnPageSizeChanged.InvokeAsync(novoTamanho);
+        }
+    }
+}
