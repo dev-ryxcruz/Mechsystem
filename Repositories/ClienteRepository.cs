@@ -39,8 +39,8 @@ namespace mechsystem.Repositories
                 var digitos = new string(termoBusca.Where(char.IsDigit).ToArray());
 
                 query = query.Where(c =>
-                    c.Nome.ToLower().Contains(termo) ||
-                    (!string.IsNullOrEmpty(digitos) && c.Cpf.Contains(digitos)) ||
+                    (c.Nome != null && c.Nome.ToLower().Contains(termo)) ||
+                    (!string.IsNullOrEmpty(digitos) && c.Cpf != null && c.Cpf.Contains(digitos)) ||
                     (!string.IsNullOrEmpty(digitos) && c.Telefone != null && c.Telefone.Contains(digitos)) ||
                     (c.Email != null && c.Email.ToLower().Contains(termo)));
             }

@@ -47,10 +47,10 @@ namespace mechsystem.Repositories
                 var placaNorm = termoBusca.Replace("-", "").Trim().ToUpperInvariant();
 
                 query = query.Where(v =>
-                    (!string.IsNullOrEmpty(placaNorm) && v.Placa.Contains(placaNorm)) ||
+                    (!string.IsNullOrEmpty(placaNorm) && v.Placa != null && v.Placa.Contains(placaNorm)) ||
                     (v.Marca != null && v.Marca.ToLower().Contains(termo)) ||
                     (v.Modelo != null && v.Modelo.ToLower().Contains(termo)) ||
-                    (v.Cliente != null && v.Cliente.Nome.ToLower().Contains(termo)));
+                    (v.Cliente != null && v.Cliente.Nome != null && v.Cliente.Nome.ToLower().Contains(termo)));
             }
 
             var totalCount = await query.CountAsync();

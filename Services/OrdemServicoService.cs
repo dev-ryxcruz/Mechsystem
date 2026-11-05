@@ -64,9 +64,9 @@ public class OrdemServicoService
 
             query = query.Where(o =>
                 (temId && o.Id == idBusca) ||
-                (!string.IsNullOrEmpty(placaNorm) && o.Veiculo != null && o.Veiculo.Placa.Contains(placaNorm)) ||
+                (!string.IsNullOrEmpty(placaNorm) && o.Veiculo != null && o.Veiculo.Placa != null && o.Veiculo.Placa.Contains(placaNorm)) ||
                 (o.Veiculo != null && o.Veiculo.Modelo != null && o.Veiculo.Modelo.ToLower().Contains(termo)) ||
-                (o.Veiculo != null && o.Veiculo.Cliente != null && o.Veiculo.Cliente.Nome.ToLower().Contains(termo)));
+                (o.Veiculo != null && o.Veiculo.Cliente != null && o.Veiculo.Cliente.Nome != null && o.Veiculo.Cliente.Nome.ToLower().Contains(termo)));
         }
 
         var totalCount = await query.CountAsync();
