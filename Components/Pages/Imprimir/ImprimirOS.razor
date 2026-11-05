@@ -167,11 +167,15 @@ else
                     <tbody>
                         <tr>
                             <td>Mão de Obra</td>
-                            <td class="text-end">@os.ValorMaoDeObra.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
+                            <td class="text-end">@os.ValorMaoDeObraEfetivo.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
                         </tr>
                         <tr>
                             <td>Peças e Materiais</td>
                             <td class="text-end">@os.ValorPecasEfetivo.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</td>
+                        </tr>
+                        <tr>
+                            <td>Desconto</td>
+                            <td class="text-end">@(os.ValorDesconto > 0 ? $"- {os.ValorDesconto.ToString("C", new System.Globalization.CultureInfo("pt-BR"))}" : os.ValorDesconto.ToString("C", new System.Globalization.CultureInfo("pt-BR")))</td>
                         </tr>
                         <tr class="doc-total-row">
                             <td>VALOR TOTAL</td>
@@ -219,7 +223,7 @@ else
                     <div>
                         <strong>ORÇAMENTO APROVADO</strong><br />
                         <span>Autorizado por: <strong>@(os.AutorizadoPor ?? os.Veiculo?.Cliente?.Nome)</strong></span><br />
-                        <span>Meio: @os.MeioAutorizacao · Data: @(os.DataAutorizacao?.ToString("dd/MM/yyyy HH:mm"))</span>
+                        <span>Meio: @os.MeioAutorizacao · Data: @(os.DataAutorizacao.ToBrasiliaTime()?.ToString("dd/MM/yyyy HH:mm"))</span>
                     </div>
                 </div>
             }
@@ -233,7 +237,7 @@ else
         else
         {
             <div class="doc-rodape">
-                @(config?.NomeFantasia ?? "Mechsystem") · @(config?.Telefone ?? "") · Documento gerado em @DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                @(config?.NomeFantasia ?? "Mechsystem") · @(config?.Telefone ?? "") · Documento gerado em @DateTimeExtensions.NowBrasilia().ToString("dd/MM/yyyy HH:mm")
             </div>
         }
 
@@ -252,6 +256,7 @@ else
             .Include(o => o.Veiculo)
                 .ThenInclude(v => v!.Cliente)
             .Include(o => o.PecasUtilizadas)
+            .Include(o => o.ServicosAExecutarList)
             .FirstOrDefaultAsync(o => o.Id == Id);
 
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();
@@ -261,7 +266,6 @@ else
     {
         if (firstRender && os != null)
         {
-            // Pequeno delay para garantir que o DOM está totalmente renderizado
             await Task.Delay(300);
             await JSRuntime.InvokeVoidAsync("window.print");
         }

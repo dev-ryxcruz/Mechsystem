@@ -9,6 +9,9 @@
 @inject IClienteRepository ClienteRepository
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
+@inject ILogger<Editar> Logger
+
+<PageTitle>Editar Cliente — Mechsystem</PageTitle>
 
 <div class="container mt-5">
     <div class="card shadow-sm">
@@ -16,8 +19,14 @@
             <h4 class="mb-0">Editar Cliente</h4>
         </div>
         <div class="card-body">
-            
-            <EditForm Model="@cliente" OnValidSubmit="GuardarEdicao">
+            @if (!string.IsNullOrEmpty(erroMensagem))
+            {
+                <div class="alert alert-danger mb-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@erroMensagem
+                </div>
+            }
+
+            <EditForm Model="@cliente" OnValidSubmit="SalvarEdicao">
                 <DataAnnotationsValidator />
 
                 <div class="row">
@@ -52,28 +61,26 @@
                     <InputText @bind-Value="cliente.Endereco" class="form-control" />
                 </div>
 
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-warning">
-                        <i class="bi bi-save"></i> Guardar Alterações
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-warning fw-bold">
+                        <i class="bi bi-save"></i> Salvar Alterações
                     </button>
                     <button type="button" class="btn btn-secondary" @onclick="Cancelar">
                         Cancelar
                     </button>
                 </div>
             </EditForm>
-
         </div>
     </div>
 </div>
 
 @code {
-    // Este Parâmetro capta o {Id} que vem na barra de endereços do navegador
     [Parameter]
     public int Id { get; set; }
 
     private Cliente cliente = new Cliente();
+    private string? erroMensagem;
 
-    // Assim que o ecrã abre, ele vai buscar os dados antigos do cliente à base de dados
     protected override async Task OnInitializedAsync()
     {
         var clienteEncontrado = await ClienteRepository.BuscarPorId(Id);
@@ -81,13 +88,24 @@
         {
             cliente = clienteEncontrado;
         }
+        else
+        {
+            NavigationManager.NavigateTo("/clientes");
+        }
     }
 
-    // Quando clicamos no botão amarelo, ele atualiza no SQLite
-    private async Task GuardarEdicao()
+    private async Task SalvarEdicao()
     {
-        await ClienteRepository.Atualizar(cliente);
-        NavigationManager.NavigateTo("/clientes");
+        try
+        {
+            erroMensagem = null;
+            await ClienteRepository.Atualizar(cliente);
+            NavigationManager.NavigateTo("/clientes");
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Ocorreu um erro ao atualizar o cliente. Verifique se o CPF já está cadastrado.");
+        }
     }
 
     private void Cancelar()

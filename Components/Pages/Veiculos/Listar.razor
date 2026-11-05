@@ -3,63 +3,70 @@
 
 @using mechsystem.Models
 @using mechsystem.Interfaces
+@using mechsystem.Services
 @using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 @attribute [Authorize(Roles = "Administrador, Atendimento, Mecanico")]
 
 @inject IVeiculoRepository VeiculoRepository
+@inject InativacaoService InativacaoService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IJSRuntime JS
+@inject ILogger<Listar> Logger
 
-<div class="container mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h3 class="mb-0"><i class="bi bi-car-front"></i> Veículos Cadastrados</h3>
-        <AuthorizeView Roles="Administrador, Atendimento">
-            <button class="btn btn-success text-nowrap" @onclick="NovoVeiculo">
-                <i class="bi bi-plus-lg"></i> Novo Veículo
-            </button>
-        </AuthorizeView>
-    </div>
+<PageTitle>Veículos Cadastrados — Mechsystem</PageTitle>
 
-    @* Barra de ferramentas: pesquisa ocupa o espaço disponível, filtros à direita *@
-    <div class="d-flex gap-2 align-items-center flex-wrap mb-4">
-        <div class="input-group flex-grow-1" style="min-width: 240px; max-width: 520px;">
-            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-            <input type="text" id="pesquisa-veiculo" class="form-control border-start-0 ps-0 shadow-none" placeholder="Pesquisar veículo..." @bind="termoPesquisa" @bind:event="oninput" />
-        </div>
-        <div class="d-flex gap-2 ms-auto flex-wrap">
+<div class="page-container">
+    <PageHeader Icon="bi-car-front-fill" Title="Veículos Cadastrados" Subtitle="Gerencie os veículos e seus proprietários">
+        <Actions>
+            <AuthorizeView Roles="Administrador, Atendimento">
+                <button class="btn btn-accent text-nowrap" @onclick="NovoVeiculo">
+                    <i class="bi bi-plus-lg"></i> Novo Veículo
+                </button>
+            </AuthorizeView>
+        </Actions>
+    </PageHeader>
+
+    <ListToolbar Placeholder="Buscar veículo por placa, marca, modelo ou cliente..."
+                 SearchTerm="@termoPesquisa"
+                 SearchTermChanged="AoBuscar"
+                 TotalCount="@totalRegistros"
+                 CountLabel="veículo(s)"
+                 CountIcon="bi-car-front">
+        <Filters>
             <AuthorizeView Roles="Administrador">
                 <div class="btn-group" role="group" aria-label="Filtrar por estado">
-                    <button type="button" id="btn-filtro-veiculos-ativos" class="btn btn-outline-success text-nowrap @(!MostrarInativos ? "active" : "")" @onclick="() => AlternarFiltro(false)">
+                    <button type="button" id="btn-filtro-veiculos-ativos" class="btn btn-sm btn-outline-success text-nowrap @(!MostrarInativos ? "active" : "")" @onclick="() => AlternarFiltro(false)">
                         <i class="bi bi-check-circle"></i> Ativos
                     </button>
-                    <button type="button" id="btn-filtro-veiculos-inativos" class="btn btn-outline-secondary text-nowrap @(MostrarInativos ? "active" : "")" @onclick="() => AlternarFiltro(true)">
+                    <button type="button" id="btn-filtro-veiculos-inativos" class="btn btn-sm btn-outline-secondary text-nowrap @(MostrarInativos ? "active" : "")" @onclick="() => AlternarFiltro(true)">
                         <i class="bi bi-archive"></i> Inativos
                     </button>
                 </div>
             </AuthorizeView>
             <div class="btn-group" role="group" aria-label="Alternar visualização">
-                <button type="button" class="btn btn-outline-secondary @(!IsGridView ? "active" : "")" @onclick="() => ToggleView(false)">
+                <button type="button" class="btn btn-sm btn-outline-secondary @(!IsGridView ? "active" : "")" @onclick="() => ToggleView(false)" title="Visualização em Lista">
                     <i class="bi bi-list-ul"></i>
                 </button>
-                <button type="button" class="btn btn-outline-secondary @(IsGridView ? "active" : "")" @onclick="() => ToggleView(true)">
+                <button type="button" class="btn btn-sm btn-outline-secondary @(IsGridView ? "active" : "")" @onclick="() => ToggleView(true)" title="Visualização em Grade">
                     <i class="bi bi-grid-fill"></i>
                 </button>
             </div>
-        </div>
-    </div>
+        </Filters>
+    </ListToolbar>
 
     @if (veiculos == null)
     {
-        <div class="text-center">
-            <div class="spinner-border text-success" role="status"></div>
-            <p class="mt-2">Carregando veículos...</p>
+        <div class="text-center p-5">
+            <div class="spinner-border text-accent" role="status"></div>
+            <p class="mt-2 text-muted">Carregando veículos...</p>
         </div>
     }
     else if (!veiculos.Any())
     {
         <div class="alert alert-info" role="alert">
-            @(MostrarInativos ? "Nenhum veículo inativo." : "Nenhum veículo cadastrado no sistema ainda.")
+            @(MostrarInativos ? "Nenhum veículo inativo encontrado." : "Nenhum veículo encontrado.")
         </div>
     }
     else
@@ -67,7 +74,7 @@
         @if (IsGridView)
         {
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                @foreach (var veiculo in VeiculosFiltrados!)
+                @foreach (var veiculo in veiculos)
                 {
                     <div class="col">
                         <div class="card h-100 shadow-sm border-0">
@@ -76,8 +83,20 @@
                                 <p class="mb-1 text-muted"><i class="bi bi-calendar"></i> @veiculo.Ano - @veiculo.Cor</p>
                                 <p class="mb-1"><span class="text-uppercase border px-2 py-1 rounded bg-light">@veiculo.Placa</span></p>
                                 <AuthorizeView Roles="Administrador, Atendimento">
-                                    <p class="mb-0 mt-2 text-muted small"><i class="bi bi-person"></i> Dono: @(veiculo.Cliente != null ? veiculo.Cliente.Nome : "Sem dono")</p>
+                                    <p class="mb-0 mt-2 text-muted small">
+                                        <i class="bi bi-person"></i> Dono: @(veiculo.Cliente != null ? veiculo.Cliente.Nome : "Sem dono")
+                                        @if (veiculo.Cliente != null && !veiculo.Cliente.Ativo)
+                                        {
+                                            <span class="badge bg-secondary ms-1">Cliente Inativo</span>
+                                        }
+                                    </p>
                                 </AuthorizeView>
+                                @if (!veiculo.Ativo && !string.IsNullOrWhiteSpace(veiculo.MotivoInativacao))
+                                {
+                                    <small class="text-muted d-block mt-2">
+                                        <i class="bi bi-info-circle me-1"></i>Motivo: @veiculo.MotivoInativacao
+                                    </small>
+                                }
                             </div>
                             <div class="card-footer bg-transparent border-0 d-flex justify-content-end gap-2">
                                 <button class="btn btn-sm btn-outline-info" title="Prontuário" @onclick="() => IrParaDetalhes(veiculo.Id)">
@@ -91,13 +110,13 @@
                                 <AuthorizeView Roles="Administrador">
                                     @if (veiculo.Ativo)
                                     {
-                                        <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => ApagarVeiculo(veiculo.Id)">
+                                        <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => AbrirModalInativar(veiculo)">
                                             <i class="bi bi-archive"></i>
                                         </button>
                                     }
                                     else
                                     {
-                                        <button class="btn btn-sm btn-outline-success" title="Reativar" @onclick="() => ReativarVeiculo(veiculo.Id)">
+                                        <button class="btn btn-sm btn-outline-success" title="Reativar" @onclick="() => AbrirModalReativar(veiculo)">
                                             <i class="bi bi-arrow-counterclockwise"></i>
                                         </button>
                                     }
@@ -110,93 +129,125 @@
         }
         else
         {
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover table-borderless align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th width="5%" class="text-center">ID</th>
-                            <AuthorizeView Roles="Administrador, Atendimento">
-                                <th width="20%" class="text-start">Dono (Cliente)</th>
-                            </AuthorizeView>
-                            <th width="15%" class="text-start">Placa</th>
-                            <th width="25%" class="text-start">Marca/Modelo</th>
-                            <th width="10%" class="text-center">Ano</th>
-                            <th width="10%" class="text-center">Cor</th>
-                            <th width="15%" class="text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var veiculo in VeiculosFiltrados!)
-                        {
-                            <tr>
-                                <td class="text-center">@veiculo.Id</td>
-                                <AuthorizeView Roles="Administrador, Atendimento">
-                                    <td class="text-start"><strong>@(veiculo.Cliente != null ? veiculo.Cliente.Nome : "Sem dono")</strong></td>
-                                </AuthorizeView>
-                                <td class="text-start"><span class="text-uppercase border px-2 py-1 rounded bg-light">@veiculo.Placa</span></td>
-                                <td class="text-start">@veiculo.Marca @veiculo.Modelo</td>
-                                <td class="text-center">@veiculo.Ano</td>
-                                <td class="text-center">@veiculo.Cor</td>
-                                <td class="text-center">
-                                    <button class="btn btn-sm btn-outline-info me-1" title="Prontuário" @onclick="() => IrParaDetalhes(veiculo.Id)">
-                                        <i class="bi bi-journal-medical"></i>
-                                    </button>
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-custom align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%" class="text-center">ID</th>
                                     <AuthorizeView Roles="Administrador, Atendimento">
-                                        <button class="btn btn-sm btn-outline-primary me-1" title="Editar" @onclick="() => IrParaEdicao(veiculo.Id)">
-                                            <i class="bi bi-pencil"></i>
-                                        </button>
+                                        <th width="20%" class="text-start">Proprietário (Cliente)</th>
                                     </AuthorizeView>
-                                    <AuthorizeView Roles="Administrador">
-                                        @if (veiculo.Ativo)
-                                        {
-                                            <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => ApagarVeiculo(veiculo.Id)">
-                                                <i class="bi bi-archive"></i>
+                                    <th width="15%" class="text-start">Placa</th>
+                                    <th width="25%" class="text-start">Marca/Modelo</th>
+                                    <th width="10%" class="text-end">Ano</th>
+                                    <th width="10%" class="text-start">Cor</th>
+                                    <th width="15%" class="actions-col text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var veiculo in veiculos)
+                                {
+                                    <tr>
+                                        <td class="text-center text-muted fw-bold">#@veiculo.Id</td>
+                                        <AuthorizeView Roles="Administrador, Atendimento">
+                                            <td class="text-start">
+                                                <strong>@(veiculo.Cliente != null ? veiculo.Cliente.Nome : "Sem dono")</strong>
+                                                @if (veiculo.Cliente != null && !veiculo.Cliente.Ativo)
+                                                {
+                                                    <span class="badge bg-secondary ms-1">Inativo</span>
+                                                }
+                                            </td>
+                                        </AuthorizeView>
+                                        <td class="text-start"><span class="text-uppercase border px-2 py-1 rounded bg-light">@veiculo.Placa</span></td>
+                                        <td class="text-start">
+                                            @veiculo.Marca @veiculo.Modelo
+                                            @if (!veiculo.Ativo && !string.IsNullOrWhiteSpace(veiculo.MotivoInativacao))
+                                            {
+                                                <small class="text-muted d-block">Motivo: @veiculo.MotivoInativacao</small>
+                                            }
+                                        </td>
+                                        <td class="text-end">@veiculo.Ano</td>
+                                        <td class="text-start">@veiculo.Cor</td>
+                                        <td class="text-end text-nowrap">
+                                            <button class="btn btn-sm btn-outline-info me-1" title="Prontuário" @onclick="() => IrParaDetalhes(veiculo.Id)">
+                                                <i class="bi bi-journal-medical"></i>
                                             </button>
-                                        }
-                                        else
-                                        {
-                                            <button class="btn btn-sm btn-outline-success" title="Reativar" @onclick="() => ReativarVeiculo(veiculo.Id)">
-                                                <i class="bi bi-arrow-counterclockwise"></i>
-                                            </button>
-                                        }
-                                    </AuthorizeView>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                                            <AuthorizeView Roles="Administrador, Atendimento">
+                                                <button class="btn btn-sm btn-outline-primary me-1" title="Editar" @onclick="() => IrParaEdicao(veiculo.Id)">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                            </AuthorizeView>
+                                            <AuthorizeView Roles="Administrador">
+                                                @if (veiculo.Ativo)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-warning" title="Inativar" @onclick="() => AbrirModalInativar(veiculo)">
+                                                        <i class="bi bi-archive"></i>
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button class="btn btn-sm btn-outline-success" title="Reativar" @onclick="() => AbrirModalReativar(veiculo)">
+                                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                                    </button>
+                                                }
+                                            </AuthorizeView>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
         }
+
+        <SimplePagination CurrentPage="@paginaAtual"
+                          PageSize="@tamanhoPagina"
+                          TotalItems="@totalRegistros"
+                          OnPageChanged="MudarPagina"
+                          OnPageSizeChanged="MudarTamanhoPagina" />
     }
 </div>
 
-@if (ShowConfirmModal)
+@if (ShowConfirmModal && veiculoSelecionado != null)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow-lg border-0">
                 <div class="modal-header bg-warning text-dark border-0">
-                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Inativação</h5>
+                    <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Inativação de Veículo</h5>
                     <button type="button" class="btn-close" @onclick="CloseConfirmModal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-0 fs-5">Tem certeza que deseja inativar este veículo?</p>
-                    <p class="text-muted mt-2 mb-0"><small>Ele não aparecerá mais nas buscas, mas o seu histórico será mantido e permanecerá associado às ordens de serviço existentes.</small></p>
+                    @if (!string.IsNullOrEmpty(erroModal))
+                    {
+                        <div class="alert alert-danger py-2">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>@erroModal
+                        </div>
+                    }
+                    <p class="mb-2 fs-5">Deseja inativar o veículo <strong>@veiculoSelecionado.Placa</strong> (@veiculoSelecionado.Marca @veiculoSelecionado.Modelo)?</p>
+                    <p class="text-muted small mb-3">
+                        O veículo deixará de aparecer na seleção de novas Ordens de Serviço, mas o prontuário e todas as O.S. anteriores continuarão preservados.
+                    </p>
+                    <div class="mb-2">
+                        <label class="form-label fw-bold">Motivo da inativação <span class="text-danger">*</span></label>
+                        <textarea class="form-control" rows="2" placeholder="Informe o motivo (mínimo de 5 caracteres)..." @bind="motivoInativacao" @bind:event="oninput"></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-outline-secondary" @onclick="CloseConfirmModal">Cancelar</button>
-                    <button type="button" class="btn btn-warning" @onclick="ConfirmInativar">Inativar Veículo</button>
+                    <button type="button" class="btn btn-warning fw-bold" disabled="@( string.IsNullOrWhiteSpace(motivoInativacao) || motivoInativacao.Trim().Length < 5 )" @onclick="ConfirmInativar">
+                        Inativar Veículo
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 }
 
-@if (ShowReativarModal)
+@if (ShowReativarModal && veiculoSelecionado != null)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-dialog-centered">
@@ -206,8 +257,20 @@
                     <button type="button" class="btn-close btn-close-white" @onclick="CloseReativarModal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="mb-0 fs-5">Tem certeza que deseja reativar este veículo?</p>
-                    <p class="text-muted mt-2 mb-0"><small>Ele voltará a aparecer nas buscas e poderá ser utilizado em novas ordens de serviço.</small></p>
+                    @if (!string.IsNullOrEmpty(erroModal))
+                    {
+                        <div class="alert alert-danger py-2">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i>@erroModal
+                        </div>
+                    }
+                    <p class="mb-2 fs-5">Deseja reativar o veículo <strong>@veiculoSelecionado.Placa</strong>?</p>
+                    @if (veiculoSelecionado.Cliente != null && !veiculoSelecionado.Cliente.Ativo)
+                    {
+                        <div class="alert alert-warning py-2 mb-2">
+                            <i class="bi bi-exclamation-circle me-1"></i>O cliente proprietário (<strong>@veiculoSelecionado.Cliente.Nome</strong>) está inativo. Reative o cliente antes de reativar este veículo.
+                        </div>
+                    }
+                    <p class="text-muted mb-0"><small>Ele voltará a aparecer nas buscas e poderá ser utilizado em novas ordens de serviço.</small></p>
                 </div>
                 <div class="modal-footer border-0 bg-light">
                     <button type="button" class="btn btn-outline-secondary" @onclick="CloseReativarModal">Cancelar</button>
@@ -221,20 +284,17 @@
 @code {
     private List<Veiculo>? veiculos;
     private string termoPesquisa = "";
-    private IEnumerable<Veiculo>? VeiculosFiltrados => string.IsNullOrWhiteSpace(termoPesquisa) 
-        ? veiculos 
-        : veiculos?.Where(v => 
-            (v.Placa != null && v.Placa.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)) ||
-            (v.Marca != null && v.Marca.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)) ||
-            (v.Modelo != null && v.Modelo.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)) ||
-            (v.Cliente?.Nome != null && v.Cliente.Nome.Contains(termoPesquisa, StringComparison.OrdinalIgnoreCase)));
+    private int paginaAtual = 1;
+    private int tamanhoPagina = 10;
+    private int totalRegistros = 0;
 
     private bool IsGridView = false;
     private bool MostrarInativos = false;
     private bool ShowConfirmModal = false;
-    private int VeiculoIdToInactivate = 0;
     private bool ShowReativarModal = false;
-    private int VeiculoIdToReactivate = 0;
+    private Veiculo? veiculoSelecionado;
+    private string motivoInativacao = "";
+    private string? erroModal;
 
     private void ToggleView(bool gridView) => IsGridView = gridView;
 
@@ -243,18 +303,38 @@
         await CarregarVeiculos();
     }
 
-    // Carrega os veículos ativos ou inativos conforme o filtro selecionado
     private async Task CarregarVeiculos()
     {
-        veiculos = MostrarInativos
-            ? await VeiculoRepository.ListarInativos()
-            : await VeiculoRepository.Listar();
+        var resultado = await VeiculoRepository.ListarPaginadoAsync(MostrarInativos, termoPesquisa, paginaAtual, tamanhoPagina);
+        veiculos = resultado.Itens;
+        totalRegistros = resultado.TotalCount;
+    }
+
+    private async Task AoBuscar(string termo)
+    {
+        termoPesquisa = termo;
+        paginaAtual = 1;
+        await CarregarVeiculos();
+    }
+
+    private async Task MudarPagina(int novaPagina)
+    {
+        paginaAtual = novaPagina;
+        await CarregarVeiculos();
+    }
+
+    private async Task MudarTamanhoPagina(int novoTamanho)
+    {
+        tamanhoPagina = novoTamanho;
+        paginaAtual = 1;
+        await CarregarVeiculos();
     }
 
     private async Task AlternarFiltro(bool inativos)
     {
         if (MostrarInativos == inativos) return;
         MostrarInativos = inativos;
+        paginaAtual = 1;
         veiculos = null;
         await CarregarVeiculos();
     }
@@ -272,70 +352,85 @@
         }
     }
 
-    private void NovoVeiculo()
-    {
-        NavigationManager.NavigateTo("/veiculos/cadastro");
-    }
+    private void NovoVeiculo() => NavigationManager.NavigateTo("/veiculos/cadastro");
+    private void IrParaEdicao(int id) => NavigationManager.NavigateTo($"/veiculos/editar/{id}");
+    private void IrParaDetalhes(int id) => NavigationManager.NavigateTo($"/veiculos/detalhes/{id}");
 
-    private void IrParaEdicao(int id)
+    private void AbrirModalInativar(Veiculo veiculo)
     {
-        NavigationManager.NavigateTo($"/veiculos/editar/{id}");
-    }
-
-    private void IrParaDetalhes(int id)
-    {
-        NavigationManager.NavigateTo($"/veiculos/detalhes/{id}");
-    }
-
-    private void ApagarVeiculo(int id)
-    {
-        VeiculoIdToInactivate = id;
+        veiculoSelecionado = veiculo;
+        motivoInativacao = "";
+        erroModal = null;
         ShowConfirmModal = true;
     }
 
     private void CloseConfirmModal()
     {
         ShowConfirmModal = false;
-        VeiculoIdToInactivate = 0;
+        veiculoSelecionado = null;
+        motivoInativacao = "";
+        erroModal = null;
     }
 
     private async Task ConfirmInativar()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        if (!authState.User.IsInRole("Administrador"))
-        {
-            CloseConfirmModal();
-            return;
-        }
+        if (veiculoSelecionado == null) return;
 
-        await VeiculoRepository.Deletar(VeiculoIdToInactivate);
-        await CarregarVeiculos();
-        CloseConfirmModal();
+        try
+        {
+            erroModal = null;
+            var (usuarioId, perfil) = await ObterUsuarioLogadoAsync();
+            await InativacaoService.InativarVeiculoAsync(veiculoSelecionado.Id, motivoInativacao, usuarioId, perfil);
+            await CarregarVeiculos();
+            CloseConfirmModal();
+        }
+        catch (Exception ex)
+        {
+            erroModal = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível inativar o veículo.");
+        }
     }
 
-    private void ReativarVeiculo(int id)
+    private void AbrirModalReativar(Veiculo veiculo)
     {
-        VeiculoIdToReactivate = id;
+        veiculoSelecionado = veiculo;
+        erroModal = null;
         ShowReativarModal = true;
     }
 
     private void CloseReativarModal()
     {
         ShowReativarModal = false;
-        VeiculoIdToReactivate = 0;
+        veiculoSelecionado = null;
+        erroModal = null;
     }
 
     private async Task ConfirmReativar()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        if (!authState.User.IsInRole("Administrador"))
-        {
-            CloseReativarModal();
-            return;
-        }
+        if (veiculoSelecionado == null) return;
 
-        await VeiculoRepository.Reativar(VeiculoIdToReactivate);
-        await CarregarVeiculos();
-        CloseReativarModal();
+        try
+        {
+            erroModal = null;
+            var (usuarioId, perfil) = await ObterUsuarioLogadoAsync();
+            await InativacaoService.ReativarVeiculoAsync(veiculoSelecionado.Id, usuarioId, perfil);
+            await CarregarVeiculos();
+            CloseReativarModal();
+        }
+        catch (Exception ex)
+        {
+            erroModal = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível reativar o veículo.");
+        }
+    }
+
+    private async Task<(int usuarioId, PerfilUsuario? perfil)> ObterUsuarioLogadoAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var idStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var roleStr = user.FindFirst(ClaimTypes.Role)?.Value;
+
+        int.TryParse(idStr, out var usuarioId);
+        PerfilUsuario? perfil = Enum.TryParse<PerfilUsuario>(roleStr, out var p) ? p : null;
+        return (usuarioId, perfil);
     }
 }

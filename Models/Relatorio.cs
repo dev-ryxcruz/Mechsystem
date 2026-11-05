@@ -10,7 +10,7 @@ namespace mechsystem.Models
     public abstract class Relatorio
     {
         public string Titulo { get; set; } = string.Empty;
-        public DateTime DataGeracao { get; set; } = DateTime.Now;
+        public DateTime DataGeracao { get; set; } = DateTime.UtcNow;
         public string GeradoPor { get; set; } = "Sistema";
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace mechsystem.Models
         /// </summary>
         public string GetCabecalho()
         {
-            return $"{Titulo} — Gerado em {DataGeracao:dd/MM/yyyy HH:mm} por {GeradoPor}";
+            return $"{Titulo} — Gerado em {DataGeracao.ToBrasiliaTime():dd/MM/yyyy HH:mm} por {GeradoPor}";
         }
 
         /// <summary>
@@ -43,7 +43,7 @@ namespace mechsystem.Models
         /// </summary>
         public string GetDataFormatada()
         {
-            return DataGeracao.ToString("dd/MM/yyyy 'às' HH:mm",
+            return DataGeracao.ToBrasiliaTime().ToString("dd/MM/yyyy 'às' HH:mm",
                 new System.Globalization.CultureInfo("pt-BR"));
         }
     }

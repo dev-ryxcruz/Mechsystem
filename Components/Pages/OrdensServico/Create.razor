@@ -374,18 +374,19 @@
     protected override async Task OnInitializedAsync()
     {
         os ??= new();
-        os.DataEmissao = DateTime.Today;
-        os.DataPrevisaoEntrega = DateTime.Today.AddDays(5); // Default 5 days delivery
+        os.DataEmissao = DateTime.UtcNow.Date;
+        os.DataPrevisaoEntrega = DateTime.UtcNow.Date.AddDays(5); // Default 5 days delivery
         
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();
         
         veiculos = await DbContext.Veiculos
             .Include(v => v.Cliente)
-            .Where(v => v.Ativo)
+            .Ativos()
+            .Where(v => v.Cliente != null && v.Cliente.Ativo)
             .OrderBy(v => v.Cliente!.Nome)
             .ToListAsync();
             
-        catalogoServicos = await DbContext.Servicos.OrderBy(s => s.Nome).ToListAsync();
+        catalogoServicos = await DbContext.Servicos.Ativos().OrderBy(s => s.Nome).ToListAsync();
             
         isLoading = false;
     }
@@ -404,6 +405,10 @@
         }
 
         os.Status = OrdemServicoStatus.Orcamento;
+        if (string.IsNullOrWhiteSpace(os.TokenAcompanhamento))
+        {
+            os.TokenAcompanhamento = Guid.NewGuid().ToString("N");
+        }
 
         DbContext.OrdensServico.Add(os);
         await DbContext.SaveChangesAsync();
@@ -472,12 +477,12 @@
 
             // Avançar para passo 2
             novoVeiculo.ClienteId = novoCliente.Id;
-            novoVeiculo.Ano = DateTime.Today.Year;
+            novoVeiculo.Ano = DateTime.UtcNow.Year;
             passoWizard = 2;
         }
         catch (Exception ex)
         {
-            erroWizard = $"Erro ao salvar cliente: {ex.Message}";
+            erroWizard = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível salvar o cliente. Verifique os dados informados.");
         }
         finally
         {
@@ -501,7 +506,8 @@
             // Recarregar a lista de veículos
             veiculos = await DbContext.Veiculos
                 .Include(v => v.Cliente)
-                .Where(v => v.Ativo)
+                .Ativos()
+            .Where(v => v.Cliente != null && v.Cliente.Ativo)
                 .OrderBy(v => v.Cliente!.Nome)
                 .ToListAsync();
 
@@ -512,11 +518,13 @@
         }
         catch (Exception ex)
         {
-            erroWizard = $"Erro ao salvar veículo: {ex.Message}";
+            erroWizard = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível salvar o veículo. Verifique os dados informados.");
         }
         finally
         {
             salvandoWizard = false;
         }
     }
+
+    [Inject] private ILogger<Create> Logger { get; set; } = default!;
 }

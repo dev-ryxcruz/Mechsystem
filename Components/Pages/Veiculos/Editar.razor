@@ -6,10 +6,12 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Administrador, Atendimento")]
 
-@* Precisamos dos dois repositórios novamente *@
 @inject IVeiculoRepository VeiculoRepository
 @inject IClienteRepository ClienteRepository
 @inject NavigationManager NavigationManager
+@inject ILogger<Editar> Logger
+
+<PageTitle>Editar Veículo — Mechsystem</PageTitle>
 
 <div class="container mt-5">
     <div class="card shadow-sm">
@@ -17,19 +19,25 @@
             <h4 class="mb-0"><i class="bi bi-pencil-square"></i> Editar Veículo</h4>
         </div>
         <div class="card-body">
-            
-            <EditForm Model="@veiculo" OnValidSubmit="GuardarEdicao">
+            @if (!string.IsNullOrEmpty(erroMensagem))
+            {
+                <div class="alert alert-danger mb-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>@erroMensagem
+                </div>
+            }
+
+            <EditForm Model="@veiculo" OnValidSubmit="SalvarEdicao">
                 <DataAnnotationsValidator />
 
                 <div class="mb-3">
-                    <label class="form-label text-success fw-bold">Cliente (Dono do Veículo)</label>
+                    <label class="form-label text-success fw-bold">Cliente (Proprietário do Veículo)</label>
                     <InputSelect @bind-Value="veiculo.ClienteId" class="form-select">
                         <option value="0">-- Selecione um Cliente --</option>
                         @if (clientes != null)
                         {
                             @foreach (var c in clientes)
                             {
-                                <option value="@c.Id">@c.Nome (CPF: @c.Cpf)</option>
+                                <option value="@c.Id">@c.Nome (CPF: @c.Cpf)@(!c.Ativo ? " [Inativo]" : "")</option>
                             }
                         }
                     </InputSelect>
@@ -71,16 +79,15 @@
                     </div>
                 </div>
 
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-warning">
-                        <i class="bi bi-save"></i> Guardar Alterações
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-warning fw-bold">
+                        <i class="bi bi-save"></i> Salvar Alterações
                     </button>
                     <button type="button" class="btn btn-secondary" @onclick="Cancelar">
                         Cancelar
                     </button>
                 </div>
             </EditForm>
-
         </div>
     </div>
 </div>
@@ -91,29 +98,49 @@
 
     private Veiculo veiculo = new Veiculo();
     private List<Cliente>? clientes;
+    private string? erroMensagem;
 
     protected override async Task OnInitializedAsync()
     {
-        // 1. Carrega a lista de donos disponíveis
         clientes = await ClienteRepository.Listar();
 
-        // 2. Procura os dados antigos do veículo para preencher o formulário
         var veiculoEncontrado = await VeiculoRepository.BuscarPorId(Id);
         if (veiculoEncontrado != null)
         {
             veiculo = veiculoEncontrado;
+            if (clientes.All(c => c.Id != veiculo.ClienteId))
+            {
+                var donoAtual = await ClienteRepository.BuscarPorId(veiculo.ClienteId);
+                if (donoAtual != null)
+                {
+                    clientes.Add(donoAtual);
+                }
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/veiculos");
         }
     }
 
-    private async Task GuardarEdicao()
+    private async Task SalvarEdicao()
     {
         if (veiculo.ClienteId == 0)
         {
+            erroMensagem = "Selecione o cliente proprietário do veículo.";
             return;
         }
 
-        await VeiculoRepository.Atualizar(veiculo);
-        NavigationManager.NavigateTo("/veiculos");
+        try
+        {
+            erroMensagem = null;
+            await VeiculoRepository.Atualizar(veiculo);
+            NavigationManager.NavigateTo("/veiculos");
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Ocorreu um erro ao atualizar o veículo. Verifique se a placa já está cadastrada.");
+        }
     }
 
     private void Cancelar()

@@ -23,8 +23,21 @@ namespace mechsystem.Services
         public async Task BaixarPecasDaOS(int ordemServicoId, int usuarioId)
         {
             var pecasOS = await _context.OrdemServicoPecas
+                .Include(op => op.Peca)
                 .Where(op => op.OrdemServicoId == ordemServicoId)
                 .ToListAsync();
+
+            foreach (var item in pecasOS)
+            {
+                var peca = item.Peca ?? await _context.Pecas.FindAsync(item.PecaId)
+                    ?? throw new InvalidOperationException($"Peça ID {item.PecaId} não encontrada.");
+
+                if (peca.EstoqueAtual < item.Quantidade)
+                {
+                    throw new InvalidOperationException(
+                        $"Estoque insuficiente para '{peca.Nome}' (SKU: {peca.Sku}). Disponível: {peca.EstoqueAtual}, Solicitado: {item.Quantidade}.");
+                }
+            }
 
             foreach (var item in pecasOS)
             {
@@ -39,7 +52,7 @@ namespace mechsystem.Services
 
         /// <summary>
         /// Estorno automático quando a OS é Cancelada.
-        /// Devolve ao estoque todas as peças que foram baixadas.
+        /// Devolve ao estoque o saldo líquido de peças que estavam alocadas na OS.
         /// </summary>
         public async Task EstornarPecasDaOS(int ordemServicoId, int usuarioId)
         {
@@ -60,23 +73,51 @@ namespace mechsystem.Services
         }
 
         /// <summary>
-        /// Retorna peças com estoque abaixo ou igual ao estoque mínimo (Alerta de Ruptura).
+        /// Baixa imediata ao adicionar peça em uma OS já aprovada.
+        /// </summary>
+        public async Task BaixarPecaIndividualDaOSAsync(int ordemServicoId, int pecaId, int quantidade, int usuarioId)
+        {
+            await _pecaRepo.RegistrarSaidaAsync(
+                pecaId,
+                quantidade,
+                $"Adição de peça na OS #{ordemServicoId.ToString("D4")}",
+                usuarioId
+            );
+        }
+
+        /// <summary>
+        /// Estorno imediato ao remover peça de uma OS já aprovada.
+        /// </summary>
+        public async Task EstornarPecaIndividualDaOSAsync(int ordemServicoId, int pecaId, int quantidade, int usuarioId)
+        {
+            await _pecaRepo.RegistrarEntradaAsync(
+                pecaId,
+                quantidade,
+                null,
+                $"[ESTORNO] Remoção de peça da OS #{ordemServicoId.ToString("D4")}",
+                usuarioId
+            );
+        }
+
+        /// <summary>
+        /// Retorna peças ativas com estoque abaixo ou igual ao estoque mínimo (Alerta de Ruptura).
         /// </summary>
         public async Task<List<Peca>> GetAlertasRupturaAsync()
         {
             return await _context.Pecas
-                .Where(p => p.Ativo && p.EstoqueAtual <= p.EstoqueMinimo)
+                .Ativos()
+                .Where(p => p.EstoqueAtual <= p.EstoqueMinimo)
                 .OrderBy(p => p.EstoqueAtual)
                 .ToListAsync();
         }
 
         /// <summary>
-        /// Calcula o Capital Imobilizado em Estoque: Σ(EstoqueAtual × PrecoCusto).
+        /// Calcula o Capital Imobilizado em Estoque de peças ativas: Σ(EstoqueAtual × PrecoCusto).
         /// </summary>
         public async Task<decimal> GetCapitalImobilizadoAsync()
         {
             return await _context.Pecas
-                .Where(p => p.Ativo)
+                .Ativos()
                 .SumAsync(p => p.EstoqueAtual * p.PrecoCusto);
         }
 
@@ -90,8 +131,8 @@ namespace mechsystem.Services
                 .Include(op => op.OrdemServico)
                 .Where(op => op.OrdemServico != null
                     && op.OrdemServico.Status == OrdemServicoStatus.Concluida
-                    && op.OrdemServico.DataAutorizacao >= inicio
-                    && op.OrdemServico.DataAutorizacao <= fim)
+                    && op.OrdemServico.DataConclusao >= inicio
+                    && op.OrdemServico.DataConclusao < fim)
                 .ToListAsync();
 
             var receitaPecas = pecasOS.Sum(op => op.Quantidade * op.ValorCobrado);

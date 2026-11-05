@@ -3,10 +3,14 @@
 @implements IDisposable
 @using mechsystem.Data
 @using mechsystem.Models
+@using mechsystem.Services
 @using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 @attribute [Authorize(Roles = "Administrador, Atendimento, Mecanico")]
 @inject AppDbContext DbContext
+@inject OrdemServicoService OrdemServicoService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavManager
 
 <PageTitle>Painel do Mecânico</PageTitle>
@@ -18,6 +22,14 @@
             <p class="text-muted mb-0 mt-1">Área de trabalho da oficina (Mecânicos)</p>
         </div>
     </div>
+
+    @if (!string.IsNullOrEmpty(erroOperacional))
+    {
+        <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>@erroOperacional
+            <button type="button" class="btn-close" @onclick="() => erroOperacional = null"></button>
+        </div>
+    }
 
     <!-- Tabs for Mobile -->
     <ul class="nav nav-pills nav-fill d-lg-none mb-4 bg-white p-1 rounded shadow-sm" role="tablist">
@@ -361,6 +373,8 @@
         _uiTimer?.Dispose();
     }
 
+    private string? erroOperacional;
+
     private async Task CarregarOrdens()
     {
         ordens = await DbContext.OrdensServico
@@ -369,34 +383,6 @@
                 .ThenInclude(s => s.Servico)
             .Where(o => o.Status != OrdemServicoStatus.Cancelada)
             .ToListAsync();
-
-        if (ordens.Count == 0)
-        {
-            ordens = new List<OrdemServico>
-            {
-                new OrdemServico 
-                { 
-                    Id = 1, 
-                    Status = OrdemServicoStatus.Orcamento,
-                    Veiculo = new Veiculo { Placa = "ABC1234", Modelo = "Ford Ka" },
-                    ServicosAExecutarList = new List<OrdemServicoServico> 
-                    { 
-                        new OrdemServicoServico { Servico = new Servico { Nome = "Substituição das pastilhas" }, TempoEstimadoMinutosSnapshot = 60, Quantidade = 1 }
-                    }
-                },
-                new OrdemServico 
-                { 
-                    Id = 2, 
-                    Status = OrdemServicoStatus.Concluida,
-                    Veiculo = new Veiculo { Placa = "XYZ9876", Modelo = "Chevrolet Onix" },
-                    ServicosAExecutarList = new List<OrdemServicoServico> 
-                    { 
-                        new OrdemServicoServico { Servico = new Servico { Nome = "Alinhamento da direção" }, TempoEstimadoMinutosSnapshot = 45, Quantidade = 1 },
-                        new OrdemServicoServico { Servico = new Servico { Nome = "Balanceamento" }, TempoEstimadoMinutosSnapshot = 30, Quantidade = 1 }
-                    }
-                }
-            };
-        }
     }
 
     private RenderFragment<OrdemServico> RenderCard => os => __builder =>
@@ -482,14 +468,26 @@
 
                 <!-- Main Actions -->
                 <div class="d-grid gap-2">
-                    @if(isPendente || isPausada)
+                    @if(isPendente)
+                    {
+                        <button class="btn btn-outline-warning text-dark btn-lg fw-bold py-3 rounded-3 w-100" disabled title="Orçamento precisa ser aprovado pelo Atendimento ou Administração">
+                            <i class="bi bi-hourglass-split fs-4 me-1 align-middle"></i> AGUARDANDO APROVAÇÃO
+                        </button>
+                    }
+                    else if(isPausada)
                     {
                         <button class="btn btn-success btn-lg fw-bold py-3 shadow-sm rounded-3 w-100" @onclick="() => IniciarServico(os.Id)">
-                            <i class="bi bi-play-fill fs-4 me-1 align-middle"></i> @(isPendente ? "INICIAR SERVIÇO" : "RETOMAR SERVIÇO")
+                            <i class="bi bi-play-fill fs-4 me-1 align-middle"></i> RETOMAR SERVIÇO
                         </button>
                     }
                     else if(isExecucao)
                     {
+                        @if (!os.InicioUltimaExecucao.HasValue)
+                        {
+                            <button class="btn btn-success btn-lg fw-bold py-3 shadow-sm rounded-3 w-100" @onclick="() => IniciarServico(os.Id)">
+                                <i class="bi bi-play-fill fs-4 me-1 align-middle"></i> INICIAR SERVIÇO
+                            </button>
+                        }
                         <button class="btn btn-primary btn-lg fw-bold py-3 shadow-sm rounded-3 w-100" @onclick="() => PrepararConclusao(os)">
                             <i class="bi bi-check2-all fs-4 me-1 align-middle"></i> CONCLUIR O.S.
                         </button>
@@ -505,47 +503,50 @@
         </div>
     };
 
+    [Inject] private ILogger<PainelMecanico> Logger { get; set; } = default!;
+
     private async Task IniciarServico(int id)
     {
-        var os = await DbContext.OrdensServico.FindAsync(id);
-        if (os != null) 
+        try
         {
-            os.Status = OrdemServicoStatus.EmAndamento;
-            os.InicioUltimaExecucao = DateTime.Now;
-            await DbContext.SaveChangesAsync();
+            erroOperacional = null;
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.IniciarOuRetomarServicoAsync(id, perfil, usuarioId);
             await CarregarOrdens();
+        }
+        catch (Exception ex)
+        {
+            erroOperacional = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível iniciar ou retomar o serviço.");
         }
     }
 
     private async Task PausarServico(int id)
     {
-        var os = await DbContext.OrdensServico.FindAsync(id);
-        if (os != null) 
+        try
         {
-            os.Status = OrdemServicoStatus.Pausada;
-            if (os.InicioUltimaExecucao.HasValue)
-            {
-                os.TempoGastoMinutos += (int)Math.Round((DateTime.Now - os.InicioUltimaExecucao.Value).TotalMinutes);
-                os.InicioUltimaExecucao = null;
-            }
-            await DbContext.SaveChangesAsync();
+            erroOperacional = null;
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.PausarServicoAsync(id, perfil, usuarioId);
             await CarregarOrdens();
+        }
+        catch (Exception ex)
+        {
+            erroOperacional = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível pausar o serviço.");
         }
     }
 
     private async Task ConcluirServico(int id)
     {
-        var os = await DbContext.OrdensServico.FindAsync(id);
-        if (os != null) 
+        try
         {
-            os.Status = OrdemServicoStatus.Concluida;
-            if (os.InicioUltimaExecucao.HasValue)
-            {
-                os.TempoGastoMinutos += (int)Math.Round((DateTime.Now - os.InicioUltimaExecucao.Value).TotalMinutes);
-                os.InicioUltimaExecucao = null;
-            }
-            await DbContext.SaveChangesAsync();
+            erroOperacional = null;
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.ConcluirOSAsync(id, perfil, usuarioId);
             await CarregarOrdens();
+        }
+        catch (Exception ex)
+        {
+            erroOperacional = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível concluir o serviço.");
         }
     }
 
@@ -555,7 +556,8 @@
         
         if (os.Status == OrdemServicoStatus.EmAndamento && os.InicioUltimaExecucao.HasValue)
         {
-            totalMinutos += (int)Math.Round((DateTime.Now - os.InicioUltimaExecucao.Value).TotalMinutes);
+            var inicioUtc = DateTime.SpecifyKind(os.InicioUltimaExecucao.Value, DateTimeKind.Utc);
+            totalMinutos += (int)Math.Round((DateTime.UtcNow - inicioUtc).TotalMinutes);
         }
 
         if (totalMinutos < 0) return "--";
@@ -599,18 +601,34 @@
     {
         if (osReportar != null && !string.IsNullOrWhiteSpace(reportarTipo) && !string.IsNullOrWhiteSpace(reportarDescricao))
         {
-            // Salva o reporte como contato/nota na OS
-            var contato = new ContatoOS
+            try
             {
-                OrdemServicoId = osReportar.Id,
-                Tipo = TipoContato.Outro,
-                Descricao = $"[{reportarTipo}] {reportarDescricao}",
-                RegistradoPor = "Mecânico",
-                DataContato = DateTime.Now
-            };
-            DbContext.ContatosOS.Add(contato);
-            await DbContext.SaveChangesAsync();
-            osReportar = null;
+                erroOperacional = null;
+                var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+                // Salva o reporte como contato/nota na OS
+                var contato = new ContatoOS
+                {
+                    OrdemServicoId = osReportar.Id,
+                    Tipo = TipoContato.Outro,
+                    Descricao = $"[{reportarTipo}] {reportarDescricao}",
+                    RegistradoPor = "Mecânico",
+                    DataContato = DateTime.UtcNow
+                };
+                DbContext.ContatosOS.Add(contato);
+                await DbContext.SaveChangesAsync();
+
+                if (reportarTipo == "Falta de peça" && osReportar.Status == OrdemServicoStatus.EmAndamento)
+                {
+                    await OrdemServicoService.AguardarPecasAsync(osReportar.Id, perfil, usuarioId);
+                    await CarregarOrdens();
+                }
+
+                osReportar = null;
+            }
+            catch (Exception ex)
+            {
+                erroOperacional = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível registrar o reporte na O.S.");
+            }
         }
     }
 
@@ -630,61 +648,61 @@
         osPedirPeca = null;
     }
 
+    private async Task<(int usuarioId, PerfilUsuario perfil)> GetUsuarioContextoAtual()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity?.IsAuthenticated != true)
+        {
+            throw new UnauthorizedAccessException("Usuário não autenticado.");
+        }
+
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var usuarioId))
+        {
+            throw new UnauthorizedAccessException("Identificador de usuário inválido.");
+        }
+
+        var roleClaim = user.FindFirst(ClaimTypes.Role)?.Value;
+        if (!Enum.TryParse<PerfilUsuario>(roleClaim, out var perfil))
+        {
+            throw new UnauthorizedAccessException("Perfil de usuário inválido.");
+        }
+
+        return (usuarioId, perfil);
+    }
+
     private async Task SolicitarPeca()
     {
-        if (osPedirPeca == null || pecaSelecionadaId <= 0) return;
+        if (osPedirPeca == null || pecaSelecionadaId <= 0 || pecaQuantidade <= 0) return;
 
-        var peca = await DbContext.Pecas.FindAsync(pecaSelecionadaId);
-        if (peca == null || peca.EstoqueAtual < pecaQuantidade)
+        try
         {
-            pecaMensagem = peca == null ? "Peça não encontrada." : $"Estoque insuficiente (disponível: {peca.EstoqueAtual}).";
-            pecaMensagemSucesso = false;
-            return;
-        }
-
-        // Verificar se já existe essa peça na OS
-        var existente = await DbContext.OrdemServicoPecas
-            .FirstOrDefaultAsync(op => op.OrdemServicoId == osPedirPeca.Id && op.PecaId == pecaSelecionadaId);
-
-        if (existente != null)
-        {
-            existente.Quantidade += pecaQuantidade;
-        }
-        else
-        {
-            var osPeca = new OrdemServicoPeca
+            var peca = await DbContext.Pecas.FindAsync(pecaSelecionadaId);
+            if (peca == null)
             {
-                OrdemServicoId = osPedirPeca.Id,
-                PecaId = pecaSelecionadaId,
-                Quantidade = pecaQuantidade,
-                PrecoBase = peca.PrecoVenda,
-                PrecoCustoSnapshot = peca.PrecoCusto,
-                ValorCobrado = peca.PrecoVenda
-            };
-            DbContext.OrdemServicoPecas.Add(osPeca);
+                pecaMensagem = "Peça não encontrada.";
+                pecaMensagemSucesso = false;
+                return;
+            }
+
+            var (usuarioId, perfil) = await GetUsuarioContextoAtual();
+            await OrdemServicoService.AdicionarPecaAsync(osPedirPeca.Id, pecaSelecionadaId, pecaQuantidade, null, usuarioId, perfil);
+
+            pecaMensagem = $"✅ {peca.Nome} (x{pecaQuantidade}) adicionada com sucesso!";
+            pecaMensagemSucesso = true;
+            pecaSelecionadaId = 0;
+            pecaQuantidade = 1;
+
+            // Recarregar peças para atualizar estoque na listagem
+            pecasDisponiveis = await DbContext.Pecas.Where(p => p.Ativo).OrderBy(p => p.Nome).ToListAsync();
+            await CarregarOrdens();
         }
-
-        // Baixar estoque
-        peca.EstoqueAtual -= pecaQuantidade;
-        var mov = new MovimentacaoEstoque
+        catch (Exception ex)
         {
-            PecaId = pecaSelecionadaId,
-            Tipo = TipoMovimentacao.Saida,
-            Quantidade = pecaQuantidade,
-            Referencia = $"Solicitação Painel Mecânico - OS #{osPedirPeca.Id}",
-            DataHora = DateTime.Now,
-            UsuarioId = 1 // Padrão para operações do painel
-        };
-        DbContext.MovimentacoesEstoque.Add(mov);
-
-        await DbContext.SaveChangesAsync();
-        pecaMensagem = $"✅ {peca.Nome} (x{pecaQuantidade}) adicionada com sucesso!";
-        pecaMensagemSucesso = true;
-        pecaSelecionadaId = 0;
-        pecaQuantidade = 1;
-
-        // Recarregar peças para atualizar estoque na listagem
-        pecasDisponiveis = await DbContext.Pecas.Where(p => p.Ativo).OrderBy(p => p.Nome).ToListAsync();
+            pecaMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível requisitar a peça para a O.S.");
+            pecaMensagemSucesso = false;
+        }
     }
 
     // ── Conclusão ──

@@ -1,6 +1,8 @@
 @page "/servicos/cadastro"
 @using mechsystem.Interfaces
 @using mechsystem.Models
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrador, Atendimento")]
 @inject IServicoRepository ServicoRepository
 @inject NavigationManager NavigationManager
 @rendermode InteractiveServer
@@ -90,7 +92,9 @@
         }
         catch (Exception ex)
         {
-            errorMessage = $"Erro ao salvar o serviço: {ex.Message}";
+            errorMessage = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível salvar o serviço. Tente novamente.");
         }
     }
+
+    [Inject] private ILogger<Cadastro> Logger { get; set; } = default!;
 }

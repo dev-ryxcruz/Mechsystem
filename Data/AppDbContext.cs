@@ -22,6 +22,17 @@ namespace mechsystem.Data
         public DbSet<OrdemServicoServico> OrdemServicoServicos { get; set; }
         public DbSet<ContatoOS> ContatosOS { get; set; }
 
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+        {
+            base.ConfigureConventions(configurationBuilder);
+
+            configurationBuilder.Properties<DateTime>()
+                .HaveConversion<UtcDateTimeConverter>();
+
+            configurationBuilder.Properties<DateTime?>()
+                .HaveConversion<NullableUtcDateTimeConverter>();
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -32,6 +43,25 @@ namespace mechsystem.Data
                     v => string.IsNullOrEmpty(v) ? v : new string(v.Where(char.IsDigit).ToArray()),
                     v => v
                 );
+
+            modelBuilder.Entity<Cliente>()
+                .HasIndex(c => c.Cpf)
+                .IsUnique();
+
+            modelBuilder.Entity<Veiculo>()
+                .Property(v => v.Placa)
+                .HasConversion(
+                    v => string.IsNullOrEmpty(v) ? v : v.Replace("-", "").Trim().ToUpperInvariant(),
+                    v => v
+                );
+
+            modelBuilder.Entity<Veiculo>()
+                .HasIndex(v => v.Placa)
+                .IsUnique();
+
+            modelBuilder.Entity<OrdemServico>()
+                .HasIndex(o => o.TokenAcompanhamento)
+                .IsUnique();
 
             modelBuilder.Entity<Cliente>()
                 .Property(c => c.Telefone)
@@ -63,8 +93,14 @@ namespace mechsystem.Data
 
             modelBuilder.Entity<Usuario>().HasIndex(u => u.Username).IsUnique();
 
-            // Peca: SKU único
+            // Peca: SKU único e controle de concorrência otimista (PostgreSQL xmin)
             modelBuilder.Entity<Peca>().HasIndex(p => p.Sku).IsUnique();
+            modelBuilder.Entity<Peca>()
+                .Property(p => p.Version)
+                .HasColumnName("xmin")
+                .HasColumnType("xid")
+                .ValueGeneratedOnAddOrUpdate()
+                .IsConcurrencyToken();
 
             // MovimentacaoEstoque: FKs
             modelBuilder.Entity<MovimentacaoEstoque>()
@@ -105,15 +141,66 @@ namespace mechsystem.Data
                 .HasForeignKey(os => os.ServicoId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            modelBuilder.Entity<Usuario>().HasData(new Usuario
-            {
-                Id = 1,
-                Username = "admin",
-                PasswordHash = "$2a$11$uegyC1YafmGAkp2uMJmfje/iz6TbLTTiqJgps2rWvCNQFzymrQTza",
-                NomeCompleto = "Administrador",
-                Ativo = true,
-                DataCriacao = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            });
+            // Soft-delete padronizado (IInativavel) — sem HasQueryFilter global para preservar histórico
+            modelBuilder.Entity<Servico>()
+                .Property(s => s.Ativo)
+                .HasDefaultValue(true);
+
+            modelBuilder.Entity<Cliente>()
+                .HasOne(c => c.InativadoPorUsuario)
+                .WithMany()
+                .HasForeignKey(c => c.InativadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Veiculo>()
+                .HasOne(v => v.InativadoPorUsuario)
+                .WithMany()
+                .HasForeignKey(v => v.InativadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Peca>()
+                .HasOne(p => p.InativadoPorUsuario)
+                .WithMany()
+                .HasForeignKey(p => p.InativadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Servico>()
+                .HasOne(s => s.InativadoPorUsuario)
+                .WithMany()
+                .HasForeignKey(s => s.InativadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrdemServico>()
+                .HasOne(o => o.CanceladaPorUsuario)
+                .WithMany()
+                .HasForeignKey(o => o.CanceladaPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
+    }
+
+    public class UtcDateTimeConverter : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>
+    {
+        public UtcDateTimeConverter()
+            : base(
+                v => v.Kind == DateTimeKind.Utc
+                    ? v
+                    : (v.Kind == DateTimeKind.Local ? v.ToUniversalTime() : DateTime.SpecifyKind(v, DateTimeKind.Utc)),
+                v => DateTime.SpecifyKind(v, DateTimeKind.Utc))
+        {
+        }
+    }
+
+    public class NullableUtcDateTimeConverter : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>
+    {
+        public NullableUtcDateTimeConverter()
+            : base(
+                v => !v.HasValue
+                    ? null
+                    : (v.Value.Kind == DateTimeKind.Utc
+                        ? v.Value
+                        : (v.Value.Kind == DateTimeKind.Local ? v.Value.ToUniversalTime() : DateTime.SpecifyKind(v.Value, DateTimeKind.Utc))),
+                v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : null)
+        {
         }
     }
 }

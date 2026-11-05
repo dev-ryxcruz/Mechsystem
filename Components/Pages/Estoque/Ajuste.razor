@@ -142,7 +142,7 @@
                                         <small class="text-muted d-block mt-1">@mov.Referencia</small>
                                         <small class="text-muted d-block">por @(mov.Usuario?.NomeCompleto ?? "Sistema")</small>
                                     </div>
-                                    <small class="text-muted">@mov.DataHora.ToLocalTime().ToString("dd/MM HH:mm")</small>
+                                    <small class="text-muted">@mov.DataHora.ToBrasiliaTime().ToString("dd/MM HH:mm")</small>
                                 </div>
                             </div>
                         }
@@ -223,7 +223,9 @@
         }
         catch (Exception ex)
         {
-            erroMensagem = ex.Message;
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Não foi possível registrar o ajuste de estoque.");
         }
     }
+
+    [Inject] private ILogger<Ajuste> Logger { get; set; } = default!;
 }

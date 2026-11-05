@@ -1,5 +1,8 @@
 @page "/acompanhar/{token}"
+@attribute [AllowAnonymous]
+@layout PublicLayout
 @rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.EntityFrameworkCore
 @using mechsystem.Data
 @using mechsystem.Models
@@ -48,7 +51,7 @@
                         int step = 1;
                         if (os.Status == OrdemServicoStatus.Orcamento) step = 1;
                         else if (os.Status == OrdemServicoStatus.AguardandoPecas) step = 2;
-                        else if (os.Status == OrdemServicoStatus.EmAndamento) step = 3;
+                        else if (os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.Pausada) step = 3;
                         else if (os.Status == OrdemServicoStatus.Concluida) step = 4;
                         else if (os.Status == OrdemServicoStatus.Cancelada) step = 0;
                     }
@@ -99,7 +102,7 @@
                 <div class="row g-4 mb-4">
                     <div class="col-sm-6">
                         <div class="info-box">
-                            <div class="info-icon text-secondary"><i class="bi bi-calendar-arrow-down"></i></div>
+                            <div class="info-icon text-secondary"><i class="bi bi-calendar-event"></i></div>
                             <div>
                                 <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Entrada</small>
                                 <span class="fw-bold fs-6">@os.DataEmissao.ToString("dd/MM/yyyy")</span>
@@ -108,9 +111,10 @@
                     </div>
                     <div class="col-sm-6">
                         @{
-                            var diasAtraso = (DateTime.Now.Date - os.DataPrevisaoEntrega.Date).Days;
+                            var hojeBrasilia = DateTimeExtensions.TodayBrasilia();
+                            var diasAtraso = (hojeBrasilia - os.DataPrevisaoEntrega.Date).Days;
                             bool isAtrasado = diasAtraso > 0 && os.Status != OrdemServicoStatus.Concluida && os.Status != OrdemServicoStatus.Cancelada;
-                            var diasRestantes = (os.DataPrevisaoEntrega.Date - DateTime.Now.Date).Days;
+                            var diasRestantes = (os.DataPrevisaoEntrega.Date - hojeBrasilia).Days;
                         }
                         <div class="info-box @(isAtrasado ? "border-danger bg-danger bg-opacity-10" : "")">
                             <div class="info-icon @(isAtrasado ? "text-danger" : "text-primary")"><i class="bi bi-calendar-check"></i></div>
@@ -174,7 +178,6 @@
         {
             os = await DbContext.OrdensServico
                 .Include(o => o.Veiculo)
-                .ThenInclude(v => v!.Cliente)
                 .FirstOrDefaultAsync(o => o.TokenAcompanhamento == Token);
         }
         finally
@@ -187,6 +190,7 @@
     {
         OrdemServicoStatus.Orcamento => "Orçamento em Análise",
         OrdemServicoStatus.EmAndamento => "Serviço em Andamento",
+        OrdemServicoStatus.Pausada => "Serviço Pausado",
         OrdemServicoStatus.AguardandoPecas => "Aguardando Peças",
         OrdemServicoStatus.Concluida => "Serviço Concluído",
         OrdemServicoStatus.Cancelada => "Cancelada",
@@ -197,6 +201,7 @@
     {
         OrdemServicoStatus.Orcamento => "#6c757d",      // Secondary
         OrdemServicoStatus.EmAndamento => "#0d6efd",    // Primary
+        OrdemServicoStatus.Pausada => "#ffc107",        // Warning / Amber
         OrdemServicoStatus.AguardandoPecas => "#fd7e14", // Orange
         OrdemServicoStatus.Concluida => "#198754",      // Success
         OrdemServicoStatus.Cancelada => "#dc3545",      // Danger
@@ -207,6 +212,7 @@
     {
         OrdemServicoStatus.Orcamento => "bi bi-file-earmark-text",
         OrdemServicoStatus.EmAndamento => "bi bi-tools",
+        OrdemServicoStatus.Pausada => "bi bi-pause-circle",
         OrdemServicoStatus.AguardandoPecas => "bi bi-box-seam",
         OrdemServicoStatus.Concluida => "bi bi-stars",
         OrdemServicoStatus.Cancelada => "bi bi-x-circle",

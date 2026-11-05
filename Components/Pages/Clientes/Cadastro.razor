@@ -6,10 +6,10 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize(Roles = "Administrador, Atendimento")]
 
-@* Aqui estamos a pedir ao Blazor para injetar as nossas ferramentas *@
 @inject IClienteRepository ClienteRepository
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JS
+@inject ILogger<Cadastro> Logger
 
 <PageTitle>Novo Cliente — Mechsystem</PageTitle>
 
@@ -25,9 +25,14 @@
 
 <div class="card shadow-sm dash-card">
     <div class="card-body p-4">
-        
-        @* O EditForm liga o HTML ao nosso objeto C# e ativa as validações *@
-        <EditForm Model="@cliente" OnValidSubmit="GuardarCliente">
+        @if (!string.IsNullOrEmpty(erroMensagem))
+        {
+            <div class="alert alert-danger mb-3">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>@erroMensagem
+            </div>
+        }
+
+        <EditForm Model="@cliente" OnValidSubmit="SalvarCliente">
             <DataAnnotationsValidator />
 
             <div class="row g-4">
@@ -75,23 +80,29 @@
             <div class="d-flex justify-content-end gap-2">
                 <a href="/clientes" class="btn btn-light px-4 border">Cancelar</a>
                 <button type="submit" class="btn btn-success px-4 shadow-sm">
-                    <i class="bi bi-save me-1"></i> Guardar Cliente
+                    <i class="bi bi-save me-1"></i> Salvar Cliente
                 </button>
             </div>
         </EditForm>
-
     </div>
 </div>
 
 @code {
-    // Criamos um cliente vazio para preencher no formulário
     private Cliente cliente = new Cliente();
+    private string? erroMensagem;
 
-    // Este método é chamado quando clicamos no botão verde e não há erros nas regras
-    private async Task GuardarCliente()
+    private async Task SalvarCliente()
     {
-        await ClienteRepository.Salvar(cliente); // Vai à base de dados e guarda
-        NavigationManager.NavigateTo("/clientes");       // Volta para a página inicial
+        try
+        {
+            erroMensagem = null;
+            await ClienteRepository.Salvar(cliente);
+            NavigationManager.NavigateTo("/clientes");
+        }
+        catch (Exception ex)
+        {
+            erroMensagem = DomainErrorHelper.ObterMensagemSegura(ex, Logger, "Ocorreu um erro ao salvar o cliente. Verifique se o CPF já está cadastrado.");
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

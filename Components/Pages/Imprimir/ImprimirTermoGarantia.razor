@@ -65,7 +65,7 @@ else
                     TERMO DE GARANTIA
                 </div>
                 <div class="doc-os-numero">OS Nº @os.Id.ToString("D4")</div>
-                <div class="doc-os-data">Emissão: @DateTime.Now.ToString("dd/MM/yyyy")</div>
+                <div class="doc-os-data">Emissão: @DateTimeExtensions.NowBrasilia().ToString("dd/MM/yyyy")</div>
             </div>
         </div>
 
@@ -102,7 +102,7 @@ else
                 </div>
                 <div class="doc-field">
                     <span class="doc-label">Data de Conclusão / Entrega</span>
-                    <span class="doc-value">@(os.DataPrevisaoEntrega.ToString("dd/MM/yyyy"))</span>
+                    <span class="doc-value">@((os.DataConclusao.ToBrasiliaTime() ?? os.DataPrevisaoEntrega).ToString("dd/MM/yyyy"))</span>
                 </div>
             </div>
         </div>
@@ -164,7 +164,7 @@ else
         else
         {
             <div class="doc-rodape">
-                @(config?.NomeFantasia ?? "Mechsystem") · @(config?.Telefone ?? "") · Documento gerado em @DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                @(config?.NomeFantasia ?? "Mechsystem") · @(config?.Telefone ?? "") · Documento gerado em @DateTimeExtensions.NowBrasilia().ToString("dd/MM/yyyy HH:mm")
             </div>
         }
 

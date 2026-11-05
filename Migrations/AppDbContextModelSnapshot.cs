@@ -41,6 +41,10 @@ namespace mechsystem.Migrations
                         .HasColumnType("character varying(14)")
                         .HasColumnName("cpf");
 
+                    b.Property<DateTime?>("DataInativacao")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_inativacao");
+
                     b.Property<string>("Email")
                         .HasColumnType("text")
                         .HasColumnName("email");
@@ -48,6 +52,15 @@ namespace mechsystem.Migrations
                     b.Property<string>("Endereco")
                         .HasColumnType("text")
                         .HasColumnName("endereco");
+
+                    b.Property<int?>("InativadoPorUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("inativado_por_usuario_id");
+
+                    b.Property<string>("MotivoInativacao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_inativacao");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -61,6 +74,13 @@ namespace mechsystem.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_clientes");
+
+                    b.HasIndex("Cpf")
+                        .IsUnique()
+                        .HasDatabaseName("ix_clientes_cpf");
+
+                    b.HasIndex("InativadoPorUsuarioId")
+                        .HasDatabaseName("ix_clientes_inativado_por_usuario_id");
 
                     b.ToTable("clientes", (string)null);
                 });
@@ -148,7 +168,7 @@ namespace mechsystem.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("DataContato")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_contato");
 
                     b.Property<string>("Descricao")
@@ -188,7 +208,7 @@ namespace mechsystem.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("DataHora")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_hora");
 
                     b.Property<int>("PecaId")
@@ -237,20 +257,32 @@ namespace mechsystem.Migrations
                         .HasColumnType("text")
                         .HasColumnName("autorizado_por");
 
+                    b.Property<int?>("CanceladaPorUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("cancelada_por_usuario_id");
+
                     b.Property<DateTime?>("DataAutorizacao")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_autorizacao");
 
+                    b.Property<DateTime?>("DataCancelamento")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_cancelamento");
+
+                    b.Property<DateTime?>("DataConclusao")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_conclusao");
+
                     b.Property<DateTime>("DataEmissao")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_emissao");
 
                     b.Property<DateTime>("DataPrevisaoEntrega")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_previsao_entrega");
 
                     b.Property<DateTime?>("DataPrevisaoInicio")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_previsao_inicio");
 
                     b.Property<string>("DescricaoProblemaRelatado")
@@ -259,12 +291,17 @@ namespace mechsystem.Migrations
                         .HasColumnName("descricao_problema_relatado");
 
                     b.Property<DateTime?>("InicioUltimaExecucao")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("inicio_ultima_execucao");
 
                     b.Property<string>("MeioAutorizacao")
                         .HasColumnType("text")
                         .HasColumnName("meio_autorizacao");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_cancelamento");
 
                     b.Property<string>("ServicoAExecutar")
                         .HasColumnType("text")
@@ -300,6 +337,13 @@ namespace mechsystem.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_ordens_servico");
+
+                    b.HasIndex("CanceladaPorUsuarioId")
+                        .HasDatabaseName("ix_ordens_servico_cancelada_por_usuario_id");
+
+                    b.HasIndex("TokenAcompanhamento")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ordens_servico_token_acompanhamento");
 
                     b.HasIndex("VeiculoId")
                         .HasDatabaseName("ix_ordens_servico_veiculo_id");
@@ -410,6 +454,10 @@ namespace mechsystem.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("ativo");
 
+                    b.Property<DateTime?>("DataInativacao")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_inativacao");
+
                     b.Property<int>("EstoqueAtual")
                         .HasColumnType("integer")
                         .HasColumnName("estoque_atual");
@@ -417,6 +465,10 @@ namespace mechsystem.Migrations
                     b.Property<int>("EstoqueMinimo")
                         .HasColumnType("integer")
                         .HasColumnName("estoque_minimo");
+
+                    b.Property<int?>("InativadoPorUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("inativado_por_usuario_id");
 
                     b.Property<string>("Localizacao")
                         .HasMaxLength(200)
@@ -427,6 +479,11 @@ namespace mechsystem.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("marca");
+
+                    b.Property<string>("MotivoInativacao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_inativacao");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -448,8 +505,17 @@ namespace mechsystem.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("sku");
 
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id")
                         .HasName("pk_pecas");
+
+                    b.HasIndex("InativadoPorUsuarioId")
+                        .HasDatabaseName("ix_pecas_inativado_por_usuario_id");
 
                     b.HasIndex("Sku")
                         .IsUnique()
@@ -467,10 +533,29 @@ namespace mechsystem.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Ativo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("ativo");
+
+                    b.Property<DateTime?>("DataInativacao")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_inativacao");
+
                     b.Property<string>("Descricao")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("descricao");
+
+                    b.Property<int?>("InativadoPorUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("inativado_por_usuario_id");
+
+                    b.Property<string>("MotivoInativacao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_inativacao");
 
                     b.Property<string>("Nome")
                         .IsRequired()
@@ -489,6 +574,9 @@ namespace mechsystem.Migrations
                     b.HasKey("Id")
                         .HasName("pk_servicos");
 
+                    b.HasIndex("InativadoPorUsuarioId")
+                        .HasDatabaseName("ix_servicos_inativado_por_usuario_id");
+
                     b.ToTable("servicos", (string)null);
                 });
 
@@ -506,7 +594,7 @@ namespace mechsystem.Migrations
                         .HasColumnName("ativo");
 
                     b.Property<DateTime>("DataCriacao")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_criacao");
 
                     b.Property<string>("NomeCompleto")
@@ -538,18 +626,6 @@ namespace mechsystem.Migrations
                         .HasDatabaseName("ix_usuarios_username");
 
                     b.ToTable("usuarios", (string)null);
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Ativo = true,
-                            DataCriacao = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            NomeCompleto = "Administrador",
-                            PasswordHash = "$2a$11$uegyC1YafmGAkp2uMJmfje/iz6TbLTTiqJgps2rWvCNQFzymrQTza",
-                            Perfil = 2,
-                            Username = "admin"
-                        });
                 });
 
             modelBuilder.Entity("mechsystem.Models.Veiculo", b =>
@@ -577,6 +653,14 @@ namespace mechsystem.Migrations
                         .HasColumnType("text")
                         .HasColumnName("cor");
 
+                    b.Property<DateTime?>("DataInativacao")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_inativacao");
+
+                    b.Property<int?>("InativadoPorUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("inativado_por_usuario_id");
+
                     b.Property<string>("Marca")
                         .HasColumnType("text")
                         .HasColumnName("marca");
@@ -584,6 +668,11 @@ namespace mechsystem.Migrations
                     b.Property<string>("Modelo")
                         .HasColumnType("text")
                         .HasColumnName("modelo");
+
+                    b.Property<string>("MotivoInativacao")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_inativacao");
 
                     b.Property<string>("Placa")
                         .IsRequired()
@@ -600,6 +689,13 @@ namespace mechsystem.Migrations
 
                     b.HasIndex("ClienteId")
                         .HasDatabaseName("ix_veiculos_cliente_id");
+
+                    b.HasIndex("InativadoPorUsuarioId")
+                        .HasDatabaseName("ix_veiculos_inativado_por_usuario_id");
+
+                    b.HasIndex("Placa")
+                        .IsUnique()
+                        .HasDatabaseName("ix_veiculos_placa");
 
                     b.ToTable("veiculos", (string)null);
                 });
@@ -618,7 +714,7 @@ namespace mechsystem.Migrations
                         .HasColumnName("avarias_json");
 
                     b.Property<DateTime>("DataVistoria")
-                        .HasColumnType("timestamp without time zone")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_vistoria");
 
                     b.Property<int>("NivelCombustivel")
@@ -671,6 +767,17 @@ namespace mechsystem.Migrations
                     b.ToTable("vistorias", (string)null);
                 });
 
+            modelBuilder.Entity("mechsystem.Models.Cliente", b =>
+                {
+                    b.HasOne("mechsystem.Models.Usuario", "InativadoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("InativadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_clientes_usuarios_inativado_por_usuario_id");
+
+                    b.Navigation("InativadoPorUsuario");
+                });
+
             modelBuilder.Entity("mechsystem.Models.ContatoOS", b =>
                 {
                     b.HasOne("mechsystem.Models.OrdemServico", "OrdemServico")
@@ -706,12 +813,20 @@ namespace mechsystem.Migrations
 
             modelBuilder.Entity("mechsystem.Models.OrdemServico", b =>
                 {
+                    b.HasOne("mechsystem.Models.Usuario", "CanceladaPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("CanceladaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ordens_servico_usuarios_cancelada_por_usuario_id");
+
                     b.HasOne("mechsystem.Models.Veiculo", "Veiculo")
                         .WithMany()
                         .HasForeignKey("VeiculoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_ordens_servico_veiculos_veiculo_id");
+
+                    b.Navigation("CanceladaPorUsuario");
 
                     b.Navigation("Veiculo");
                 });
@@ -758,6 +873,28 @@ namespace mechsystem.Migrations
                     b.Navigation("Servico");
                 });
 
+            modelBuilder.Entity("mechsystem.Models.Peca", b =>
+                {
+                    b.HasOne("mechsystem.Models.Usuario", "InativadoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("InativadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_pecas_usuarios_inativado_por_usuario_id");
+
+                    b.Navigation("InativadoPorUsuario");
+                });
+
+            modelBuilder.Entity("mechsystem.Models.Servico", b =>
+                {
+                    b.HasOne("mechsystem.Models.Usuario", "InativadoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("InativadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_servicos_usuarios_inativado_por_usuario_id");
+
+                    b.Navigation("InativadoPorUsuario");
+                });
+
             modelBuilder.Entity("mechsystem.Models.Veiculo", b =>
                 {
                     b.HasOne("mechsystem.Models.Cliente", "Cliente")
@@ -767,7 +904,15 @@ namespace mechsystem.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_veiculos_clientes_cliente_id");
 
+                    b.HasOne("mechsystem.Models.Usuario", "InativadoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("InativadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_veiculos_usuarios_inativado_por_usuario_id");
+
                     b.Navigation("Cliente");
+
+                    b.Navigation("InativadoPorUsuario");
                 });
 
             modelBuilder.Entity("mechsystem.Models.Vistoria", b =>

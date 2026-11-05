@@ -48,7 +48,7 @@ else
                     {
                         <tr>
                             <td class="text-center">#@v.Id.ToString("D4")</td>
-                            <td class="text-center">@v.DataVistoria.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td class="text-center">@v.DataVistoria.ToBrasiliaTime().ToString("dd/MM/yyyy HH:mm")</td>
                             <td class="text-center"><a href="/ordens-servico/@v.OrdemServicoId" class="text-decoration-none fw-bold">OS-@v.OrdemServicoId.ToString("D4")</a></td>
                             <td class="text-start">
                                 @(v.OrdemServico?.Veiculo?.Modelo) - <strong>@(v.OrdemServico?.Veiculo?.Placa)</strong><br />
