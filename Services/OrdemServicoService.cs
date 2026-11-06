@@ -282,7 +282,6 @@ public class OrdemServicoService
                 DataContato = DateTime.UtcNow
             };
             _db.ContatosOS.Add(contato);
-            os.Contatos.Add(contato);
 
             await _db.SaveChangesAsync();
         });
@@ -332,7 +331,6 @@ public class OrdemServicoService
             DataContato = DateTime.UtcNow
         };
         _db.ContatosOS.Add(contato);
-        os.Contatos.Add(contato);
 
         await _db.SaveChangesAsync();
     }
@@ -386,7 +384,6 @@ public class OrdemServicoService
             DataContato = DateTime.UtcNow
         };
         _db.ContatosOS.Add(contato);
-        os.Contatos.Add(contato);
 
         await _db.SaveChangesAsync();
     }
@@ -455,7 +452,6 @@ public class OrdemServicoService
             DataContato = DateTime.UtcNow
         };
         _db.ContatosOS.Add(contato);
-        os.Contatos.Add(contato);
 
         await _db.SaveChangesAsync();
     }
@@ -526,7 +522,6 @@ public class OrdemServicoService
         };
 
         _db.ApontamentosTempo.Add(apontamento);
-        os.ApontamentosTempo.Add(apontamento);
 
         await _db.SaveChangesAsync();
         return apontamento.Id;
@@ -772,7 +767,6 @@ public class OrdemServicoService
         };
 
         _db.OrdemServicoServicos.Add(item);
-        os.ServicosAExecutarList.Add(item);
 
         if (os.Status != OrdemServicoStatus.AguardandoCliente)
         {
@@ -791,7 +785,6 @@ public class OrdemServicoService
             DataContato = DateTime.UtcNow
         };
         _db.ContatosOS.Add(contato);
-        os.Contatos.Add(contato);
 
         await _db.SaveChangesAsync();
         return item.Id;
@@ -855,7 +848,6 @@ public class OrdemServicoService
         };
 
         _db.OrdemServicoPecas.Add(item);
-        os.PecasUtilizadas.Add(item);
 
         if (os.Status != OrdemServicoStatus.AguardandoCliente)
         {
@@ -874,7 +866,6 @@ public class OrdemServicoService
             DataContato = DateTime.UtcNow
         };
         _db.ContatosOS.Add(contato);
-        os.Contatos.Add(contato);
 
         await _db.SaveChangesAsync();
         return item.Id;
@@ -958,7 +949,6 @@ public class OrdemServicoService
                 DataContato = DateTime.UtcNow
             };
             _db.ContatosOS.Add(contato);
-            os.Contatos.Add(contato);
 
             await _db.SaveChangesAsync();
         });
@@ -1095,7 +1085,6 @@ public class OrdemServicoService
                     DataContato = DateTime.UtcNow
                 };
                 _db.ContatosOS.Add(contatoSaldo);
-                os.Contatos.Add(contatoSaldo);
             }
 
             foreach (var pag in listaPagamentos)
@@ -1244,7 +1233,6 @@ public class OrdemServicoService
                 };
 
                 _db.ContatosOS.Add(contato);
-                os.Contatos.Add(contato);
                 houveAlteracao = true;
             }
 
@@ -1375,7 +1363,6 @@ public class OrdemServicoService
                     Aplicada = false
                 };
                 _db.OrdemServicoPecas.Add(osPeca);
-                os.PecasUtilizadas.Add(osPeca);
             }
 
             await _db.SaveChangesAsync();

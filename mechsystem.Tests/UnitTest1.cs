@@ -1430,4 +1430,25 @@ public class OrdemServicoStabilizationTests
         Assert.Equal(DayOfWeek.Tuesday, sug2.DayOfWeek);
         Assert.Equal(new DateTime(2026, 11, 10), sug2.Date);
     }
+
+    [Fact]
+    public async Task AdicionarPeca_NaMesmaInstanciaDeContexto_NaoDeveDuplicarItemNemQuantidadeEmMemoria()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (admin, _, _, veiculo, peca1, _) = await SeedBasicScenarioAsync(db);
+
+        var os = new OrdemServico { VeiculoId = veiculo.Id, KmEntrada = 10000, NivelCombustivelEntrada = NivelCombustivel.Meio, QueixaCliente = "Queixa", DataEmissao = DateTime.UtcNow, DataPrevisaoEntrega = DateTime.UtcNow.AddDays(2), ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(5), Status = OrdemServicoStatus.Orcamento };
+        db.OrdensServico.Add(os);
+        await db.SaveChangesAsync();
+
+        await osService.AdicionarPecaAsync(os.Id, peca1.Id, 1, null, admin.Id, PerfilUsuario.Administrador);
+
+        // Mesma instância rastreada (como no Blazor Server): deve haver exatamente 1 linha com quantidade 1
+        var osMem = await db.OrdensServico.Include(o => o.PecasUtilizadas).FirstAsync(o => o.Id == os.Id);
+        var linha = Assert.Single(osMem.PecasUtilizadas);
+        Assert.Equal(1, linha.Quantidade);
+        Assert.Equal(peca1.PrecoVenda, osMem.ValorPecasEfetivo);
+
+        Assert.Equal(1, await db.OrdemServicoPecas.CountAsync(p => p.OrdemServicoId == os.Id));
+    }
 }
