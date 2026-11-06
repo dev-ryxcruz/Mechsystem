@@ -44,6 +44,14 @@ else
         </div>
     }
 
+    @if (ObrigarVistoria && Vistoria.Id == 0)
+    {
+        <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <span><strong>Vistoria obrigatória antes da aprovação.</strong> Salve a vistoria para liberar a aprovação do orçamento.</span>
+        </div>
+    }
+
     <EditForm Model="Vistoria" OnValidSubmit="SalvarVistoria" class="vistoria-form fade-in">
         <DataAnnotationsValidator />
 
@@ -80,14 +88,8 @@ else
                         <i class="bi bi-speedometer2 me-2"></i> Dados de Entrada
                     </div>
                     <div class="card-body bg-dark-subtle">
-                        <div class="mb-3">
-                            <label class="form-label text-dark fw-bold">Quilometragem de Entrada (O.S.)</label>
-                            <div class="input-group">
-                                <InputNumber @bind-Value="OrdemServico.KmEntrada" class="form-control bg-dark text-light border-secondary" placeholder="Ex: 54000" />
-                                <span class="input-group-text bg-secondary text-white border-secondary">KM</span>
-                            </div>
-                        </div>
-                        
+                        <p class="text-secondary small"><i class="bi bi-speedometer2 me-1"></i>KM de entrada registrado na O.S.: <strong>@OrdemServico.KmEntrada.ToString("N0") km</strong></p>
+
                         <div class="mb-3">
                             <label class="form-label text-dark fw-bold">Observações Adicionais</label>
                             <InputTextArea @bind-Value="Vistoria.Observacoes" class="form-control bg-dark text-light border-secondary" rows="3" placeholder="Algo que não está no mapa de avarias..."></InputTextArea>
@@ -286,6 +288,7 @@ else
     private OrdemServico? OrdemServico { get; set; }
     private bool IsLoading { get; set; } = true;
     private bool ShowSuccessMessage { get; set; } = false;
+    private bool ObrigarVistoria { get; set; }
 
     // Avarias map
     private List<AvariaMarker> Avarias { get; set; } = new();
@@ -316,6 +319,9 @@ else
     protected override async Task OnInitializedAsync()
     {
         IsLoading = true;
+
+        var config = await DbContext.Configuracoes.AsNoTracking().FirstOrDefaultAsync();
+        ObrigarVistoria = config?.ObrigarVistoriaParaOS ?? false;
         
         OrdemServico = await DbContext.OrdensServico
             .Include(o => o.Veiculo)
@@ -447,11 +453,6 @@ else
         if (OrdemServico != null)
         {
             OrdemServico.NivelCombustivelEntrada = Vistoria.NivelCombustivel;
-            if (OrdemServico.Veiculo != null && OrdemServico.KmEntrada > OrdemServico.Veiculo.Quilometragem)
-            {
-                OrdemServico.Veiculo.Quilometragem = OrdemServico.KmEntrada;
-                DbContext.Veiculos.Update(OrdemServico.Veiculo);
-            }
         }
 
         await DbContext.SaveChangesAsync();

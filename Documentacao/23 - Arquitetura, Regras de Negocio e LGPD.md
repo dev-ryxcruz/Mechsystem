@@ -121,15 +121,20 @@ Além da ocultação visual na interface (`<AuthorizeView>`), todas as operaçõ
 
 O controle de inventário segue estritamente o ciclo de vida da O.S., garantindo que nunca ocorra baixa em duplicidade nem saldo físico negativo:
 
-| Momento no Ciclo da O.S. | Status da O.S. | Efeito no `Peca.EstoqueAtual` | Registro em `MovimentacaoEstoque` |
+| Momento no Ciclo da O.S. | Status da O.S. | Efeito no `Peca.EstoqueAtual` e Reserva | Registro em `MovimentacaoEstoque` |
 |---|---|---|---|
 | Adição/remoção de peça durante orçamento | `Orcamento` | **Nenhum** (0) | Nenhum |
-| Aprovação do orçamento (`AprovarOSAsync`) | `Orcamento` → `EmAndamento` | **Baixa** todas as peças da O.S. (`-Quantidade`) | `TipoMovimentacao.Saida`, `Quantidade = -qtd`, `DataHora = UTC`, `UsuarioId` do claim |
-| Adição avulsa de peça em O.S. já aprovada (Detalhes ou Painel do Mecânico) | `EmAndamento`, `Pausada` ou `AguardandoPecas` | **Baixa imediata** (`-Quantidade`) | `TipoMovimentacao.Saida`, `Quantidade = -qtd`, `DataHora = UTC`, `UsuarioId` do claim |
-| Remoção de item de peça em O.S. já aprovada (`RemoverPecaAsync`) | `EmAndamento`, `Pausada` ou `AguardandoPecas` | **Estorno imediato** (`+Quantidade`) | `TipoMovimentacao.Estorno`, `Quantidade = +qtd`, `DataHora = UTC`, `UsuarioId` do claim |
-| Transição entre `EmAndamento` ⇄ `Pausada` / `AguardandoPecas` | Já aprovada | **Nenhum** (evita baixa duplicada) | Nenhum |
-| Cancelamento de O.S. em orçamento | `Orcamento` → `Cancelada` | **Nenhum** | Nenhum |
-| Cancelamento de O.S. já aprovada (`CancelarOSAsync`) | `EmAndamento` / `Pausada` / `AguardandoPecas` → `Cancelada` | **Estorno do saldo líquido** das peças que permanecem na O.S. | `TipoMovimentacao.Estorno`, `Quantidade = +qtd`, `DataHora = UTC`, `UsuarioId` do claim |
+| Aprovação do orçamento (`AprovarOSAsync`) | `Orcamento` → `Aprovada` | **Reserva** peças de origem `Estoque` aprovadas (`Aplicada = false`), reduzindo `EstoqueDisponivel` sem baixar `EstoqueAtual` | Nenhum (apenas reserva lógica) |
+| Aplicação efetiva da peça na execução (`MarcarPecaAplicadaAsync`) | `Aprovada` / `EmAndamento` | **Baixa física** no `EstoqueAtual` (`-Quantidade`) e marca `Aplicada = true` (converte reserva em saída) | `TipoMovimentacao.Saida`, `Quantidade = -qtd`, `DataHora = UTC`, `UsuarioId` do claim |
+| Remoção de item de peça em O.S. já aprovada (`RemoverPecaAsync`) | Pós-aprovação | Se `Aplicada == true`, **estorna fisicamente** (`+Quantidade`); se `Aplicada == false`, apenas libera a reserva | `TipoMovimentacao.Estorno` (somente se `Aplicada == true`) |
+| Cancelamento de O.S. (`CancelarOSAsync`) | Qualquer não terminal → `Cancelada` | **Libera reservas** (`Aplicada == false`) e **estorna fisicamente** apenas peças com `Aplicada == true` | `TipoMovimentacao.Estorno` para cada peça `Aplicada == true` |
+
+### Fluxo Operacional nas Telas (Fase 3 — BPMN Textual)
+1. **Abertura de Orçamento (`/ordens-servico/nova` — `Create.razor`)**: estruturada em 3 blocos: (a) Veículo + KM de entrada + Combustível; (b) Queixa do Cliente + Diagnóstico opcional; (c) Linhas de Serviços e Peças (com seleção de `Origem`: `Estoque`, `SobDemanda` ou `ClienteTrouxe`). Calcula total em tempo real e sugere `DataPrevisaoEntrega` em dias úteis com base na soma de `TempoEstimadoMinutos`.
+2. **Vistoria (`/ordensdeservico/{id}/vistoria` — `VistoriaChecklist.razor`)**: herda o KM da O.S. (somente leitura) e exibe alerta caso `ObrigarVistoriaParaOS` esteja ativo.
+3. **Gestão e Ciclo de Vida (`/ordens-servico/{id}` — `Details.razor`)**: exibe stepper do ciclo (`Orçamento → Aprovada → Execução → Concluída → Entregue`), modal de aprovação parcial por checkbox de item, seção de aditivos pendentes, atribuição de mecânico, apontamentos por mecânico, modal de conclusão com checklist persistido (`ChecklistConclusaoJson`) e modal de entrega com `KmSaida` e múltiplas formas de `Pagamento`.
+4. **Painel Operacional (`/operacional/painel` — `PainelMecanico.razor`)**: filtra O.S. do mecânico logado + coluna "Sem responsável (assumir)", oculta orçamentos e preços de custo, e permite iniciar/pausar apontamento por serviço, aplicar peças, propor aditivos e concluir com checklist.
+5. **Listagem e Agenda (`/ordens-servico` e `/agenda`)**: filtros por todos os novos status, coluna de mecânico responsável e badge de orçamento vencido.
 
 ### Atomicidade e Concorrência Otimista
 - **Transação de Banco (`BeginTransactionAsync`)**: Na aprovação da O.S., caso a 2ª ou N-ésima peça não possua estoque suficiente, toda a transação sofre *rollback*, nenhuma peça é baixada e a O.S. permanece em `Orcamento`.

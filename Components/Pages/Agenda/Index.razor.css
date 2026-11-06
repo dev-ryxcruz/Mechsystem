@@ -215,6 +215,27 @@
     color: #0f5132;
     border-left: 3px solid #198754;
 }
+.chip-aprovada {
+    background: #e2f0d9;
+    color: #3b6b1f;
+    border-left: 3px solid #6aa84f;
+}
+.chip-aguardando-cliente {
+    background: #e8defa;
+    color: #4a2c85;
+    border-left: 3px solid #6f42c1;
+}
+.chip-entregue {
+    background: #d3d8dc;
+    color: #212529;
+    border-left: 3px solid #343a40;
+}
+.chip-recusada {
+    background: #f1dede;
+    color: #7a3b3b;
+    border-left: 3px solid #b85c5c;
+    text-decoration: line-through;
+}
 .chip-cancelada {
     background: #e9ecef;
     color: #6c757d;
@@ -228,6 +249,10 @@
 .legenda-chip.chip-pecas      { background: #d1ecf1; color: #0c5460; border: 1px solid #17a2b8; }
 .legenda-chip.chip-atrasado   { background: #f8d7da; color: #842029; border: 1px solid #dc3545; }
 .legenda-chip.chip-concluida  { background: #d1e7dd; color: #0f5132; border: 1px solid #198754; }
+.legenda-chip.chip-aprovada   { background: #e2f0d9; color: #3b6b1f; border: 1px solid #6aa84f; }
+.legenda-chip.chip-aguardando-cliente { background: #e8defa; color: #4a2c85; border: 1px solid #6f42c1; }
+.legenda-chip.chip-entregue   { background: #d3d8dc; color: #212529; border: 1px solid #343a40; }
+.legenda-chip.chip-recusada   { background: #f1dede; color: #7a3b3b; border: 1px solid #b85c5c; }
 
 /* ─── Resumo do mês ───────────────────────────────────────────────────────── */
 .resumo-mes {
@@ -267,6 +292,11 @@
 .resumo-andamento { background: #cfe2ff; color: #084298; border-color: #0d6efd; }
 .resumo-atrasado  { background: #f8d7da; color: #842029; border-color: #dc3545; }
 .resumo-concluida { background: #d1e7dd; color: #0f5132; border-color: #198754; }
+.resumo-aprovada  { background: #e2f0d9; color: #3b6b1f; border-color: #6aa84f; }
+.resumo-aguardando-cliente { background: #e8defa; color: #4a2c85; border-color: #6f42c1; }
+.resumo-entregue  { background: #d3d8dc; color: #212529; border-color: #343a40; }
+.resumo-recusada  { background: #f1dede; color: #7a3b3b; border-color: #b85c5c; }
+.chip-mecanico { font-size: 0.6rem; font-weight: 500; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; }
 
 /* ─── Responsivo ──────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
@@ -274,7 +304,7 @@
         min-height: 70px;
         padding: 0.25rem 0.2rem;
     }
-    .chip-placa { display: none; }
+    .chip-placa, .chip-mecanico { display: none; }
     .os-chip { padding: 0.12rem 0.3rem; }
     .mes-titulo { min-width: 160px; font-size: 0.95rem; }
 }

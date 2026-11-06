@@ -28,9 +28,13 @@
     <div class="agenda-legenda mb-3">
         <span class="legenda-chip chip-orcamento">Orçamento</span>
         <span class="legenda-chip chip-andamento">Em Andamento</span>
+        <span class="legenda-chip chip-aprovada">Aprovada</span>
+        <span class="legenda-chip chip-aguardando-cliente">Aguardando Cliente</span>
         <span class="legenda-chip chip-pecas">Aguard. Peças</span>
         <span class="legenda-chip chip-atrasado">Atrasado</span>
         <span class="legenda-chip chip-concluida">Concluída</span>
+        <span class="legenda-chip chip-entregue">Entregue</span>
+        <span class="legenda-chip chip-recusada">Recusada</span>
     </div>
 
     <!-- Navegação do mês -->
@@ -83,9 +87,14 @@
                             @foreach (var os in lista)
                             {
                                 var chipClass = GetChipClass(os);
-                                <div class="os-chip @chipClass" @onclick="() => AbrirOS(os.Id)" title="OS #@os.Id.ToString("D4") — @os.Veiculo?.Cliente?.Nome">
+                                var chipTitle = $"OS #{os.Id:D4} — {os.Veiculo?.Cliente?.Nome}{(os.MecanicoResponsavel != null ? " — Mecânico: " + os.MecanicoResponsavel.NomeCompleto : "")}";
+                                <div class="os-chip @chipClass" @onclick="() => AbrirOS(os.Id)" title="@chipTitle">
                                     <span class="chip-num">#@os.Id.ToString("D4")</span>
                                     <span class="chip-placa">@os.Veiculo?.Placa</span>
+                                    @if (os.MecanicoResponsavel != null)
+                                    {
+                                        <span class="chip-mecanico"><i class="bi bi-person-gear"></i> @os.MecanicoResponsavel.NomeCompleto</span>
+                                    }
                                 </div>
                             }
                         }
@@ -103,7 +112,7 @@
             <div class="row g-3">
                 @foreach (var grupo in resumoMes)
                 {
-                    <div class="col-6 col-md-3">
+                    <div class="col-6 col-md-3 col-lg">
                         <div class="resumo-card @grupo.CssClass">
                             <span class="resumo-valor">@grupo.Total</span>
                             <span class="resumo-label">@grupo.Label</span>
@@ -147,6 +156,7 @@
         var lista = await DbContext.OrdensServico
             .Include(o => o.Veiculo)
                 .ThenInclude(v => v!.Cliente)
+            .Include(o => o.MecanicoResponsavel)
             .Where(o => o.DataPrevisaoEntrega >= inicio && o.DataPrevisaoEntrega < fimExclusivo)
             .OrderBy(o => o.DataPrevisaoEntrega)
             .ToListAsync();
@@ -192,19 +202,31 @@
         resumoMes = new List<ResumoItem>
         {
             new() { Label = "Orçamentos", Total = lista.Count(o => o.Status == OrdemServicoStatus.Orcamento), CssClass = "resumo-orcamento" },
+            new() { Label = "Aprovadas", Total = lista.Count(o => o.Status == OrdemServicoStatus.Aprovada), CssClass = "resumo-aprovada" },
+            new() { Label = "Aguardando Cliente", Total = lista.Count(o => o.Status == OrdemServicoStatus.AguardandoCliente), CssClass = "resumo-aguardando-cliente" },
             new() { Label = "Em Andamento", Total = lista.Count(o => o.Status == OrdemServicoStatus.EmAndamento || o.Status == OrdemServicoStatus.Pausada || o.Status == OrdemServicoStatus.AguardandoPecas), CssClass = "resumo-andamento" },
-            new() { Label = "Atrasadas", Total = lista.Count(o => o.DataPrevisaoEntrega.Date < hoje && o.Status != OrdemServicoStatus.Concluida && o.Status != OrdemServicoStatus.Cancelada), CssClass = "resumo-atrasado" },
+            new() { Label = "Atrasadas", Total = lista.Count(o => o.DataPrevisaoEntrega.Date < hoje && !StatusFinal(o.Status)), CssClass = "resumo-atrasado" },
             new() { Label = "Concluídas", Total = lista.Count(o => o.Status == OrdemServicoStatus.Concluida), CssClass = "resumo-concluida" },
+            new() { Label = "Entregues", Total = lista.Count(o => o.Status == OrdemServicoStatus.Entregue), CssClass = "resumo-entregue" },
+            new() { Label = "Recusadas", Total = lista.Count(o => o.Status == OrdemServicoStatus.Recusada), CssClass = "resumo-recusada" },
         };
     }
+
+    private static bool StatusFinal(OrdemServicoStatus s) =>
+        s is OrdemServicoStatus.Concluida or OrdemServicoStatus.Cancelada
+          or OrdemServicoStatus.Entregue or OrdemServicoStatus.Recusada;
 
     private string GetChipClass(OrdemServico os)
     {
         if (os.Status == OrdemServicoStatus.Concluida) return "chip-concluida";
+        if (os.Status == OrdemServicoStatus.Entregue) return "chip-entregue";
+        if (os.Status == OrdemServicoStatus.Recusada) return "chip-recusada";
         if (os.Status == OrdemServicoStatus.Cancelada) return "chip-cancelada";
         if (os.DataPrevisaoEntrega.Date < DateTimeExtensions.TodayBrasilia()) return "chip-atrasado";
         if (os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.Pausada) return "chip-andamento";
         if (os.Status == OrdemServicoStatus.AguardandoPecas) return "chip-pecas";
+        if (os.Status == OrdemServicoStatus.Aprovada) return "chip-aprovada";
+        if (os.Status == OrdemServicoStatus.AguardandoCliente) return "chip-aguardando-cliente";
         return "chip-orcamento";
     }
 

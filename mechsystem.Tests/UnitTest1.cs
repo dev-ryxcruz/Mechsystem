@@ -1451,4 +1451,26 @@ public class OrdemServicoStabilizationTests
 
         Assert.Equal(1, await db.OrdemServicoPecas.CountAsync(p => p.OrdemServicoId == os.Id));
     }
+
+    [Fact]
+    public async Task ListarPaginado_DeveFiltrarPorNovosStatusECarregarMecanicoResponsavel()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (_, _, mecanico, veiculo, _, _) = await SeedBasicScenarioAsync(db);
+
+        var osOrc = new OrdemServico { VeiculoId = veiculo.Id, KmEntrada = 10000, NivelCombustivelEntrada = NivelCombustivel.Meio, QueixaCliente = "Orçamento", DataEmissao = DateTime.UtcNow, DataPrevisaoEntrega = DateTime.UtcNow.AddDays(2), ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(-1), Status = OrdemServicoStatus.Orcamento };
+        var osApr = new OrdemServico { VeiculoId = veiculo.Id, KmEntrada = 10500, NivelCombustivelEntrada = NivelCombustivel.Cheio, QueixaCliente = "Aprovada", DataEmissao = DateTime.UtcNow, DataPrevisaoEntrega = DateTime.UtcNow.AddDays(2), ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(5), Status = OrdemServicoStatus.Aprovada, MecanicoResponsavelId = mecanico.Id };
+        db.OrdensServico.AddRange(osOrc, osApr);
+        await db.SaveChangesAsync();
+
+        var (itensAprovados, totalAprovados) = await osService.ListarPaginadoAsync(null, 1, 10, OrdemServicoStatus.Aprovada);
+        Assert.Equal(1, totalAprovados);
+        var item = Assert.Single(itensAprovados);
+        Assert.Equal(osApr.Id, item.Id);
+        Assert.Equal(mecanico.NomeCompleto, item.MecanicoResponsavel?.NomeCompleto);
+
+        var (todos, totalTodos) = await osService.ListarPaginadoAsync(null, 1, 10, null);
+        Assert.Equal(2, totalTodos);
+        Assert.Equal(2, todos.Count);
+    }
 }

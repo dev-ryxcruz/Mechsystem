@@ -61,7 +61,7 @@ public class OrdemServicoService
         _estoqueService = estoqueService;
     }
 
-    public async Task<(List<OrdemServico> Itens, int TotalCount)> ListarPaginadoAsync(string? termoBusca, int pagina, int tamanhoPagina)
+    public async Task<(List<OrdemServico> Itens, int TotalCount)> ListarPaginadoAsync(string? termoBusca, int pagina, int tamanhoPagina, OrdemServicoStatus? status = null)
     {
         if (pagina < 1) pagina = 1;
         if (tamanhoPagina <= 0) tamanhoPagina = 10;
@@ -74,6 +74,9 @@ public class OrdemServicoService
             .Include(o => o.ServicosAExecutarList)
             .Include(o => o.MecanicoResponsavel)
             .AsQueryable();
+
+        if (status.HasValue)
+            query = query.Where(o => o.Status == status.Value);
 
         if (!string.IsNullOrWhiteSpace(termoBusca))
         {
