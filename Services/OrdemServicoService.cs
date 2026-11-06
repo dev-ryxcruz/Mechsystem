@@ -137,24 +137,42 @@ public class OrdemServicoService
             os.Status = OrdemServicoStatus.EmAndamento;
             os.DataAutorizacao = DateTime.UtcNow;
             os.AutorizadoPor = autorizadoPor;
-            os.MeioAutorizacao = meioAutorizacao;
-
-            if (!os.DataPrevisaoInicio.HasValue)
-            {
-                os.DataPrevisaoInicio = DateTime.UtcNow.Date;
-            }
+            os.AprovadoPorUsuarioId = usuarioId > 0 ? usuarioId : null;
+            os.TipoContatoAutorizacao = ConverterMeioAutorizacao(meioAutorizacao);
 
             await _db.SaveChangesAsync();
         });
     }
 
+    public static TipoContato? ConverterMeioAutorizacao(string? meioAutorizacao)
+    {
+        if (string.IsNullOrWhiteSpace(meioAutorizacao))
+        {
+            return null;
+        }
+
+        var texto = meioAutorizacao.Trim();
+        if (texto.Contains("presencial", StringComparison.OrdinalIgnoreCase))
+            return TipoContato.Presencial;
+        if (texto.Contains("whats", StringComparison.OrdinalIgnoreCase))
+            return TipoContato.WhatsApp;
+        if (texto.Contains("telefone", StringComparison.OrdinalIgnoreCase)
+            || texto.Contains("ligac", StringComparison.OrdinalIgnoreCase)
+            || texto.Contains("ligaç", StringComparison.OrdinalIgnoreCase)
+            || texto.Contains("fone", StringComparison.OrdinalIgnoreCase))
+            return TipoContato.Ligacao;
+        if (texto.Contains("e-mail", StringComparison.OrdinalIgnoreCase)
+            || texto.Contains("email", StringComparison.OrdinalIgnoreCase))
+            return TipoContato.Email;
+
+        return TipoContato.Outro;
+    }
+
     public async Task AtualizarOSAsync(
         int osId,
-        string? descricaoProblemaRelatado,
-        string? servicoAExecutar,
-        DateTime? dataPrevisaoInicio,
+        string? queixaCliente,
+        string? diagnostico,
         DateTime dataPrevisaoEntrega,
-        decimal valorMaoDeObra,
         decimal valorDesconto,
         int usuarioId,
         PerfilUsuario? perfilUsuario = null,
@@ -175,7 +193,10 @@ public class OrdemServicoService
                 .FirstOrDefaultAsync(o => o.Id == osId)
                 ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
-            if (os.Status == OrdemServicoStatus.Concluida || os.Status == OrdemServicoStatus.Cancelada)
+            if (os.Status == OrdemServicoStatus.Concluida
+                || os.Status == OrdemServicoStatus.Entregue
+                || os.Status == OrdemServicoStatus.Cancelada
+                || os.Status == OrdemServicoStatus.Recusada)
             {
                 throw new InvalidOperationException(
                     $"Não é permitido editar uma O.S. com status '{os.Status}' (somente leitura).");
@@ -189,14 +210,9 @@ public class OrdemServicoService
 
             if (os.Status == OrdemServicoStatus.Orcamento)
             {
-                if (string.IsNullOrWhiteSpace(descricaoProblemaRelatado))
+                if (string.IsNullOrWhiteSpace(queixaCliente))
                 {
-                    throw new InvalidOperationException("O diagnóstico/problema relatado é obrigatório.");
-                }
-
-                if (valorMaoDeObra < 0)
-                {
-                    throw new InvalidOperationException("O valor da mão de obra não pode ser negativo.");
+                    throw new InvalidOperationException("A queixa do cliente é obrigatória.");
                 }
 
                 if (valorDesconto < 0)
@@ -210,10 +226,7 @@ public class OrdemServicoService
                         "Apenas Administradores podem definir ou alterar o desconto da Ordem de Serviço.");
                 }
 
-                var maoDeObraEfetiva = os.ServicosAExecutarList.Any()
-                    ? os.ServicosAExecutarList.Sum(s => s.Subtotal)
-                    : valorMaoDeObra;
-                var subtotalBruto = maoDeObraEfetiva + os.ValorPecasEfetivo;
+                var subtotalBruto = os.ValorMaoDeObraEfetivo + os.ValorPecasEfetivo;
 
                 if (valorDesconto > subtotalBruto)
                 {
@@ -221,33 +234,32 @@ public class OrdemServicoService
                         $"O desconto ({valorDesconto:C}) não pode ser maior que o valor bruto da Ordem de Serviço ({subtotalBruto:C}).");
                 }
 
-                os.DescricaoProblemaRelatado = descricaoProblemaRelatado.Trim();
-                os.ServicoAExecutar = string.IsNullOrWhiteSpace(servicoAExecutar) ? null : servicoAExecutar.Trim();
-                os.DataPrevisaoInicio = dataPrevisaoInicio?.Date;
+                os.QueixaCliente = queixaCliente.Trim();
+                os.Diagnostico = string.IsNullOrWhiteSpace(diagnostico) ? null : diagnostico.Trim();
                 os.DataPrevisaoEntrega = dataPrevisaoEntrega.Date;
-                os.ValorMaoDeObra = valorMaoDeObra;
                 os.ValorDesconto = valorDesconto;
 
                 await _db.SaveChangesAsync();
                 return;
             }
 
-            // Após aprovação (EmAndamento, Pausada, AguardandoPecas): somente a Previsão de Entrega pode ser alterada
-            var descNorm = (descricaoProblemaRelatado ?? string.Empty).Trim();
-            var descAtual = (os.DescricaoProblemaRelatado ?? string.Empty).Trim();
-            var servNorm = (servicoAExecutar ?? string.Empty).Trim();
-            var servAtual = (os.ServicoAExecutar ?? string.Empty).Trim();
-            var inicioNorm = dataPrevisaoInicio?.Date;
-            var inicioAtual = os.DataPrevisaoInicio?.Date;
+            // Após aprovação: queixa e desconto não podem ser alterados
+            var queixaNorm = (queixaCliente ?? string.Empty).Trim();
+            var queixaAtual = (os.QueixaCliente ?? string.Empty).Trim();
 
-            if (descNorm != descAtual
-                || servNorm != servAtual
-                || inicioNorm != inicioAtual
-                || valorMaoDeObra != os.ValorMaoDeObra
-                || valorDesconto != os.ValorDesconto)
+            if (queixaNorm != queixaAtual || valorDesconto != os.ValorDesconto)
             {
                 throw new InvalidOperationException(
-                    "Após a aprovação do orçamento, apenas a Previsão de Entrega pode ser alterada.");
+                    "Após a aprovação do orçamento, apenas a Previsão de Entrega e o Diagnóstico podem ser alterados.");
+            }
+
+            var diagNorm = string.IsNullOrWhiteSpace(diagnostico) ? null : diagnostico.Trim();
+            var houveAlteracao = false;
+
+            if (diagNorm != os.Diagnostico)
+            {
+                os.Diagnostico = diagNorm;
+                houveAlteracao = true;
             }
 
             if (dataPrevisaoEntrega.Date != os.DataPrevisaoEntrega.Date)
@@ -278,7 +290,11 @@ public class OrdemServicoService
 
                 _db.ContatosOS.Add(contato);
                 os.Contatos.Add(contato);
+                houveAlteracao = true;
+            }
 
+            if (houveAlteracao)
+            {
                 await _db.SaveChangesAsync();
             }
         });
@@ -292,7 +308,9 @@ public class OrdemServicoService
             throw new UnauthorizedAccessException("Usuário sem permissão para iniciar ou retomar a execução da ordem de serviço.");
         }
 
-        var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
+        var os = await _db.OrdensServico
+            .Include(o => o.ApontamentosTempo)
+            .FirstOrDefaultAsync(o => o.Id == osId)
             ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
         if (os.Status == OrdemServicoStatus.Orcamento)
@@ -301,20 +319,12 @@ public class OrdemServicoService
                 "A O.S. ainda está em Orçamento e precisa ser aprovada antes de iniciar a execução.");
         }
 
-        if (os.Status == OrdemServicoStatus.EmAndamento)
+        if (os.Status != OrdemServicoStatus.EmAndamento)
         {
-            if (!os.InicioUltimaExecucao.HasValue)
-            {
-                os.InicioUltimaExecucao = DateTime.UtcNow;
-                await _db.SaveChangesAsync();
-            }
-            return;
+            ValidarTransicao(os.Status, OrdemServicoStatus.EmAndamento);
+            os.Status = OrdemServicoStatus.EmAndamento;
         }
 
-        ValidarTransicao(os.Status, OrdemServicoStatus.EmAndamento);
-
-        os.Status = OrdemServicoStatus.EmAndamento;
-        os.InicioUltimaExecucao = DateTime.UtcNow;
         await _db.SaveChangesAsync();
     }
 
@@ -326,12 +336,14 @@ public class OrdemServicoService
             throw new UnauthorizedAccessException("Usuário sem permissão para pausar a ordem de serviço.");
         }
 
-        var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
+        var os = await _db.OrdensServico
+            .Include(o => o.ApontamentosTempo)
+            .FirstOrDefaultAsync(o => o.Id == osId)
             ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
         ValidarTransicao(os.Status, OrdemServicoStatus.Pausada);
 
-        AcumularTempoExecucao(os);
+        FecharApontamentosAbertos(os);
         os.Status = OrdemServicoStatus.Pausada;
         await _db.SaveChangesAsync();
     }
@@ -344,12 +356,14 @@ public class OrdemServicoService
             throw new UnauthorizedAccessException("Usuário sem permissão para alterar o status da ordem de serviço.");
         }
 
-        var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
+        var os = await _db.OrdensServico
+            .Include(o => o.ApontamentosTempo)
+            .FirstOrDefaultAsync(o => o.Id == osId)
             ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
         ValidarTransicao(os.Status, OrdemServicoStatus.AguardandoPecas);
 
-        AcumularTempoExecucao(os);
+        FecharApontamentosAbertos(os);
         os.Status = OrdemServicoStatus.AguardandoPecas;
         await _db.SaveChangesAsync();
     }
@@ -362,12 +376,14 @@ public class OrdemServicoService
             throw new UnauthorizedAccessException("Apenas Administradores, Atendimento e Mecânicos possuem permissão para concluir ordens de serviço.");
         }
 
-        var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
+        var os = await _db.OrdensServico
+            .Include(o => o.ApontamentosTempo)
+            .FirstOrDefaultAsync(o => o.Id == osId)
             ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
         ValidarTransicao(os.Status, OrdemServicoStatus.Concluida);
 
-        AcumularTempoExecucao(os);
+        FecharApontamentosAbertos(os);
         os.Status = OrdemServicoStatus.Concluida;
         os.DataConclusao = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -391,6 +407,7 @@ public class OrdemServicoService
         {
             var os = await _db.OrdensServico
                 .Include(o => o.PecasUtilizadas)
+                .Include(o => o.ApontamentosTempo)
                 .FirstOrDefaultAsync(o => o.Id == osId)
                 ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
 
@@ -402,7 +419,7 @@ public class OrdemServicoService
                 await _estoqueService.EstornarPecasDaOS(os.Id, usuarioId);
             }
 
-            AcumularTempoExecucao(os);
+            FecharApontamentosAbertos(os);
             os.Status = OrdemServicoStatus.Cancelada;
             os.MotivoCancelamento = motivoLimpo;
             os.DataCancelamento = DateTime.UtcNow;
@@ -486,7 +503,6 @@ public class OrdemServicoService
                 os.PecasUtilizadas.Add(osPeca);
             }
 
-            os.ValorPecas = os.PecasUtilizadas.Sum(p => p.Subtotal);
             await _db.SaveChangesAsync();
         });
     }
@@ -522,7 +538,6 @@ public class OrdemServicoService
             os.PecasUtilizadas.Remove(item);
             _db.OrdemServicoPecas.Remove(item);
 
-            os.ValorPecas = os.PecasUtilizadas.Any() ? os.PecasUtilizadas.Sum(p => p.Subtotal) : 0;
             await _db.SaveChangesAsync();
         });
     }
@@ -581,17 +596,17 @@ public class OrdemServicoService
         }
     }
 
-    private static void AcumularTempoExecucao(OrdemServico os)
+    private static void FecharApontamentosAbertos(OrdemServico os)
     {
-        if (os.InicioUltimaExecucao.HasValue)
+        if (os.ApontamentosTempo == null)
         {
-            var inicioUtc = DateTime.SpecifyKind(os.InicioUltimaExecucao.Value, DateTimeKind.Utc);
-            var minutos = (int)Math.Round((DateTime.UtcNow - inicioUtc).TotalMinutes);
-            if (minutos > 0)
-            {
-                os.TempoGastoMinutos += minutos;
-            }
-            os.InicioUltimaExecucao = null;
+            return;
+        }
+
+        var agora = DateTime.UtcNow;
+        foreach (var apontamento in os.ApontamentosTempo.Where(a => !a.Fim.HasValue))
+        {
+            apontamento.Fim = agora;
         }
     }
 }

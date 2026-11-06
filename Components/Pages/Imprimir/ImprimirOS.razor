@@ -125,14 +125,30 @@ else
 
         <!-- Diagnóstico e Serviços -->
         <div class="doc-section">
-            <div class="doc-section-title">DIAGNÓSTICO E SERVIÇOS</div>
+            <div class="doc-section-title">QUEIXA, DIAGNÓSTICO E SERVIÇOS</div>
             <div class="doc-field doc-field-full mb-3">
-                <span class="doc-label">Problema Relatado / Diagnóstico</span>
-                <div class="doc-text-box">@os.DescricaoProblemaRelatado</div>
+                <span class="doc-label">Queixa do Cliente</span>
+                <div class="doc-text-box">@os.QueixaCliente</div>
             </div>
+            @if (!string.IsNullOrWhiteSpace(os.Diagnostico))
+            {
+                <div class="doc-field doc-field-full mb-3">
+                    <span class="doc-label">Diagnóstico Técnico</span>
+                    <div class="doc-text-box">@os.Diagnostico</div>
+                </div>
+            }
             <div class="doc-field doc-field-full">
                 <span class="doc-label">Serviços a Executar</span>
-                <div class="doc-text-box">@(string.IsNullOrWhiteSpace(os.ServicoAExecutar) ? "A definir" : os.ServicoAExecutar)</div>
+                <div class="doc-text-box">
+                    @if (os.ServicosAExecutarList != null && os.ServicosAExecutarList.Any())
+                    {
+                        @string.Join("\n", os.ServicosAExecutarList.Select(s => $"{s.Quantidade}x {s.Servico?.Nome ?? "Serviço"} - {s.Subtotal:C}"))
+                    }
+                    else
+                    {
+                        @("A definir")
+                    }
+                </div>
             </div>
         </div>
 
@@ -140,11 +156,11 @@ else
 
         <!-- Prazos -->
         <div class="doc-section">
-            <div class="doc-section-title">PRAZOS</div>
+            <div class="doc-section-title">PRAZOS E QUILOMETRAGEM</div>
             <div class="doc-grid-3">
                 <div class="doc-field">
-                    <span class="doc-label">Previsão de Início</span>
-                    <span class="doc-value">@(os.DataPrevisaoInicio?.ToString("dd/MM/yyyy") ?? "A definir")</span>
+                    <span class="doc-label">KM de Entrada</span>
+                    <span class="doc-value">@os.KmEntrada.ToString("N0") km</span>
                 </div>
                 <div class="doc-field">
                     <span class="doc-label">Previsão de Entrega (CDC)</span>
@@ -152,7 +168,7 @@ else
                 </div>
                 <div class="doc-field">
                     <span class="doc-label">Validade do Orçamento</span>
-                    <span class="doc-value">@os.GetValidadeOrcamento(config?.ValidadeOrcamentoDias ?? 10).ToString("dd/MM/yyyy")</span>
+                    <span class="doc-value">@os.ValidadeOrcamentoAte.ToBrasiliaTime().ToString("dd/MM/yyyy")</span>
                 </div>
             </div>
         </div>
@@ -223,7 +239,7 @@ else
                     <div>
                         <strong>ORÇAMENTO APROVADO</strong><br />
                         <span>Autorizado por: <strong>@(os.AutorizadoPor ?? os.Veiculo?.Cliente?.Nome)</strong></span><br />
-                        <span>Meio: @os.MeioAutorizacao · Data: @(os.DataAutorizacao.ToBrasiliaTime()?.ToString("dd/MM/yyyy HH:mm"))</span>
+                        <span>Canal: @(os.TipoContatoAutorizacao?.ToString() ?? "Outro") · Data: @(os.DataAutorizacao.ToBrasiliaTime()?.ToString("dd/MM/yyyy HH:mm"))</span>
                     </div>
                 </div>
             }
@@ -257,6 +273,7 @@ else
                 .ThenInclude(v => v!.Cliente)
             .Include(o => o.PecasUtilizadas)
             .Include(o => o.ServicosAExecutarList)
+                .ThenInclude(s => s.Servico)
             .FirstOrDefaultAsync(o => o.Id == Id);
 
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();

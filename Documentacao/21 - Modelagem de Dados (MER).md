@@ -32,8 +32,9 @@ O sistema centraliza esses dados e garante que as regras da oficina sejam respei
 ### 1.4 Principais funcionalidades relacionadas aos dados
 - Cadastro de clientes e seus veículos com inativação lógica auditável (`IInativavel`).
 - Catálogo de serviços (valor padrão e tempo estimado) e de peças (SKU, custo, venda, estoque) com inativação lógica auditável.
-- Abertura e edição de OS com peças, serviços, desconto (exclusivo para Administrador), cálculo de total e controle de status.
-- Vistoria de entrada (combustível, KM, itens do veículo, avarias).
+- Abertura e edição de OS com queixa do cliente (`QueixaCliente`), diagnóstico técnico (`Diagnostico`), quilometragem de entrada/saída (`KmEntrada`/`KmSaida`), nível de combustível na entrada (`NivelCombustivelEntrada`), validade do orçamento congelada (`ValidadeOrcamentoAte`), garantia congelada na entrega (`GarantiaDias`), peças, serviços, desconto (exclusivo para Administrador), cálculo de total e controle de status.
+- Vistoria de entrada (combustível, itens do veículo, avarias).
+- Apontamento de tempo de execução por mecânico e por item de serviço (`ApontamentoTempo`) e registro de pagamentos na entrega (`Pagamento`).
 - Registro de contatos com o cliente sobre a OS (incluindo log automático quando a previsão de entrega é alterada após aprovação).
 - Movimentação de estoque (entrada, saída, ajuste, estorno) com responsável.
 - Controle de acesso por perfil e parâmetros globais da oficina.
@@ -44,20 +45,21 @@ O sistema centraliza esses dados e garante que as regras da oficina sejam respei
 | RN01 | Um cliente pode ter vários veículos, mas cada veículo pertence a apenas **um** cliente. |
 | RN02 | O CPF do cliente é obrigatório e **único**; a placa do veículo é obrigatória e **única**. Caso o identificador pertença a um registro inativo, o sistema informa e orienta a reativação. |
 | RN03 | Um veículo pode ter várias ordens de serviço ao longo do tempo; cada OS refere-se a **um único** veículo. |
-| RN04 | Toda OS exige problema relatado e **data de previsão de entrega** (CDC), que não pode ser anterior à emissão. |
-| RN05 | Uma OS tem no máximo **uma** vistoria de entrada; cada vistoria pertence a uma única OS. (A obrigatoriedade é parametrizável em `Configuracao`.) |
-| RN06 | Uma OS pode conter várias peças e vários serviços; a mesma peça/serviço pode aparecer em várias OS, com **quantidade** e **valores próprios** por OS (relacionamentos N:M com atributos → entidades associativas). |
-| RN07 | Ao incluir peça/serviço na OS, os valores de catálogo (preço base, custo, tempo) são **copiados** (snapshot); alterar ou inativar o catálogo depois não altera OS antigas. |
+| RN04 | Toda OS exige queixa do cliente (`QueixaCliente`), quilometragem de entrada (`KmEntrada`), nível de combustível (`NivelCombustivelEntrada`), validade do orçamento congelada na emissão (`ValidadeOrcamentoAte`) e **data de previsão de entrega** (CDC), que não pode ser anterior à emissão. O diagnóstico técnico (`Diagnostico`) é separado da queixa e preenchido posteriormente. |
+| RN05 | Uma OS tem no máximo **uma** vistoria de entrada; cada vistoria pertence a uma única OS. (A obrigatoriedade antes da aprovação é parametrizável em `Configuracao.ObrigarVistoriaParaOS`.) |
+| RN06 | Uma OS pode conter várias peças e vários serviços; a mesma peça/serviço pode aparecer em várias OS, com **quantidade**, **valores próprios**, **status de aprovação individual** (`StatusItem`: Pendente, Aprovado, Recusado), indicador de **aditivo** (`EhAditivo`) e flag de execução/aplicação (`Executado`/`Aplicada`) por OS. |
+| RN07 | Ao incluir peça/serviço na OS, os valores de catálogo (preço base, custo, tempo) são **copiados** (snapshot); alterar ou inativar o catálogo depois não altera OS antigas. Peças também registram sua `Origem` (`Estoque`, `SobDemanda`, `ClienteTrouxe`). |
 | RN08 | Valor cobrado abaixo do preço base ou `ValorDesconto > 0` na OS configura desconto e exige perfil **Administrador**. |
 | RN09 | Quantidades em OS e movimentações devem ser **≥ 1**; estoque atual e mínimo **não podem ser negativos**. |
 | RN10 | O SKU da peça é único. Clientes, Veículos, Peças e Serviços não sofrem exclusão física (`DELETE`): utilizam *Soft Delete* padronizado (`IInativavel`) com bloqueio se houver OS em aberto (e se `EstoqueAtual > 0` para Peça). |
 | RN11 | Toda movimentação de estoque pertence a **uma** peça e é feita por **um** usuário (rastreabilidade). |
 | RN12 | O nome de usuário é único; cada usuário tem exatamente **um** perfil (Administrador, Atendimento, Mecânico). |
-| RN13 | Cada OS possui status único controlado por máquina de estados: `Orcamento`, `EmAndamento`, `Pausada`, `AguardandoPecas`, `Concluida` ou `Cancelada`. |
-| RN14 | Uma OS pode ter vários registros de contato com o cliente (ligação, WhatsApp, e-mail, presencial, outro). |
+| RN13 | Cada OS possui status único controlado por máquina de estados: `Orcamento` (0), `EmAndamento` (1), `Pausada` (2), `AguardandoPecas` (3), `Concluida` (4), `Cancelada` (5), `Aprovada` (6), `AguardandoCliente` (7), `Entregue` (8) ou `Recusada` (9). |
+| RN14 | Uma OS pode ter vários registros de contato com o cliente (ligação, WhatsApp, e-mail, presencial, outro), e a aprovação registra o canal em `TipoContatoAutorizacao` e o operador em `AprovadoPorUsuarioId`. |
 | RN15 | Uma OS **nunca é excluída fisicamente**; quando interrompida, transita para `Cancelada` exigindo motivo (`MotivoCancelamento`), data (`DataCancelamento`) e usuário responsável (`CanceladaPorUsuarioId`). |
-| RN16 | Existe **um único** registro de configuração da oficina (nome, CNPJ, validade do orçamento, garantia padrão etc.). |
-| RN17 | Valor total da OS = mão de obra + peças − desconto (**atributo derivado**, não armazenado). |
+| RN16 | Existe **um único** registro de configuração da oficina (nome, CNPJ, validade do orçamento, garantia padrão e exigência de vistoria). |
+| RN17 | Fonte única de valores: não existem campos manuais avulsos de mão de obra ou peças na OS. `ValorMaoDeObraEfetivo` e `ValorPecasEfetivo` são a soma das linhas com `StatusItem != Recusado`, e `ValorTotal = (ValorMaoDeObraEfetivo + ValorPecasEfetivo) − ValorDesconto` (**atributos derivados**, não armazenados). |
+| RN18 | O tempo trabalhado é registrado em `ApontamentoTempo` (vinculado à OS, opcionalmente ao item de serviço, e ao mecânico, com índice parcial para apontamentos abertos `fim IS NULL`). Os recebimentos são registrados em `Pagamento` (forma, valor, data e usuário). |
 
 > **Exemplo (como a regra aparece nos diagramas):** RN01 → relacionamento `CLIENTE (1,1) — possui — (0,N) VEICULO` no conceitual e `veiculo.cliente_id FK NOT NULL` no lógico.
 
@@ -86,13 +88,19 @@ erDiagram
     PECA ||--o{ ITEM_PECA_OS : "é usada em"
     ORDEM_SERVICO ||--o{ ITEM_SERVICO_OS : "executa"
     SERVICO ||--o{ ITEM_SERVICO_OS : "é executado em"
+    ORDEM_SERVICO ||--o{ APONTAMENTO_TEMPO : "cronometra"
+    ITEM_SERVICO_OS ||--o{ APONTAMENTO_TEMPO : "detalha"
+    USUARIO ||--o{ APONTAMENTO_TEMPO : "trabalha em"
+    ORDEM_SERVICO ||--o{ PAGAMENTO : "recebe"
+    USUARIO ||--o{ PAGAMENTO : "registra"
     PECA ||--o{ MOVIMENTACAO_ESTOQUE : "sofre"
     USUARIO ||--o{ MOVIMENTACAO_ESTOQUE : "realiza"
     USUARIO ||--o{ CLIENTE : "inativa"
     USUARIO ||--o{ VEICULO : "inativa"
     USUARIO ||--o{ PECA : "inativa"
     USUARIO ||--o{ SERVICO : "inativa"
-    USUARIO ||--o{ ORDEM_SERVICO : "cancela"
+    USUARIO ||--o{ ORDEM_SERVICO : "responsavel / aprova / cancela"
+    USUARIO ||--o{ ITEM_SERVICO_OS : "executa"
 
     CLIENTE {
         int id PK "identificador"
@@ -122,29 +130,35 @@ erDiagram
     ORDEM_SERVICO {
         int id PK "identificador"
         datetime data_emissao
-        datetime data_previsao_inicio
+        datetime validade_orcamento_ate
         datetime data_previsao_entrega
         datetime data_conclusao
-        string problema_relatado
+        datetime data_entrega
+        int garantia_dias
+        string queixa_cliente
+        string diagnostico
+        int km_entrada
+        int km_saida
+        string nivel_combustivel_entrada
         string status
-        decimal valor_mao_de_obra
-        decimal valor_pecas
         decimal valor_desconto
-        int tempo_gasto_minutos
+        int mecanico_responsavel_id FK
+        int aprovado_por_usuario_id FK
         string autorizado_por
-        string meio_autorizacao
+        string tipo_contato_autorizacao
         datetime data_autorizacao
         string motivo_cancelamento
         datetime data_cancelamento
         int cancelada_por_usuario_id FK
         string token_acompanhamento
+        decimal valor_mao_de_obra_efetivo "derivado"
+        decimal valor_pecas_efetivo "derivado"
         decimal valor_total "derivado"
     }
     VISTORIA {
         int id PK "identificador"
         string status
         string nivel_combustivel
-        int quilometragem_entrada
         boolean tem_estepe
         boolean tem_macaco
         boolean tem_radio
@@ -192,12 +206,31 @@ erDiagram
         decimal preco_base
         decimal valor_cobrado
         decimal preco_custo_snapshot
+        string origem
+        string status_item
+        boolean aplicada
+        boolean eh_aditivo
     }
     ITEM_SERVICO_OS {
         int quantidade
         decimal preco_base
         decimal valor_cobrado
         int tempo_estimado_snapshot
+        string status_item
+        boolean executado
+        int mecanico_id FK
+        boolean eh_aditivo
+    }
+    APONTAMENTO_TEMPO {
+        int id PK "identificador"
+        datetime inicio
+        datetime fim
+    }
+    PAGAMENTO {
+        int id PK "identificador"
+        string forma
+        decimal valor
+        datetime data_pagamento
     }
     MOVIMENTACAO_ESTOQUE {
         int id PK "identificador"
@@ -227,8 +260,6 @@ erDiagram
         int validade_orcamento_dias
         int garantia_padrao_dias
         boolean obrigar_vistoria_para_os
-        string simbolo_moeda
-        decimal taxa_mao_de_obra
     }
 ```
 
@@ -242,10 +273,12 @@ erDiagram
 | ORDEM_SERVICO **registra** CONTATO_OS | ORDEM_SERVICO (0,N) | CONTATO_OS (1,1) | RN14 |
 | ORDEM_SERVICO **consome** PECA (assoc. ITEM_PECA_OS) | ORDEM_SERVICO (0,N) | PECA (0,N) | RN06 |
 | ORDEM_SERVICO **executa** SERVICO (assoc. ITEM_SERVICO_OS) | ORDEM_SERVICO (0,N) | SERVICO (0,N) | RN06 |
+| ORDEM_SERVICO **cronometra** APONTAMENTO_TEMPO | ORDEM_SERVICO (0,N) | APONTAMENTO_TEMPO (1,1) | RN18 |
+| ORDEM_SERVICO **recebe** PAGAMENTO | ORDEM_SERVICO (0,N) | PAGAMENTO (1,1) | RN18 |
 | PECA **sofre** MOVIMENTACAO_ESTOQUE | PECA (0,N) | MOVIMENTACAO (1,1) | RN11 |
 | USUARIO **realiza** MOVIMENTACAO_ESTOQUE | USUARIO (0,N) | MOVIMENTACAO (1,1) | RN11 |
 | USUARIO **inativa** CLIENTE / VEICULO / PECA / SERVICO | USUARIO (0,N) | Entidade (0,1) | RN10 |
-| USUARIO **cancela** ORDEM_SERVICO | USUARIO (0,N) | ORDEM_SERVICO (0,1) | RN15 |
+| USUARIO **responsável / aprova / cancela** ORDEM_SERVICO | USUARIO (0,N) | ORDEM_SERVICO (0,1) | RN14/RN15 |
 | CONFIGURACAO | sem relacionamentos (parâmetros globais, registro único) | | RN16 |
 
 ---
@@ -253,7 +286,7 @@ erDiagram
 ## 3. Diagrama Lógico (Modelo Relacional)
 
 Convenções: `PK` chave primária · `FK` chave estrangeira · `UK` restrição UNIQUE.
-Valores `decimal` = `DECIMAL(18,2)`, exceto `taxa_mao_de_obra` (percentual 0–100). Campos de enum são armazenados como `INT`. `avarias_json` é `TEXT` com JSON.
+Valores `decimal` = `DECIMAL(18,2)`. Campos de enum são armazenados como `INT`. `avarias_json` é `TEXT` com JSON.
 
 ```mermaid
 erDiagram
@@ -265,13 +298,19 @@ erDiagram
     PECA ||--o{ ORDEM_SERVICO_PECA : "peca_id"
     ORDEM_SERVICO ||--o{ ORDEM_SERVICO_SERVICO : "ordem_servico_id"
     SERVICO ||--o{ ORDEM_SERVICO_SERVICO : "servico_id"
+    ORDEM_SERVICO ||--o{ APONTAMENTO_TEMPO : "ordem_servico_id"
+    ORDEM_SERVICO_SERVICO ||--o{ APONTAMENTO_TEMPO : "ordem_servico_servico_id"
+    USUARIO ||--o{ APONTAMENTO_TEMPO : "mecanico_id"
+    ORDEM_SERVICO ||--o{ PAGAMENTO : "ordem_servico_id"
+    USUARIO ||--o{ PAGAMENTO : "registrado_por_usuario_id"
     PECA ||--o{ MOVIMENTACAO_ESTOQUE : "peca_id"
     USUARIO ||--o{ MOVIMENTACAO_ESTOQUE : "usuario_id"
     USUARIO ||--o{ CLIENTE : "inativado_por_usuario_id"
     USUARIO ||--o{ VEICULO : "inativado_por_usuario_id"
     USUARIO ||--o{ PECA : "inativado_por_usuario_id"
     USUARIO ||--o{ SERVICO : "inativado_por_usuario_id"
-    USUARIO ||--o{ ORDEM_SERVICO : "cancelada_por_usuario_id"
+    USUARIO ||--o{ ORDEM_SERVICO : "mecanico_responsavel_id / aprovado_por_usuario_id / cancelada_por_usuario_id"
+    USUARIO ||--o{ ORDEM_SERVICO_SERVICO : "mecanico_id"
 
     CLIENTE {
         INT id PK
@@ -303,18 +342,22 @@ erDiagram
         INT id PK
         INT veiculo_id FK "NOT NULL"
         TIMESTAMPTZ data_emissao "NOT NULL"
-        TIMESTAMPTZ data_previsao_inicio
+        TIMESTAMPTZ validade_orcamento_ate "NOT NULL"
         TIMESTAMPTZ data_previsao_entrega "NOT NULL CHECK >= data_emissao"
         TIMESTAMPTZ data_conclusao
-        TEXT descricao_problema_relatado "NOT NULL"
+        TIMESTAMPTZ data_entrega
+        INT garantia_dias
+        TEXT queixa_cliente "NOT NULL"
+        TEXT diagnostico
+        INT km_entrada "NOT NULL CHECK >= 0"
+        INT km_saida "CHECK >= 0"
+        INT nivel_combustivel_entrada "NOT NULL CHECK 1..5"
         INT status "NOT NULL DEFAULT 0"
-        DECIMAL valor_mao_de_obra "NOT NULL CHECK >= 0"
-        DECIMAL valor_pecas "NOT NULL CHECK >= 0"
         DECIMAL valor_desconto "NOT NULL CHECK >= 0"
-        INT tempo_gasto_minutos "NOT NULL DEFAULT 0"
-        TIMESTAMPTZ inicio_ultima_execucao
+        INT mecanico_responsavel_id FK
+        INT aprovado_por_usuario_id FK
         VARCHAR150 autorizado_por
-        VARCHAR30 meio_autorizacao
+        INT tipo_contato_autorizacao
         TIMESTAMPTZ data_autorizacao
         VARCHAR500 motivo_cancelamento
         TIMESTAMPTZ data_cancelamento
@@ -326,7 +369,6 @@ erDiagram
         INT ordem_servico_id FK "UK NOT NULL"
         INT status "NOT NULL DEFAULT 0"
         INT nivel_combustivel "NOT NULL CHECK 1..5"
-        INT quilometragem_entrada "NOT NULL CHECK >= 0"
         BOOLEAN tem_estepe "NOT NULL"
         BOOLEAN tem_macaco "NOT NULL"
         BOOLEAN tem_radio "NOT NULL"
@@ -379,6 +421,10 @@ erDiagram
         DECIMAL preco_base "NOT NULL"
         DECIMAL valor_cobrado "NOT NULL CHECK >= 0"
         DECIMAL preco_custo_snapshot "NOT NULL"
+        INT origem "NOT NULL DEFAULT 0"
+        INT status_item "NOT NULL DEFAULT 0"
+        BOOLEAN aplicada "NOT NULL DEFAULT false"
+        BOOLEAN eh_aditivo "NOT NULL DEFAULT false"
     }
     ORDEM_SERVICO_SERVICO {
         INT id PK
@@ -388,6 +434,26 @@ erDiagram
         DECIMAL preco_base "NOT NULL"
         DECIMAL valor_cobrado "NOT NULL CHECK >= 0"
         INT tempo_estimado_snapshot
+        INT status_item "NOT NULL DEFAULT 0"
+        BOOLEAN executado "NOT NULL DEFAULT false"
+        INT mecanico_id FK
+        BOOLEAN eh_aditivo "NOT NULL DEFAULT false"
+    }
+    APONTAMENTO_TEMPO {
+        INT id PK
+        INT ordem_servico_id FK "NOT NULL"
+        INT ordem_servico_servico_id FK
+        INT mecanico_id FK "NOT NULL"
+        TIMESTAMPTZ inicio "NOT NULL"
+        TIMESTAMPTZ fim
+    }
+    PAGAMENTO {
+        INT id PK
+        INT ordem_servico_id FK "NOT NULL"
+        INT forma "NOT NULL"
+        DECIMAL valor "NOT NULL CHECK > 0"
+        TIMESTAMPTZ data_pagamento "NOT NULL"
+        INT registrado_por_usuario_id FK "NOT NULL"
     }
     MOVIMENTACAO_ESTOQUE {
         INT id PK
@@ -419,8 +485,6 @@ erDiagram
         INT validade_orcamento_dias "NOT NULL CHECK 1..365"
         INT garantia_padrao_dias "NOT NULL CHECK 1..3650"
         BOOLEAN obrigar_vistoria_para_os "NOT NULL"
-        VARCHAR10 simbolo_moeda "NOT NULL"
-        DECIMAL taxa_mao_de_obra "CHECK 0..100"
     }
 ```
 
@@ -435,6 +499,7 @@ erDiagram
 | `veiculo` | `UNIQUE (placa)` | RN02 |
 | `peca` | `UNIQUE (sku)` | RN10 |
 | `usuario` | `UNIQUE (username)` | RN12 |
+| `apontamento_tempo` | `INDEX (mecanico_id, fim) WHERE fim IS NULL` | índice parcial para localizar rapidamente apontamento aberto por mecânico — RN18 |
 
 ### 3.2 Ações referenciais (ON DELETE)
 
@@ -446,10 +511,14 @@ erDiagram
 | `movimentacao_estoque.peca_id` | **RESTRICT** | RN10 |
 | `movimentacao_estoque.usuario_id` | **RESTRICT** | RN11 |
 | `*.inativado_por_usuario_id`, `ordem_servico.cancelada_por_usuario_id` | **SET NULL** | preserva auditoria mesmo se conta de usuário for removida |
+| `ordem_servico.mecanico_responsavel_id`, `ordem_servico.aprovado_por_usuario_id`, `ordem_servico_servico.mecanico_id`, `apontamento_tempo.*`, `pagamento.*` | **RESTRICT** | preservar rastreabilidade de execução, aprovação e recebimento |
 | `veiculo.cliente_id`, `ordem_servico.veiculo_id`, `vistoria.ordem_servico_id`, `contato_os.ordem_servico_id`, `ordem_servico_servico.servico_id` | **RESTRICT** | preservar histórico |
 
 ### 3.3 Atributos derivados (não armazenados)
-- `ordem_servico.valor_total = (mão de obra efetiva + peças efetivas) − desconto`
+- `ordem_servico.valor_mao_de_obra_efetivo = SUM(ordem_servico_servico.subtotal) WHERE status_item != Recusado`
+- `ordem_servico.valor_pecas_efetivo = SUM(ordem_servico_peca.subtotal) WHERE status_item != Recusado`
+- `ordem_servico.valor_total = (valor_mao_de_obra_efetivo + valor_pecas_efetivo) − valor_desconto`
+- `ordem_servico.tempo_real_total_minutos = SUM(fim - inicio) de apontamento_tempo`
 - `Subtotal` do item = `quantidade × valor_cobrado`
 - Margem de lucro da peça = `(preco_venda − preco_custo) / preco_venda × 100`
 
@@ -484,6 +553,15 @@ Modelo derivado das entidades em `Models/` e do [AppDbContext.cs](../Data/AppDbC
 - `ordem_servico.data_conclusao` (`TIMESTAMPTZ NULL`) é preenchida automaticamente na conclusão da OS para apuração financeira por competência de conclusão via `RelatorioService`.
 - `peca.xmin` (`Version`) é configurado como token nativo de concorrência otimista do PostgreSQL (`IsRowVersion()`).
 - Todas as colunas `DateTime` são persistidas em UTC (`timestamp with time zone`) via convenção global no `AppDbContext`.
+- **Refatoração do Fluxo O.S. — Fase 1 (Modelo de Dados e Migração Aditiva)**:
+  - `20261105225909_Fase1AditivaFluxoOS`: migration 100% aditiva criando as novas colunas (`queixa_cliente`, `diagnostico`, `km_entrada`, `km_saida`, `nivel_combustivel_entrada`, `validade_orcamento_ate`, `garantia_dias`, `mecanico_responsavel_id`, `aprovado_por_usuario_id`, `tipo_contato_autorizacao`, `data_entrega`), campos em `ordem_servico_servico` (`status_item`, `executado`, `mecanico_id`, `eh_aditivo`) e `ordem_servico_peca` (`origem`, `status_item`, `aplicada`, `eh_aditivo`), além das tabelas `apontamento_tempo` (com índice parcial `WHERE fim IS NULL`) e `pagamento`, seguida de script SQL idempotente de migração de dados:
+    - Copia `descricao_problema_relatado` para `queixa_cliente`.
+    - Para O.S. sem linhas de serviço e com `valor_mao_de_obra > 0`, cria o serviço de catálogo inativo `"Mão de obra (migrado)"` e insere a linha correspondente em `ordem_servico_servico`.
+    - **Decisão documentada sobre peça genérica migrada**: para O.S. sem linhas de peça e com `valor_pecas > 0`, optou-se por criar uma peça genérica inativa no catálogo (`SKU = 'MIGRADO-PECA-GEN'`, `nome = 'Peças diversas (migrado)'`, `ativo = false`, `motivo_inativacao = 'Item genérico criado automaticamente na migração da Fase 1'`) e vincular uma linha em `ordem_servico_peca` com o `valor_pecas` legado, garantindo que 100% do histórico financeiro passe a vir exclusivamente das linhas de itens sem perda de valor.
+    - Converte O.S. antigas `Concluida` (4) para `Entregue` (8) com `data_entrega = COALESCE(data_conclusao, data_previsao_entrega, data_emissao)`.
+    - Mapeia `meio_autorizacao` textual para o enum `tipo_contato_autorizacao` (`Presencial`, `WhatsApp`, `Telefone → Ligacao`, `E-mail → Email`, demais → `Outro`).
+    - Preenche `validade_orcamento_ate = data_emissao + INTERVAL '10 days'` retroativamente e `km_entrada` a partir de `vistoria.quilometragem_entrada` ou `veiculo.quilometragem`.
+  - `20261105231257_Fase1RemoverColunasLegadasFluxoOS`: segunda migration que remove as colunas legadas (`descricao_problema_relatado`, `valor_mao_de_obra`, `valor_pecas`, `servico_a_executar`, `data_previsao_inicio`, `meio_autorizacao`, `tempo_gasto_minutos`, `inicio_ultima_execucao`, `vistoria.quilometragem_entrada`, `configuracao.taxa_mao_de_obra` e `configuracao.simbolo_moeda`) somente após a execução do script de dados.
 
 Fora do escopo de tabelas próprias: classes `Relatorio*` (DTOs de agregação e exportação CSV gerados por `RelatorioService`; não possuem `DbSet` no contexto) e `Login` (DTO de autenticação).
 

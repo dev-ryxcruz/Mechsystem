@@ -4,6 +4,7 @@ using mechsystem.Repositories;
 using mechsystem.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Testcontainers.PostgreSql;
 
 namespace mechsystem.Tests;
@@ -142,9 +143,12 @@ public class OrdemServicoStabilizationTests
         var os = new OrdemServico
         {
             VeiculoId = veiculo.Id,
-            DescricaoProblemaRelatado = "Revisão geral",
+            KmEntrada = 30000,
+            NivelCombustivelEntrada = NivelCombustivel.Meio,
+            QueixaCliente = "Revisão geral",
             DataEmissao = DateTime.UtcNow,
             DataPrevisaoEntrega = DateTime.UtcNow.AddDays(3),
+            ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(10),
             Status = OrdemServicoStatus.Orcamento
         };
         db.OrdensServico.Add(os);
@@ -189,9 +193,12 @@ public class OrdemServicoStabilizationTests
         var os = new OrdemServico
         {
             VeiculoId = veiculo.Id,
-            DescricaoProblemaRelatado = "Freios e motor",
+            KmEntrada = 30000,
+            NivelCombustivelEntrada = NivelCombustivel.Reserva,
+            QueixaCliente = "Freios e motor",
             DataEmissao = DateTime.UtcNow,
             DataPrevisaoEntrega = DateTime.UtcNow.AddDays(2),
+            ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(10),
             Status = OrdemServicoStatus.Orcamento
         };
         db.OrdensServico.Add(os);
@@ -224,9 +231,12 @@ public class OrdemServicoStabilizationTests
         var os = new OrdemServico
         {
             VeiculoId = veiculo.Id,
-            DescricaoProblemaRelatado = "Troca de filtro",
+            KmEntrada = 30000,
+            NivelCombustivelEntrada = NivelCombustivel.UmQuarto,
+            QueixaCliente = "Troca de filtro",
             DataEmissao = DateTime.UtcNow,
             DataPrevisaoEntrega = DateTime.UtcNow.AddDays(1),
+            ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(10),
             Status = OrdemServicoStatus.Orcamento
         };
         db.OrdensServico.Add(os);
@@ -269,37 +279,70 @@ public class OrdemServicoStabilizationTests
     }
 
     [Fact]
-    public void CalculoTotaisOS_DeveRespeitarFallbackESomaDeItensEDesconto()
+    public void CalculoTotaisOS_DeveSomarApenasItensNaoRecusadosEDesconto()
     {
         var os = new OrdemServico
         {
-            ValorMaoDeObra = 150m,
-            ValorPecas = 100m,
             ValorDesconto = 20m
         };
 
-        // Sem itens vinculados: usa valores manuais
-        Assert.Equal(150m, os.ValorMaoDeObraEfetivo);
-        Assert.Equal(100m, os.ValorPecasEfetivo);
-        Assert.Equal(230m, os.ValorTotal);
+        // Sem itens vinculados: totais das linhas são zero
+        Assert.Equal(0m, os.ValorMaoDeObraEfetivo);
+        Assert.Equal(0m, os.ValorPecasEfetivo);
+        Assert.Equal(-20m, os.ValorTotal);
 
-        // Com serviços e peças vinculados: sobrescreve pelos subtotais dos itens
+        // Com serviços e peças vinculados (Pendente e Aprovado entram; Recusado é ignorado)
         os.ServicosAExecutarList.Add(new OrdemServicoServico
         {
             Quantidade = 2,
             PrecoBase = 100m,
-            ValorCobrado = 90m
+            ValorCobrado = 90m,
+            TempoEstimadoMinutosSnapshot = 45,
+            StatusItem = StatusItem.Aprovado
         });
+        os.ServicosAExecutarList.Add(new OrdemServicoServico
+        {
+            Quantidade = 1,
+            PrecoBase = 200m,
+            ValorCobrado = 200m,
+            TempoEstimadoMinutosSnapshot = 90,
+            StatusItem = StatusItem.Recusado
+        });
+
         os.PecasUtilizadas.Add(new OrdemServicoPeca
         {
             Quantidade = 3,
             PrecoBase = 50m,
-            ValorCobrado = 40m
+            ValorCobrado = 40m,
+            StatusItem = StatusItem.Pendente
+        });
+        os.PecasUtilizadas.Add(new OrdemServicoPeca
+        {
+            Quantidade = 1,
+            PrecoBase = 500m,
+            ValorCobrado = 500m,
+            StatusItem = StatusItem.Recusado
         });
 
-        Assert.Equal(180m, os.ValorMaoDeObraEfetivo); // 2 * 90
-        Assert.Equal(120m, os.ValorPecasEfetivo);     // 3 * 40
+        Assert.Equal(180m, os.ValorMaoDeObraEfetivo); // 2 * 90 (recusado de 200 ignorado)
+        Assert.Equal(120m, os.ValorPecasEfetivo);     // 3 * 40 (recusado de 500 ignorado)
         Assert.Equal(280m, os.ValorTotal);            // 180 + 120 - 20
+        Assert.Equal(90, os.TempoTotalEstimadoMinutos); // 2 * 45 (recusado de 90 ignorado)
+    }
+
+    [Fact]
+    public void OrdemServicoStatus_ValoresExistentesPreservadosENovosAdicionadosAposUltimo()
+    {
+        Assert.Equal(0, (int)OrdemServicoStatus.Orcamento);
+        Assert.Equal(1, (int)OrdemServicoStatus.AguardandoPecas);
+        Assert.Equal(2, (int)OrdemServicoStatus.EmAndamento);
+        Assert.Equal(3, (int)OrdemServicoStatus.Concluida);
+        Assert.Equal(4, (int)OrdemServicoStatus.Cancelada);
+        Assert.Equal(5, (int)OrdemServicoStatus.Pausada);
+        Assert.Equal(6, (int)OrdemServicoStatus.Aprovada);
+        Assert.Equal(7, (int)OrdemServicoStatus.AguardandoCliente);
+        Assert.Equal(8, (int)OrdemServicoStatus.Entregue);
+        Assert.Equal(9, (int)OrdemServicoStatus.Recusada);
     }
 
     [Fact]
@@ -311,9 +354,12 @@ public class OrdemServicoStabilizationTests
         var os = new OrdemServico
         {
             VeiculoId = veiculo.Id,
-            DescricaoProblemaRelatado = "Revisão concluída",
+            KmEntrada = 30000,
+            NivelCombustivelEntrada = NivelCombustivel.Cheio,
+            QueixaCliente = "Revisão concluída",
             DataEmissao = DateTime.UtcNow.AddMonths(-1),
             DataPrevisaoEntrega = DateTime.UtcNow.AddDays(1),
+            ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(9),
             Status = OrdemServicoStatus.Orcamento
         };
         db.OrdensServico.Add(os);
@@ -349,9 +395,12 @@ public class OrdemServicoStabilizationTests
         var os = new OrdemServico
         {
             VeiculoId = veiculo.Id,
-            DescricaoProblemaRelatado = "Barulho na suspensão",
+            KmEntrada = 30000,
+            NivelCombustivelEntrada = NivelCombustivel.Meio,
+            QueixaCliente = "Barulho na suspensão",
             DataEmissao = DateTime.UtcNow.Date,
             DataPrevisaoEntrega = DateTime.UtcNow.Date.AddDays(2),
+            ValidadeOrcamentoAte = DateTime.UtcNow.Date.AddDays(10),
             Status = OrdemServicoStatus.Orcamento
         };
         db.OrdensServico.Add(os);
@@ -385,31 +434,51 @@ public class OrdemServicoStabilizationTests
         var emissao = new DateTime(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc);
         var entregaInicial = emissao.AddDays(3);
 
+        var servico = new Servico
+        {
+            Nome = "Troca de Correia Dentada",
+            ValorPadrao = 350m,
+            TempoEstimadoMinutos = 120,
+            Ativo = true
+        };
+        db.Servicos.Add(servico);
+        await db.SaveChangesAsync();
+
         var os = new OrdemServico
         {
             VeiculoId = veiculo.Id,
-            DescricaoProblemaRelatado = "Diagnóstico inicial",
-            ServicoAExecutar = "Avaliação preliminar",
+            KmEntrada = 30000,
+            NivelCombustivelEntrada = NivelCombustivel.Meio,
+            QueixaCliente = "Queixa inicial",
+            Diagnostico = "Avaliação preliminar",
             DataEmissao = emissao,
-            DataPrevisaoInicio = emissao.AddDays(1),
             DataPrevisaoEntrega = entregaInicial,
-            ValorMaoDeObra = 200m,
+            ValidadeOrcamentoAte = emissao.AddDays(10),
             ValorDesconto = 0m,
             Status = OrdemServicoStatus.Orcamento
         };
         db.OrdensServico.Add(os);
         await db.SaveChangesAsync();
 
+        db.OrdemServicoServicos.Add(new OrdemServicoServico
+        {
+            OrdemServicoId = os.Id,
+            ServicoId = servico.Id,
+            Quantidade = 1,
+            PrecoBase = 350m,
+            ValorCobrado = 350m,
+            StatusItem = StatusItem.Pendente
+        });
+        await db.SaveChangesAsync();
+
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            osService.AtualizarOSAsync(os.Id, "Novo diag", "Novo serv", emissao.AddDays(1), entregaInicial, 200m, 0m, mecanico.Id, PerfilUsuario.Mecanico));
+            osService.AtualizarOSAsync(os.Id, "Nova queixa", "Novo diag", entregaInicial, 0m, mecanico.Id, PerfilUsuario.Mecanico));
 
         await osService.AtualizarOSAsync(
             os.Id,
-            "Diagnóstico atualizado pelo atendente",
-            "Troca de correia dentada",
-            emissao.AddDays(1),
+            "Queixa atualizada pelo atendente",
+            "Correia dentada ressecada",
             emissao.AddDays(4),
-            350m,
             0m,
             atendente.Id,
             PerfilUsuario.Atendimento);
@@ -417,11 +486,9 @@ public class OrdemServicoStabilizationTests
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             osService.AtualizarOSAsync(
                 os.Id,
-                "Diagnóstico atualizado pelo atendente",
-                "Troca de correia dentada",
-                emissao.AddDays(1),
+                "Queixa atualizada pelo atendente",
+                "Correia dentada ressecada",
                 emissao.AddDays(4),
-                350m,
                 50m,
                 atendente.Id,
                 PerfilUsuario.Atendimento));
@@ -429,11 +496,9 @@ public class OrdemServicoStabilizationTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             osService.AtualizarOSAsync(
                 os.Id,
-                "Diagnóstico atualizado pelo atendente",
-                "Troca de correia dentada",
-                emissao.AddDays(1),
+                "Queixa atualizada pelo atendente",
+                "Correia dentada ressecada",
                 emissao.AddDays(-1),
-                350m,
                 50m,
                 admin.Id,
                 PerfilUsuario.Administrador));
@@ -441,30 +506,28 @@ public class OrdemServicoStabilizationTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             osService.AtualizarOSAsync(
                 os.Id,
-                "Diagnóstico atualizado pelo atendente",
-                "Troca de correia dentada",
-                emissao.AddDays(1),
+                "Queixa atualizada pelo atendente",
+                "Correia dentada ressecada",
                 emissao.AddDays(4),
-                350m,
                 400m,
                 admin.Id,
                 PerfilUsuario.Administrador));
 
         await osService.AtualizarOSAsync(
             os.Id,
-            "Diagnóstico revisado pelo admin",
+            "Queixa revisada pelo admin",
             "Troca de correia dentada + tensor",
-            emissao.AddDays(1),
             emissao.AddDays(4),
-            350m,
             50m,
             admin.Id,
             PerfilUsuario.Administrador);
 
-        var osOrcamento = await db.OrdensServico.FindAsync(os.Id);
-        Assert.Equal("Diagnóstico revisado pelo admin", osOrcamento!.DescricaoProblemaRelatado);
-        Assert.Equal("Troca de correia dentada + tensor", osOrcamento.ServicoAExecutar);
-        Assert.Equal(350m, osOrcamento.ValorMaoDeObra);
+        var osOrcamento = await db.OrdensServico
+            .Include(o => o.ServicosAExecutarList)
+            .FirstAsync(o => o.Id == os.Id);
+        Assert.Equal("Queixa revisada pelo admin", osOrcamento.QueixaCliente);
+        Assert.Equal("Troca de correia dentada + tensor", osOrcamento.Diagnostico);
+        Assert.Equal(350m, osOrcamento.ValorMaoDeObraEfetivo);
         Assert.Equal(50m, osOrcamento.ValorDesconto);
         Assert.Equal(300m, osOrcamento.ValorTotal);
 
@@ -474,11 +537,9 @@ public class OrdemServicoStabilizationTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             osService.AtualizarOSAsync(
                 os.Id,
-                "Tentativa de mudar diagnóstico após aprovação",
-                osAprovada!.ServicoAExecutar,
-                osAprovada.DataPrevisaoInicio,
+                "Tentativa de mudar queixa após aprovação",
+                osAprovada!.Diagnostico,
                 osAprovada.DataPrevisaoEntrega,
-                osAprovada.ValorMaoDeObra,
                 osAprovada.ValorDesconto,
                 admin.Id,
                 PerfilUsuario.Administrador));
@@ -486,11 +547,9 @@ public class OrdemServicoStabilizationTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             osService.AtualizarOSAsync(
                 os.Id,
-                osAprovada!.DescricaoProblemaRelatado,
-                osAprovada.ServicoAExecutar,
-                osAprovada.DataPrevisaoInicio,
+                osAprovada!.QueixaCliente,
+                osAprovada.Diagnostico,
                 osAprovada.DataPrevisaoEntrega,
-                osAprovada.ValorMaoDeObra,
                 20m,
                 admin.Id,
                 PerfilUsuario.Administrador));
@@ -498,11 +557,9 @@ public class OrdemServicoStabilizationTests
         var novaPrevisao = emissao.AddDays(7);
         await osService.AtualizarOSAsync(
             os.Id,
-            osAprovada!.DescricaoProblemaRelatado,
-            osAprovada.ServicoAExecutar,
-            osAprovada.DataPrevisaoInicio,
+            osAprovada!.QueixaCliente,
+            "Diagnóstico refinado na execução",
             novaPrevisao,
-            osAprovada.ValorMaoDeObra,
             osAprovada.ValorDesconto,
             atendente.Id,
             PerfilUsuario.Atendimento,
@@ -518,14 +575,51 @@ public class OrdemServicoStabilizationTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             osService.AtualizarOSAsync(
                 os.Id,
-                osAprovada.DescricaoProblemaRelatado,
-                osAprovada.ServicoAExecutar,
-                osAprovada.DataPrevisaoInicio,
+                osAprovada.QueixaCliente,
+                osAprovada.Diagnostico,
                 emissao.AddDays(10),
-                osAprovada.ValorMaoDeObra,
                 osAprovada.ValorDesconto,
                 admin.Id,
                 PerfilUsuario.Administrador));
+    }
+
+    private static string GetLocalPostgresAdminConnectionString()
+    {
+        try
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var secretsPath = Path.Combine(appData, "Microsoft", "UserSecrets", "3d27d95a-033c-4f25-8306-a5f8026853ca", "secrets.json");
+            if (File.Exists(secretsPath))
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(secretsPath));
+                string? rawConn = null;
+                if (doc.RootElement.TryGetProperty("ConnectionStrings:DefaultConnection", out var connProp))
+                {
+                    rawConn = connProp.GetString();
+                }
+                else if (doc.RootElement.TryGetProperty("ConnectionStrings", out var csObj) &&
+                         csObj.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                         csObj.TryGetProperty("DefaultConnection", out var nestedProp))
+                {
+                    rawConn = nestedProp.GetString();
+                }
+
+                if (!string.IsNullOrWhiteSpace(rawConn))
+                {
+                    var builder = new Npgsql.NpgsqlConnectionStringBuilder(rawConn)
+                    {
+                        Database = "postgres"
+                    };
+                    return builder.ConnectionString;
+                }
+            }
+        }
+        catch
+        {
+            // Ignora falha ao ler UserSecrets e usa fallback padrão
+        }
+
+        return "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=root";
     }
 
     [Fact]
@@ -534,7 +628,7 @@ public class OrdemServicoStabilizationTests
         string? connectionString = null;
         PostgreSqlContainer? container = null;
         string? tempDbName = null;
-        const string localAdminConn = "Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=root";
+        var localAdminConn = GetLocalPostgresAdminConnectionString();
 
         try
         {
@@ -558,7 +652,11 @@ public class OrdemServicoStabilizationTests
                     await using var cmd = conn.CreateCommand();
                     cmd.CommandText = $"CREATE DATABASE \"{tempDbName}\";";
                     await cmd.ExecuteNonQueryAsync();
-                    connectionString = $"Host=localhost;Port=5432;Database={tempDbName};Username=postgres;Password=root";
+                    var builder = new Npgsql.NpgsqlConnectionStringBuilder(localAdminConn)
+                    {
+                        Database = tempDbName
+                    };
+                    connectionString = builder.ConnectionString;
                 }
                 catch
                 {
@@ -586,14 +684,17 @@ public class OrdemServicoStabilizationTests
                 var os = new OrdemServico
                 {
                     VeiculoId = veiculo.Id,
-                    DescricaoProblemaRelatado = "Teste transacional PostgreSQL",
+                    KmEntrada = 30000,
+                    NivelCombustivelEntrada = NivelCombustivel.Meio,
+                    QueixaCliente = "Teste transacional PostgreSQL",
                     DataEmissao = DateTime.UtcNow,
                     DataPrevisaoEntrega = DateTime.UtcNow.AddDays(2),
+                    ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(10),
                     Status = OrdemServicoStatus.Orcamento
                 };
                 db.OrdensServico.Add(os);
                 await db.SaveChangesAsync();
-
+|A
                 await osService.AdicionarPecaAsync(os.Id, peca1.Id, 2, null, admin.Id, PerfilUsuario.Administrador);
                 await osService.AdicionarPecaAsync(os.Id, peca2.Id, 99, null, admin.Id, PerfilUsuario.Administrador);
 
@@ -624,6 +725,299 @@ public class OrdemServicoStabilizationTests
                 catch
                 {
                     // Ignora erro na limpeza do banco temporário
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public async Task NovasEntidadesFase1_ApontamentoTempoEPagamento_DevemPersistirECalcularTempoReal()
+    {
+        var (db, _, _, _) = CreateSut();
+        var (admin, _, mecanico, veiculo, _, _) = await SeedBasicScenarioAsync(db);
+
+        var servico = new Servico { Nome = "Alinhamento", ValorPadrao = 150m, TempoEstimadoMinutos = 60, Ativo = true };
+        db.Servicos.Add(servico);
+        await db.SaveChangesAsync();
+
+        var os = new OrdemServico
+        {
+            VeiculoId = veiculo.Id,
+            KmEntrada = 30000,
+            KmSaida = 30025,
+            NivelCombustivelEntrada = NivelCombustivel.TresQuartos,
+            QueixaCliente = "Direção desalinhada",
+            Diagnostico = "Geometria dianteira fora do padrão",
+            DataEmissao = DateTime.UtcNow.AddDays(-1),
+            DataPrevisaoEntrega = DateTime.UtcNow,
+            ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(9),
+            GarantiaDias = 90,
+            MecanicoResponsavelId = mecanico.Id,
+            AprovadoPorUsuarioId = admin.Id,
+            AutorizadoPor = "Cliente Teste",
+            TipoContatoAutorizacao = TipoContato.WhatsApp,
+            Status = OrdemServicoStatus.Entregue,
+            DataConclusao = DateTime.UtcNow.AddHours(-1),
+            DataEntrega = DateTime.UtcNow
+        };
+        db.OrdensServico.Add(os);
+        await db.SaveChangesAsync();
+
+        var osServico = new OrdemServicoServico
+        {
+            OrdemServicoId = os.Id,
+            ServicoId = servico.Id,
+            Quantidade = 1,
+            PrecoBase = 150m,
+            ValorCobrado = 150m,
+            StatusItem = StatusItem.Aprovado,
+            Executado = true,
+            MecanicoId = mecanico.Id,
+            EhAditivo = false
+        };
+        db.OrdemServicoServicos.Add(osServico);
+        await db.SaveChangesAsync();
+
+        var inicioApontamento = DateTime.UtcNow.AddMinutes(-50);
+        var fimApontamento = DateTime.UtcNow.AddMinutes(-5);
+        var apontamento = new ApontamentoTempo
+        {
+            OrdemServicoId = os.Id,
+            OrdemServicoServicoId = osServico.Id,
+            MecanicoId = mecanico.Id,
+            Inicio = inicioApontamento,
+            Fim = fimApontamento
+        };
+
+        var pagamento = new Pagamento
+        {
+            OrdemServicoId = os.Id,
+            Forma = FormaPagamento.Pix,
+            Valor = 150m,
+            DataPagamento = DateTime.UtcNow,
+            RegistradoPorUsuarioId = admin.Id
+        };
+
+        db.ApontamentosTempo.Add(apontamento);
+        db.Pagamentos.Add(pagamento);
+        await db.SaveChangesAsync();
+
+        var osCompleta = await db.OrdensServico
+            .Include(o => o.ApontamentosTempo)
+            .Include(o => o.Pagamentos)
+            .Include(o => o.ServicosAExecutarList)
+            .FirstAsync(o => o.Id == os.Id);
+
+        Assert.Single(osCompleta.ApontamentosTempo);
+        Assert.Equal(45, osCompleta.TempoRealTotalMinutos);
+        Assert.Single(osCompleta.Pagamentos);
+        Assert.Equal(FormaPagamento.Pix, osCompleta.Pagamentos.First().Forma);
+        Assert.Equal(150m, osCompleta.Pagamentos.First().Valor);
+    }
+
+    [Fact]
+    public async Task MigracaoFase1_DeveAplicarEmBancoLimpoEEmBancoComDadosLegadosSemErro()
+    {
+        string? connLimpo = null;
+        string? connLegado = null;
+        PostgreSqlContainer? container = null;
+        string? tempDbLimpo = null;
+        string? tempDbLegado = null;
+        var localAdminConn = GetLocalPostgresAdminConnectionString();
+
+        try
+        {
+            try
+            {
+                container = new PostgreSqlBuilder("postgres:16-alpine")
+                    .Build();
+                await container.StartAsync();
+                var baseConn = container.GetConnectionString();
+                var builder = new Npgsql.NpgsqlConnectionStringBuilder(baseConn);
+                await using var adminConn = new Npgsql.NpgsqlConnection(baseConn);
+                await adminConn.OpenAsync();
+
+                tempDbLimpo = $"mech_clean_{Guid.NewGuid():N}";
+                tempDbLegado = $"mech_legacy_{Guid.NewGuid():N}";
+                await using (var cmd = adminConn.CreateCommand())
+                {
+                    cmd.CommandText = $"CREATE DATABASE \"{tempDbLimpo}\"; CREATE DATABASE \"{tempDbLegado}\";";
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                builder.Database = tempDbLimpo;
+                connLimpo = builder.ConnectionString;
+                builder.Database = tempDbLegado;
+                connLegado = builder.ConnectionString;
+            }
+            catch
+            {
+                container = null;
+                try
+                {
+                    await using var conn = new Npgsql.NpgsqlConnection(localAdminConn);
+                    await conn.OpenAsync();
+                    tempDbLimpo = $"mech_clean_{Guid.NewGuid():N}";
+                    tempDbLegado = $"mech_legacy_{Guid.NewGuid():N}";
+                    await using var cmd = conn.CreateCommand();
+                    cmd.CommandText = $"CREATE DATABASE \"{tempDbLimpo}\"; CREATE DATABASE \"{tempDbLegado}\";";
+                    await cmd.ExecuteNonQueryAsync();
+                    var builderLimpo = new Npgsql.NpgsqlConnectionStringBuilder(localAdminConn) { Database = tempDbLimpo };
+                    var builderLegado = new Npgsql.NpgsqlConnectionStringBuilder(localAdminConn) { Database = tempDbLegado };
+                    connLimpo = builderLimpo.ConnectionString;
+                    connLegado = builderLegado.ConnectionString;
+                }
+                catch
+                {
+                    return;
+                }
+            }
+
+            // 1. Banco limpo + DatabaseSeeder
+            var optionsLimpo = new DbContextOptionsBuilder<AppDbContext>()
+                .UseNpgsql(connLimpo)
+                .UseSnakeCaseNamingConvention()
+                .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
+                .Options;
+
+            await using (var dbLimpo = new AppDbContext(optionsLimpo))
+            {
+                await dbLimpo.Database.MigrateAsync();
+                await DatabaseSeeder.SeedAsync(dbLimpo);
+                Assert.True(await dbLimpo.OrdensServico.AnyAsync());
+            }
+
+            // 2. Banco com dados antigos (migrado até antes da Fase 1, populado via SQL e depois migrado até o fim)
+            var optionsLegado = new DbContextOptionsBuilder<AppDbContext>()
+                .UseNpgsql(connLegado)
+                .UseSnakeCaseNamingConvention()
+                .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
+                .Options;
+
+            await using (var dbLegado = new AppDbContext(optionsLegado))
+            {
+                var migrator = dbLegado.Database.GetService<Microsoft.EntityFrameworkCore.Migrations.IMigrator>();
+                await migrator.MigrateAsync("20261104230924_AddCancelamentoAuditoriaOrdemServico");
+
+                // Inserir dados no formato anterior à Fase 1
+                await dbLegado.Database.ExecuteSqlRawAsync(@"
+                    INSERT INTO clientes (nome, cpf, telefone, ativo)
+                    VALUES ('Cliente Legado', '52998224725', '11999998888', TRUE);
+
+                    INSERT INTO veiculos (placa, marca, modelo, ano, cor, quilometragem, cliente_id, ativo)
+                    VALUES ('LEG1A23', 'Fiat', 'Palio', 2018, 'Prata', 82000,
+                            (SELECT id FROM clientes WHERE cpf = '52998224725' LIMIT 1), TRUE);
+
+                    -- OS 1: Concluida (3), sem linhas de serviço/peça mas com valor_mao_de_obra=250 e valor_pecas=150, com vistoria (km=85000, combustivel=4)
+                    INSERT INTO ordens_servico (
+                        veiculo_id, data_emissao, data_previsao_entrega, data_conclusao,
+                        valor_mao_de_obra, valor_pecas, valor_desconto, tempo_gasto_minutos,
+                        descricao_problema_relatado, servico_a_executar, status,
+                        autorizado_por, meio_autorizacao, token_acompanhamento
+                    )
+                    VALUES (
+                        (SELECT id FROM veiculos WHERE placa = 'LEG1A23' LIMIT 1),
+                        '2026-01-10 12:00:00+00'::timestamptz,
+                        '2026-01-12 12:00:00+00'::timestamptz,
+                        '2026-01-11 18:00:00+00'::timestamptz,
+                        250.00, 150.00, 20.00, 90,
+                        'Barulho no motor legado', 'Serviço manual antigo', 3,
+                        'Cliente Legado', 'Telefone', 'tok_legado_1'
+                    );
+
+                    INSERT INTO vistorias (
+                        ordem_servico_id, status, nivel_combustivel, quilometragem_entrada,
+                        tem_estepe, tem_macaco, tem_radio, tem_triangulo, tem_chave_roda, data_vistoria
+                    )
+                    VALUES (
+                        (SELECT id FROM ordens_servico WHERE token_acompanhamento = 'tok_legado_1' LIMIT 1),
+                        1, 4, 85000, TRUE, TRUE, TRUE, TRUE, TRUE, '2026-01-10 12:30:00+00'::timestamptz
+                    );
+
+                    -- OS 2: EmAndamento (2), sem vistoria (deve puxar km=82000 do veículo), meio_autorizacao='WhatsApp'
+                    INSERT INTO ordens_servico (
+                        veiculo_id, data_emissao, data_previsao_entrega,
+                        valor_mao_de_obra, valor_pecas, valor_desconto, tempo_gasto_minutos,
+                        descricao_problema_relatado, status,
+                        autorizado_por, meio_autorizacao, token_acompanhamento
+                    )
+                    VALUES (
+                        (SELECT id FROM veiculos WHERE placa = 'LEG1A23' LIMIT 1),
+                        '2026-02-01 10:00:00+00'::timestamptz,
+                        '2026-02-03 10:00:00+00'::timestamptz,
+                        0.00, 0.00, 0.00, 0,
+                        'Revisão sem vistoria', 2,
+                        'Cliente Legado', 'WhatsApp', 'tok_legado_2'
+                    );
+                ");
+
+                // Aplicar as migrations da Fase 1 sobre os dados legados
+                await dbLegado.Database.MigrateAsync();
+
+                var os1 = await dbLegado.OrdensServico
+                    .Include(o => o.ServicosAExecutarList)
+                        .ThenInclude(s => s.Servico)
+                    .Include(o => o.PecasUtilizadas)
+                        .ThenInclude(p => p.Peca)
+                    .FirstAsync(o => o.TokenAcompanhamento == "tok_legado_1");
+
+                // 1) QueixaCliente migrada de DescricaoProblemaRelatado
+                Assert.Equal("Barulho no motor legado", os1.QueixaCliente);
+
+                // 2) Concluida -> Entregue com DataEntrega = DataConclusao
+                Assert.Equal(OrdemServicoStatus.Entregue, os1.Status);
+                Assert.Equal(os1.DataConclusao, os1.DataEntrega);
+
+                // 3) MeioAutorizacao 'Telefone' -> TipoContato.Ligacao
+                Assert.Equal(TipoContato.Ligacao, os1.TipoContatoAutorizacao);
+
+                // 4) ValidadeOrcamentoAte = DataEmissao + 10 dias
+                Assert.Equal(os1.DataEmissao.AddDays(10), os1.ValidadeOrcamentoAte);
+
+                // 5) KmEntrada e NivelCombustivelEntrada vindos da Vistoria
+                Assert.Equal(85000, os1.KmEntrada);
+                Assert.Equal(NivelCombustivel.TresQuartos, os1.NivelCombustivelEntrada);
+
+                // 6) Linhas genéricas criadas para preservar ValorMaoDeObra (250) e ValorPecas (150)
+                Assert.Single(os1.ServicosAExecutarList);
+                Assert.Equal("Mão de obra (migrado)", os1.ServicosAExecutarList.First().Servico!.Nome);
+                Assert.Equal(250m, os1.ValorMaoDeObraEfetivo);
+
+                Assert.Single(os1.PecasUtilizadas);
+                Assert.Equal("Peças diversas (migrado)", os1.PecasUtilizadas.First().Peca!.Nome);
+                Assert.Equal(150m, os1.ValorPecasEfetivo);
+                Assert.Equal(380m, os1.ValorTotal); // 250 + 150 - 20
+
+                var os2 = await dbLegado.OrdensServico
+                    .FirstAsync(o => o.TokenAcompanhamento == "tok_legado_2");
+
+                // Sem vistoria -> KmEntrada puxado de Veiculo.Quilometragem (82000) e MeioAutorizacao 'WhatsApp' -> TipoContato.WhatsApp
+                Assert.Equal(82000, os2.KmEntrada);
+                Assert.Equal(TipoContato.WhatsApp, os2.TipoContatoAutorizacao);
+            }
+        }
+        finally
+        {
+            if (container != null)
+            {
+                await container.DisposeAsync();
+            }
+            else if (tempDbLimpo != null || tempDbLegado != null)
+            {
+                try
+                {
+                    Npgsql.NpgsqlConnection.ClearAllPools();
+                    await using var conn = new Npgsql.NpgsqlConnection(localAdminConn);
+                    await conn.OpenAsync();
+                    await using var cmd = conn.CreateCommand();
+                    cmd.CommandText = $@"
+                        DROP DATABASE IF EXISTS ""{tempDbLimpo}"" WITH (FORCE);
+                        DROP DATABASE IF EXISTS ""{tempDbLegado}"" WITH (FORCE);";
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                catch
+                {
+                    // Ignora erro na limpeza
                 }
             }
         }

@@ -42,6 +42,20 @@ namespace mechsystem.Models
         [Display(Name = "Tempo Estimado (Minutos) - Snapshot")]
         public int? TempoEstimadoMinutosSnapshot { get; set; }
 
+        [Required]
+        [Display(Name = "Status do Item")]
+        public StatusItem StatusItem { get; set; } = StatusItem.Pendente;
+
+        [Display(Name = "Executado")]
+        public bool Executado { get; set; } = false;
+
+        [Display(Name = "Mecânico Executor")]
+        public int? MecanicoId { get; set; }
+        public Usuario? Mecanico { get; set; }
+
+        [Display(Name = "Item Aditivo")]
+        public bool EhAditivo { get; set; } = false;
+
         // ── Propriedades Calculadas ──────────────────────────────────────────────
 
         /// <summary>

@@ -64,9 +64,6 @@ else
         <button class="cfg-tab @(activeTab == "sistema" ? "active" : "")" @onclick='() => activeTab = "sistema"'>
             <i class="bi bi-sliders"></i> Sistema
         </button>
-        <button class="cfg-tab @(activeTab == "financeiro" ? "active" : "")" @onclick='() => activeTab = "financeiro"'>
-            <i class="bi bi-currency-dollar"></i> Financeiro
-        </button>
     </div>
 
     <EditForm Model="config" OnValidSubmit="SalvarConfiguracoes" id="form-configuracoes">
@@ -193,9 +190,9 @@ else
                                 <i class="bi bi-clipboard2-check"></i>
                             </div>
                             <div>
-                                <strong class="cfg-toggle-title">Exigir Vistoria Prévia para OS</strong>
+                                <strong class="cfg-toggle-title">Exigir checklist completo da vistoria antes de aprovar</strong>
                                 <p class="cfg-toggle-desc">
-                                    Impede a abertura de uma Ordem de Serviço sem que uma Vistoria de Entrada tenha sido registrada previamente para o veículo.
+                                    Exigir checklist completo da vistoria antes de aprovar o orçamento da Ordem de Serviço.
                                 </p>
                             </div>
                         </div>
@@ -204,47 +201,6 @@ else
                         </div>
                     </div>
 
-                </div>
-            </div>
-        }
-
-        <!-- ABA: FINANCEIRO -->
-        @if (activeTab == "financeiro")
-        {
-            <div class="cfg-panel">
-                <div class="cfg-panel-header">
-                    <i class="bi bi-cash-stack me-2"></i>Configurações Financeiras
-                </div>
-                <div class="cfg-panel-body">
-                    <div class="cfg-field-group">
-
-                        <div class="cfg-field">
-                            <label class="cfg-label">Símbolo da Moeda</label>
-                            <div class="cfg-input-wrap">
-                                <i class="bi bi-currency-exchange cfg-input-icon"></i>
-                                <InputText @bind-Value="config.SimboloMoeda" class="cfg-input cfg-input--icon" placeholder="R$" maxlength="5" />
-                            </div>
-                            <ValidationMessage For="@(() => config.SimboloMoeda)" class="cfg-validation" />
-                            <small class="cfg-hint">Símbolo exibido nos valores monetários do sistema.</small>
-                        </div>
-
-                        <div class="cfg-field">
-                            <label class="cfg-label">Taxa Adicional de Mão de Obra (%)</label>
-                            <div class="cfg-input-wrap">
-                                <i class="bi bi-percent cfg-input-icon"></i>
-                                <InputNumber @bind-Value="config.TaxaMaoDeObra" class="cfg-input cfg-input--icon" />
-                                <span class="cfg-input-suffix">%</span>
-                            </div>
-                            <ValidationMessage For="@(() => config.TaxaMaoDeObra)" class="cfg-validation" />
-                            <small class="cfg-hint">Percentual aplicado automaticamente sobre serviços de mão de obra (0 = sem taxa adicional).</small>
-                        </div>
-
-                    </div>
-
-                    <div class="cfg-info-box">
-                        <i class="bi bi-info-circle-fill"></i>
-                        <span>As configurações financeiras afetam o cálculo de novas Ordens de Serviço a partir da data de salvamento.</span>
-                    </div>
                 </div>
             </div>
         }

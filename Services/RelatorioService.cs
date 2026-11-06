@@ -79,35 +79,37 @@ public class RelatorioService
     }
 
     /// <summary>
-    /// Calcula métricas de O.S. concluídas por DataConclusao no banco de dados,
-    /// preservando exatamente a regra de fallback de ValorMaoDeObraEfetivo e ValorPecasEfetivo.
+    /// Calcula métricas de O.S. concluídas/entregues por DataConclusao/DataEntrega no banco de dados,
+    /// somando exclusivamente as linhas com StatusItem != Recusado.
     /// </summary>
     public async Task<ResumoConcluidasDto> ObterMetricasConcluidasAsync(DateTime? inicioUtc, DateTime? fimUtc)
     {
         var query = _db.OrdensServico
             .AsNoTracking()
-            .Where(o => o.Status == OrdemServicoStatus.Concluida);
+            .Where(o => o.Status == OrdemServicoStatus.Concluida || o.Status == OrdemServicoStatus.Entregue);
 
         if (inicioUtc.HasValue)
         {
-            query = query.Where(o => o.DataConclusao >= inicioUtc.Value);
+            query = query.Where(o => (o.DataConclusao ?? o.DataEntrega) >= inicioUtc.Value);
         }
         if (fimUtc.HasValue)
         {
-            query = query.Where(o => o.DataConclusao < fimUtc.Value);
+            query = query.Where(o => (o.DataConclusao ?? o.DataEntrega) < fimUtc.Value);
         }
 
         var itens = await query
             .Select(o => new
             {
-                MaoDeObraEfetiva = o.ServicosAExecutarList.Any()
-                    ? o.ServicosAExecutarList.Sum(s => (decimal?)(s.Quantidade * s.ValorCobrado)) ?? 0m
-                    : o.ValorMaoDeObra,
-                PecasEfetiva = o.PecasUtilizadas.Any()
-                    ? o.PecasUtilizadas.Sum(p => (decimal?)(p.Quantidade * p.ValorCobrado)) ?? 0m
-                    : o.ValorPecas,
+                MaoDeObraEfetiva = o.ServicosAExecutarList
+                    .Where(s => s.StatusItem != StatusItem.Recusado)
+                    .Sum(s => (decimal?)(s.Quantidade * s.ValorCobrado)) ?? 0m,
+                PecasEfetiva = o.PecasUtilizadas
+                    .Where(p => p.StatusItem != StatusItem.Recusado)
+                    .Sum(p => (decimal?)(p.Quantidade * p.ValorCobrado)) ?? 0m,
                 Desconto = o.ValorDesconto,
-                LucroPecas = o.PecasUtilizadas.Sum(p => (decimal?)(p.Quantidade * (p.ValorCobrado - p.PrecoCustoSnapshot))) ?? 0m
+                LucroPecas = o.PecasUtilizadas
+                    .Where(p => p.StatusItem != StatusItem.Recusado)
+                    .Sum(p => (decimal?)(p.Quantidade * (p.ValorCobrado - p.PrecoCustoSnapshot))) ?? 0m
             })
             .ToListAsync();
 
@@ -143,6 +145,7 @@ public class RelatorioService
         var ticketMedio = totalConcluidas > 0 ? faturamentoTotal / totalConcluidas : 0m;
         var lucroRealPecas = lista
             .SelectMany(o => o.PecasUtilizadas ?? Enumerable.Empty<OrdemServicoPeca>())
+            .Where(p => p.StatusItem != StatusItem.Recusado)
             .Sum(p => p.Quantidade * (p.ValorCobrado - p.PrecoCustoSnapshot));
 
         return new ResumoConcluidasDto(
@@ -182,11 +185,12 @@ public class RelatorioService
         var aguardandoPecas = Contar(OrdemServicoStatus.AguardandoPecas);
         var emAndamento = Contar(OrdemServicoStatus.EmAndamento);
         var pausadas = Contar(OrdemServicoStatus.Pausada);
-        var concluidasEmitidas = Contar(OrdemServicoStatus.Concluida);
-        var canceladas = Contar(OrdemServicoStatus.Cancelada);
+        var concluidasEmitidas = Contar(OrdemServicoStatus.Concluida) + Contar(OrdemServicoStatus.Entregue);
+        var canceladas = Contar(OrdemServicoStatus.Cancelada) + Contar(OrdemServicoStatus.Recusada);
+        var aprovadasStatus = Contar(OrdemServicoStatus.Aprovada) + Contar(OrdemServicoStatus.AguardandoCliente);
         var totalOS = contagens.Sum(c => c.Quantidade);
 
-        var totalAprovadas = aguardandoPecas + emAndamento + pausadas + concluidasEmitidas;
+        var totalAprovadas = aprovadasStatus + aguardandoPecas + emAndamento + pausadas + concluidasEmitidas;
         var totalDecididas = totalAprovadas + canceladas;
         var taxaConversao = totalDecididas > 0 ? (totalAprovadas * 100.0) / totalDecididas : 0.0;
 
@@ -398,7 +402,7 @@ public class RelatorioService
         {
             if (os.ServicosAExecutarList != null && os.ServicosAExecutarList.Any())
             {
-                foreach (var item in os.ServicosAExecutarList)
+                foreach (var item in os.ServicosAExecutarList.Where(s => s.StatusItem != StatusItem.Recusado))
                 {
                     var nome = item.Servico?.Nome?.Trim();
                     if (string.IsNullOrWhiteSpace(nome))
@@ -413,19 +417,6 @@ public class RelatorioService
                     {
                         acumulador[chave] = (nome, item.Quantidade, item.Subtotal);
                     }
-                }
-            }
-            else if (!string.IsNullOrWhiteSpace(os.ServicoAExecutar))
-            {
-                var nome = os.ServicoAExecutar.Trim();
-                var chave = nome.ToUpperInvariant();
-                if (acumulador.TryGetValue(chave, out var atual))
-                {
-                    acumulador[chave] = (atual.NomeExibicao, atual.Quantidade + 1, atual.Receita + os.ValorMaoDeObraEfetivo);
-                }
-                else
-                {
-                    acumulador[chave] = (nome, 1, os.ValorMaoDeObraEfetivo);
                 }
             }
         }

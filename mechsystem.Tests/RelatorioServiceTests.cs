@@ -23,7 +23,7 @@ public class RelatorioServiceTests
     }
 
     [Fact]
-    public async Task ObterMetricasConcluidasAsync_DeveProduzirResultadoIdenticoAoCalculoEmMemoria_PreservandoFallbacks()
+    public async Task ObterMetricasConcluidasAsync_DeveProduzirResultadoIdenticoAoCalculoEmMemoria_SomandoApenasItensNaoRecusados()
     {
         using var db = CreateInMemoryContext();
         var pecaRepo = new PecaRepository(db);
@@ -45,72 +45,119 @@ public class RelatorioServiceTests
         var inicioPeriodo = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
         var fimPeriodo = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        // OS 1: Apenas valores manuais (fallback para ValorMaoDeObra e ValorPecas) + desconto
+        // OS 1: Com itens aprovados + desconto
         var os1 = new OrdemServico
         {
             VeiculoId = veiculo.Id,
-            DescricaoProblemaRelatado = "OS 1 manual",
+            KmEntrada = 40000,
+            NivelCombustivelEntrada = NivelCombustivel.Meio,
+            QueixaCliente = "OS 1 aprovada",
             DataEmissao = inicioPeriodo.AddDays(1),
             DataPrevisaoEntrega = inicioPeriodo.AddDays(3),
+            ValidadeOrcamentoAte = inicioPeriodo.AddDays(11),
             DataConclusao = inicioPeriodo.AddDays(2),
-            ValorMaoDeObra = 250m,
-            ValorPecas = 120m,
             ValorDesconto = 30m,
             Status = OrdemServicoStatus.Concluida
         };
 
-        // OS 2: Com itens de serviço e peças vinculados (deve ignorar os campos manuais 999m) + desconto
+        // OS 2: Com itens aprovados e itens recusados (recusados não entram no total) + desconto
         var os2 = new OrdemServico
         {
             VeiculoId = veiculo.Id,
-            DescricaoProblemaRelatado = "OS 2 itens vinculados",
+            KmEntrada = 42000,
+            NivelCombustivelEntrada = NivelCombustivel.Cheio,
+            QueixaCliente = "OS 2 itens vinculados",
             DataEmissao = inicioPeriodo.AddDays(4),
             DataPrevisaoEntrega = inicioPeriodo.AddDays(6),
+            ValidadeOrcamentoAte = inicioPeriodo.AddDays(14),
             DataConclusao = inicioPeriodo.AddDays(5),
-            ValorMaoDeObra = 999m,
-            ValorPecas = 999m,
             ValorDesconto = 40m,
             Status = OrdemServicoStatus.Concluida
         };
 
-        // OS 3: Mista (mão de obra manual + peça vinculada)
+        // OS 3: Entregue no período
         var os3 = new OrdemServico
         {
             VeiculoId = veiculo.Id,
-            DescricaoProblemaRelatado = "OS 3 mista",
+            KmEntrada = 45000,
+            KmSaida = 45050,
+            NivelCombustivelEntrada = NivelCombustivel.UmQuarto,
+            QueixaCliente = "OS 3 entregue",
             DataEmissao = inicioPeriodo.AddDays(7),
             DataPrevisaoEntrega = inicioPeriodo.AddDays(9),
+            ValidadeOrcamentoAte = inicioPeriodo.AddDays(17),
             DataConclusao = inicioPeriodo.AddDays(8),
-            ValorMaoDeObra = 180m,
-            ValorPecas = 500m,
+            DataEntrega = inicioPeriodo.AddDays(8),
             ValorDesconto = 0m,
-            Status = OrdemServicoStatus.Concluida
+            Status = OrdemServicoStatus.Entregue
         };
 
         // OS 4: Concluída fora do período (não deve entrar)
         var osForaPeriodo = new OrdemServico
         {
             VeiculoId = veiculo.Id,
-            DescricaoProblemaRelatado = "OS fora do período",
+            KmEntrada = 35000,
+            NivelCombustivelEntrada = NivelCombustivel.Reserva,
+            QueixaCliente = "OS fora do período",
             DataEmissao = inicioPeriodo.AddMonths(-2),
             DataPrevisaoEntrega = inicioPeriodo.AddMonths(-2).AddDays(2),
+            ValidadeOrcamentoAte = inicioPeriodo.AddMonths(-2).AddDays(10),
             DataConclusao = inicioPeriodo.AddMonths(-1),
-            ValorMaoDeObra = 500m,
             Status = OrdemServicoStatus.Concluida
         };
 
         db.OrdensServico.AddRange(os1, os2, os3, osForaPeriodo);
         await db.SaveChangesAsync();
 
-        db.OrdemServicoServicos.Add(new OrdemServicoServico
-        {
-            OrdemServicoId = os2.Id,
-            ServicoId = servico1.Id,
-            Quantidade = 2,
-            PrecoBase = 300m,
-            ValorCobrado = 280m // Subtotal = 560
-        });
+        db.OrdemServicoServicos.AddRange(
+            new OrdemServicoServico
+            {
+                OrdemServicoId = os1.Id,
+                ServicoId = servico1.Id,
+                Quantidade = 1,
+                PrecoBase = 250m,
+                ValorCobrado = 250m, // Subtotal = 250
+                StatusItem = StatusItem.Aprovado
+            },
+            new OrdemServicoServico
+            {
+                OrdemServicoId = os2.Id,
+                ServicoId = servico1.Id,
+                Quantidade = 2,
+                PrecoBase = 300m,
+                ValorCobrado = 280m, // Subtotal = 560
+                StatusItem = StatusItem.Aprovado
+            },
+            new OrdemServicoServico
+            {
+                OrdemServicoId = os2.Id,
+                ServicoId = servico1.Id,
+                Quantidade = 1,
+                PrecoBase = 300m,
+                ValorCobrado = 300m, // Recusado -> ignorado!
+                StatusItem = StatusItem.Recusado
+            },
+            new OrdemServicoServico
+            {
+                OrdemServicoId = os3.Id,
+                ServicoId = servico1.Id,
+                Quantidade = 1,
+                PrecoBase = 180m,
+                ValorCobrado = 180m, // Subtotal = 180
+                StatusItem = StatusItem.Aprovado
+            });
+
         db.OrdemServicoPecas.AddRange(
+            new OrdemServicoPeca
+            {
+                OrdemServicoId = os1.Id,
+                PecaId = peca1.Id,
+                Quantidade = 1,
+                PrecoBase = 120m,
+                ValorCobrado = 120m, // Subtotal = 120, Lucro = 30
+                PrecoCustoSnapshot = 90m,
+                StatusItem = StatusItem.Aprovado
+            },
             new OrdemServicoPeca
             {
                 OrdemServicoId = os2.Id,
@@ -118,7 +165,18 @@ public class RelatorioServiceTests
                 Quantidade = 2,
                 PrecoBase = 180m,
                 ValorCobrado = 170m, // Subtotal = 340, Lucro = 2 * (170 - 90) = 160
-                PrecoCustoSnapshot = 90m
+                PrecoCustoSnapshot = 90m,
+                StatusItem = StatusItem.Aprovado
+            },
+            new OrdemServicoPeca
+            {
+                OrdemServicoId = os2.Id,
+                PecaId = peca1.Id,
+                Quantidade = 5,
+                PrecoBase = 180m,
+                ValorCobrado = 180m, // Recusado -> ignorado!
+                PrecoCustoSnapshot = 90m,
+                StatusItem = StatusItem.Recusado
             },
             new OrdemServicoPeca
             {
@@ -127,7 +185,8 @@ public class RelatorioServiceTests
                 Quantidade = 1,
                 PrecoBase = 180m,
                 ValorCobrado = 180m, // Subtotal = 180, Lucro = 1 * (180 - 90) = 90
-                PrecoCustoSnapshot = 90m
+                PrecoCustoSnapshot = 90m,
+                StatusItem = StatusItem.Aprovado
             });
         await db.SaveChangesAsync();
 
@@ -138,18 +197,26 @@ public class RelatorioServiceTests
         var ordensEmMemoria = await db.OrdensServico
             .Include(o => o.PecasUtilizadas)
             .Include(o => o.ServicosAExecutarList)
-            .Where(o => o.Status == OrdemServicoStatus.Concluida && o.DataConclusao >= inicioPeriodo && o.DataConclusao < fimPeriodo)
+            .Where(o => (o.Status == OrdemServicoStatus.Concluida || o.Status == OrdemServicoStatus.Entregue)
+                        && (o.DataConclusao ?? o.DataEntrega) >= inicioPeriodo
+                        && (o.DataConclusao ?? o.DataEntrega) < fimPeriodo)
             .ToListAsync();
         var resultadoMemoria = RelatorioService.CalcularMetricasConcluidasEmMemoria(ordensEmMemoria);
 
         Assert.Equal(3, resultadoBanco.TotalConcluidas);
         Assert.Equal(resultadoMemoria.TotalConcluidas, resultadoBanco.TotalConcluidas);
-        Assert.Equal(resultadoMemoria.ReceitaMaoDeObra, resultadoBanco.ReceitaMaoDeObra); // 250 + 560 + 180 = 990
-        Assert.Equal(resultadoMemoria.ReceitaPecas, resultadoBanco.ReceitaPecas);       // 120 + 340 + 180 = 640
-        Assert.Equal(resultadoMemoria.TotalDescontos, resultadoBanco.TotalDescontos);   // 30 + 40 + 0 = 70
-        Assert.Equal(resultadoMemoria.FaturamentoTotal, resultadoBanco.FaturamentoTotal); // 990 + 640 - 70 = 1560
-        Assert.Equal(resultadoMemoria.TicketMedio, resultadoBanco.TicketMedio);         // 1560 / 3 = 520
-        Assert.Equal(resultadoMemoria.LucroRealPecas, resultadoBanco.LucroRealPecas);   // 160 + 90 = 250
+        Assert.Equal(990m, resultadoBanco.ReceitaMaoDeObra); // 250 + 560 + 180 = 990
+        Assert.Equal(resultadoMemoria.ReceitaMaoDeObra, resultadoBanco.ReceitaMaoDeObra);
+        Assert.Equal(640m, resultadoBanco.ReceitaPecas);       // 120 + 340 + 180 = 640
+        Assert.Equal(resultadoMemoria.ReceitaPecas, resultadoBanco.ReceitaPecas);
+        Assert.Equal(70m, resultadoBanco.TotalDescontos);   // 30 + 40 + 0 = 70
+        Assert.Equal(resultadoMemoria.TotalDescontos, resultadoBanco.TotalDescontos);
+        Assert.Equal(1560m, resultadoBanco.FaturamentoTotal); // 990 + 640 - 70 = 1560
+        Assert.Equal(resultadoMemoria.FaturamentoTotal, resultadoBanco.FaturamentoTotal);
+        Assert.Equal(520m, resultadoBanco.TicketMedio);         // 1560 / 3 = 520
+        Assert.Equal(resultadoMemoria.TicketMedio, resultadoBanco.TicketMedio);
+        Assert.Equal(280m, resultadoBanco.LucroRealPecas);   // 30 + 160 + 90 = 280
+        Assert.Equal(resultadoMemoria.LucroRealPecas, resultadoBanco.LucroRealPecas);
     }
 
     [Fact]

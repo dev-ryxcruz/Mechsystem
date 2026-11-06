@@ -43,13 +43,7 @@ namespace mechsystem.Models
         [Range(1, 3650, ErrorMessage = "A garantia deve ser entre 1 e 3650 dias.")]
         public int GarantiaPadraoDias { get; set; } = 90;
 
+        [Display(Name = "Exigir checklist completo da vistoria antes de aprovar")]
         public bool ObrigarVistoriaParaOS { get; set; } = false;
-
-        // ─── Financeiro ──────────────────────────────────────────────────────────
-        [MaxLength(10)]
-        public string SimboloMoeda { get; set; } = "R$";
-
-        [Range(0, 100, ErrorMessage = "A taxa de mão de obra deve ser entre 0% e 100%.")]
-        public decimal TaxaMaoDeObra { get; set; } = 0m;
     }
 }

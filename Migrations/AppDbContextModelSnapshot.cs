@@ -22,6 +22,51 @@ namespace mechsystem.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("mechsystem.Models.ApontamentoTempo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("Fim")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fim");
+
+                    b.Property<DateTime>("Inicio")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("inicio");
+
+                    b.Property<int>("MecanicoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("mecanico_id");
+
+                    b.Property<int>("OrdemServicoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordem_servico_id");
+
+                    b.Property<int?>("OrdemServicoServicoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordem_servico_servico_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_apontamentos_tempo");
+
+                    b.HasIndex("OrdemServicoId")
+                        .HasDatabaseName("ix_apontamentos_tempo_ordem_servico_id");
+
+                    b.HasIndex("OrdemServicoServicoId")
+                        .HasDatabaseName("ix_apontamentos_tempo_ordem_servico_servico_id");
+
+                    b.HasIndex("MecanicoId", "Fim")
+                        .HasDatabaseName("ix_apontamentos_tempo_mecanico_id_fim")
+                        .HasFilter("fim IS NULL");
+
+                    b.ToTable("apontamentos_tempo", (string)null);
+                });
+
             modelBuilder.Entity("mechsystem.Models.Cliente", b =>
                 {
                     b.Property<int>("Id")
@@ -127,16 +172,6 @@ namespace mechsystem.Migrations
                     b.Property<bool>("ObrigarVistoriaParaOS")
                         .HasColumnType("boolean")
                         .HasColumnName("obrigar_vistoria_para_os");
-
-                    b.Property<string>("SimboloMoeda")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("character varying(10)")
-                        .HasColumnName("simbolo_moeda");
-
-                    b.Property<decimal>("TaxaMaoDeObra")
-                        .HasColumnType("numeric")
-                        .HasColumnName("taxa_mao_de_obra");
 
                     b.Property<string>("Telefone")
                         .HasMaxLength(20)
@@ -253,6 +288,10 @@ namespace mechsystem.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("AprovadoPorUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("aprovado_por_usuario_id");
+
                     b.Property<string>("AutorizadoPor")
                         .HasColumnType("text")
                         .HasColumnName("autorizado_por");
@@ -277,59 +316,67 @@ namespace mechsystem.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_emissao");
 
+                    b.Property<DateTime?>("DataEntrega")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_entrega");
+
                     b.Property<DateTime>("DataPrevisaoEntrega")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_previsao_entrega");
 
-                    b.Property<DateTime?>("DataPrevisaoInicio")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("data_previsao_inicio");
-
-                    b.Property<string>("DescricaoProblemaRelatado")
-                        .IsRequired()
+                    b.Property<string>("Diagnostico")
                         .HasColumnType("text")
-                        .HasColumnName("descricao_problema_relatado");
+                        .HasColumnName("diagnostico");
 
-                    b.Property<DateTime?>("InicioUltimaExecucao")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("inicio_ultima_execucao");
+                    b.Property<int?>("GarantiaDias")
+                        .HasColumnType("integer")
+                        .HasColumnName("garantia_dias");
 
-                    b.Property<string>("MeioAutorizacao")
-                        .HasColumnType("text")
-                        .HasColumnName("meio_autorizacao");
+                    b.Property<int>("KmEntrada")
+                        .HasColumnType("integer")
+                        .HasColumnName("km_entrada");
+
+                    b.Property<int?>("KmSaida")
+                        .HasColumnType("integer")
+                        .HasColumnName("km_saida");
+
+                    b.Property<int?>("MecanicoResponsavelId")
+                        .HasColumnType("integer")
+                        .HasColumnName("mecanico_responsavel_id");
 
                     b.Property<string>("MotivoCancelamento")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("motivo_cancelamento");
 
-                    b.Property<string>("ServicoAExecutar")
+                    b.Property<int>("NivelCombustivelEntrada")
+                        .HasColumnType("integer")
+                        .HasColumnName("nivel_combustivel_entrada");
+
+                    b.Property<string>("QueixaCliente")
+                        .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("servico_a_executar");
+                        .HasColumnName("queixa_cliente");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
-                    b.Property<int>("TempoGastoMinutos")
+                    b.Property<int?>("TipoContatoAutorizacao")
                         .HasColumnType("integer")
-                        .HasColumnName("tempo_gasto_minutos");
+                        .HasColumnName("tipo_contato_autorizacao");
 
                     b.Property<string>("TokenAcompanhamento")
                         .HasColumnType("text")
                         .HasColumnName("token_acompanhamento");
 
+                    b.Property<DateTime>("ValidadeOrcamentoAte")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("validade_orcamento_ate");
+
                     b.Property<decimal>("ValorDesconto")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("valor_desconto");
-
-                    b.Property<decimal>("ValorMaoDeObra")
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("valor_mao_de_obra");
-
-                    b.Property<decimal>("ValorPecas")
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("valor_pecas");
 
                     b.Property<int>("VeiculoId")
                         .HasColumnType("integer")
@@ -338,8 +385,14 @@ namespace mechsystem.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ordens_servico");
 
+                    b.HasIndex("AprovadoPorUsuarioId")
+                        .HasDatabaseName("ix_ordens_servico_aprovado_por_usuario_id");
+
                     b.HasIndex("CanceladaPorUsuarioId")
                         .HasDatabaseName("ix_ordens_servico_cancelada_por_usuario_id");
+
+                    b.HasIndex("MecanicoResponsavelId")
+                        .HasDatabaseName("ix_ordens_servico_mecanico_responsavel_id");
 
                     b.HasIndex("TokenAcompanhamento")
                         .IsUnique()
@@ -360,9 +413,21 @@ namespace mechsystem.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Aplicada")
+                        .HasColumnType("boolean")
+                        .HasColumnName("aplicada");
+
+                    b.Property<bool>("EhAditivo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("eh_aditivo");
+
                     b.Property<int>("OrdemServicoId")
                         .HasColumnType("integer")
                         .HasColumnName("ordem_servico_id");
+
+                    b.Property<int>("Origem")
+                        .HasColumnType("integer")
+                        .HasColumnName("origem");
 
                     b.Property<int>("PecaId")
                         .HasColumnType("integer")
@@ -379,6 +444,10 @@ namespace mechsystem.Migrations
                     b.Property<int>("Quantidade")
                         .HasColumnType("integer")
                         .HasColumnName("quantidade");
+
+                    b.Property<int>("StatusItem")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_item");
 
                     b.Property<decimal>("ValorCobrado")
                         .HasColumnType("decimal(18,2)")
@@ -405,6 +474,18 @@ namespace mechsystem.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("EhAditivo")
+                        .HasColumnType("boolean")
+                        .HasColumnName("eh_aditivo");
+
+                    b.Property<bool>("Executado")
+                        .HasColumnType("boolean")
+                        .HasColumnName("executado");
+
+                    b.Property<int?>("MecanicoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("mecanico_id");
+
                     b.Property<int>("OrdemServicoId")
                         .HasColumnType("integer")
                         .HasColumnName("ordem_servico_id");
@@ -421,6 +502,10 @@ namespace mechsystem.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("servico_id");
 
+                    b.Property<int>("StatusItem")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_item");
+
                     b.Property<int?>("TempoEstimadoMinutosSnapshot")
                         .HasColumnType("integer")
                         .HasColumnName("tempo_estimado_minutos_snapshot");
@@ -432,6 +517,9 @@ namespace mechsystem.Migrations
                     b.HasKey("Id")
                         .HasName("pk_ordem_servico_servicos");
 
+                    b.HasIndex("MecanicoId")
+                        .HasDatabaseName("ix_ordem_servico_servicos_mecanico_id");
+
                     b.HasIndex("OrdemServicoId")
                         .HasDatabaseName("ix_ordem_servico_servicos_ordem_servico_id");
 
@@ -439,6 +527,47 @@ namespace mechsystem.Migrations
                         .HasDatabaseName("ix_ordem_servico_servicos_servico_id");
 
                     b.ToTable("ordem_servico_servicos", (string)null);
+                });
+
+            modelBuilder.Entity("mechsystem.Models.Pagamento", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("DataPagamento")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_pagamento");
+
+                    b.Property<int>("Forma")
+                        .HasColumnType("integer")
+                        .HasColumnName("forma");
+
+                    b.Property<int>("OrdemServicoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordem_servico_id");
+
+                    b.Property<int>("RegistradoPorUsuarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("registrado_por_usuario_id");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id")
+                        .HasName("pk_pagamentos");
+
+                    b.HasIndex("OrdemServicoId")
+                        .HasDatabaseName("ix_pagamentos_ordem_servico_id");
+
+                    b.HasIndex("RegistradoPorUsuarioId")
+                        .HasDatabaseName("ix_pagamentos_registrado_por_usuario_id");
+
+                    b.ToTable("pagamentos", (string)null);
                 });
 
             modelBuilder.Entity("mechsystem.Models.Peca", b =>
@@ -729,10 +858,6 @@ namespace mechsystem.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("ordem_servico_id");
 
-                    b.Property<int>("QuilometragemEntrada")
-                        .HasColumnType("integer")
-                        .HasColumnName("quilometragem_entrada");
-
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
@@ -765,6 +890,35 @@ namespace mechsystem.Migrations
                         .HasDatabaseName("ix_vistorias_ordem_servico_id");
 
                     b.ToTable("vistorias", (string)null);
+                });
+
+            modelBuilder.Entity("mechsystem.Models.ApontamentoTempo", b =>
+                {
+                    b.HasOne("mechsystem.Models.Usuario", "Mecanico")
+                        .WithMany()
+                        .HasForeignKey("MecanicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_apontamentos_tempo_usuarios_mecanico_id");
+
+                    b.HasOne("mechsystem.Models.OrdemServico", "OrdemServico")
+                        .WithMany("ApontamentosTempo")
+                        .HasForeignKey("OrdemServicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_apontamentos_tempo_ordens_servico_ordem_servico_id");
+
+                    b.HasOne("mechsystem.Models.OrdemServicoServico", "OrdemServicoServico")
+                        .WithMany()
+                        .HasForeignKey("OrdemServicoServicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_apontamentos_tempo_ordem_servico_servicos_ordem_servico_ser");
+
+                    b.Navigation("Mecanico");
+
+                    b.Navigation("OrdemServico");
+
+                    b.Navigation("OrdemServicoServico");
                 });
 
             modelBuilder.Entity("mechsystem.Models.Cliente", b =>
@@ -813,11 +967,23 @@ namespace mechsystem.Migrations
 
             modelBuilder.Entity("mechsystem.Models.OrdemServico", b =>
                 {
+                    b.HasOne("mechsystem.Models.Usuario", "AprovadoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("AprovadoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ordens_servico_usuarios_aprovado_por_usuario_id");
+
                     b.HasOne("mechsystem.Models.Usuario", "CanceladaPorUsuario")
                         .WithMany()
                         .HasForeignKey("CanceladaPorUsuarioId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_ordens_servico_usuarios_cancelada_por_usuario_id");
+
+                    b.HasOne("mechsystem.Models.Usuario", "MecanicoResponsavel")
+                        .WithMany()
+                        .HasForeignKey("MecanicoResponsavelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ordens_servico_usuarios_mecanico_responsavel_id");
 
                     b.HasOne("mechsystem.Models.Veiculo", "Veiculo")
                         .WithMany()
@@ -826,7 +992,11 @@ namespace mechsystem.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_ordens_servico_veiculos_veiculo_id");
 
+                    b.Navigation("AprovadoPorUsuario");
+
                     b.Navigation("CanceladaPorUsuario");
+
+                    b.Navigation("MecanicoResponsavel");
 
                     b.Navigation("Veiculo");
                 });
@@ -854,6 +1024,12 @@ namespace mechsystem.Migrations
 
             modelBuilder.Entity("mechsystem.Models.OrdemServicoServico", b =>
                 {
+                    b.HasOne("mechsystem.Models.Usuario", "Mecanico")
+                        .WithMany()
+                        .HasForeignKey("MecanicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_ordem_servico_servicos_usuarios_mecanico_id");
+
                     b.HasOne("mechsystem.Models.OrdemServico", "OrdemServico")
                         .WithMany("ServicosAExecutarList")
                         .HasForeignKey("OrdemServicoId")
@@ -868,9 +1044,32 @@ namespace mechsystem.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_ordem_servico_servicos_servicos_servico_id");
 
+                    b.Navigation("Mecanico");
+
                     b.Navigation("OrdemServico");
 
                     b.Navigation("Servico");
+                });
+
+            modelBuilder.Entity("mechsystem.Models.Pagamento", b =>
+                {
+                    b.HasOne("mechsystem.Models.OrdemServico", "OrdemServico")
+                        .WithMany("Pagamentos")
+                        .HasForeignKey("OrdemServicoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pagamentos_ordens_servico_ordem_servico_id");
+
+                    b.HasOne("mechsystem.Models.Usuario", "RegistradoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("RegistradoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_pagamentos_usuarios_registrado_por_usuario_id");
+
+                    b.Navigation("OrdemServico");
+
+                    b.Navigation("RegistradoPorUsuario");
                 });
 
             modelBuilder.Entity("mechsystem.Models.Peca", b =>
@@ -934,7 +1133,11 @@ namespace mechsystem.Migrations
 
             modelBuilder.Entity("mechsystem.Models.OrdemServico", b =>
                 {
+                    b.Navigation("ApontamentosTempo");
+
                     b.Navigation("Contatos");
+
+                    b.Navigation("Pagamentos");
 
                     b.Navigation("PecasUtilizadas");
 

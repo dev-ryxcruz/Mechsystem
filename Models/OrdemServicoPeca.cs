@@ -46,6 +46,20 @@ namespace mechsystem.Models
         [Display(Name = "Preço de Custo (Snapshot)")]
         public decimal PrecoCustoSnapshot { get; set; }
 
+        [Required]
+        [Display(Name = "Origem da Peça")]
+        public OrigemPeca Origem { get; set; } = OrigemPeca.Estoque;
+
+        [Required]
+        [Display(Name = "Status do Item")]
+        public StatusItem StatusItem { get; set; } = StatusItem.Pendente;
+
+        [Display(Name = "Aplicada")]
+        public bool Aplicada { get; set; } = false;
+
+        [Display(Name = "Item Aditivo")]
+        public bool EhAditivo { get; set; } = false;
+
         // ── Propriedades Calculadas ──────────────────────────────────────────────
 
         /// <summary>

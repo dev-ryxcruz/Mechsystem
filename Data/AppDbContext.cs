@@ -21,6 +21,8 @@ namespace mechsystem.Data
         public DbSet<OrdemServicoPeca> OrdemServicoPecas { get; set; }
         public DbSet<OrdemServicoServico> OrdemServicoServicos { get; set; }
         public DbSet<ContatoOS> ContatosOS { get; set; }
+        public DbSet<ApontamentoTempo> ApontamentosTempo { get; set; }
+        public DbSet<Pagamento> Pagamentos { get; set; }
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
@@ -174,6 +176,60 @@ namespace mechsystem.Data
                 .HasOne(o => o.CanceladaPorUsuario)
                 .WithMany()
                 .HasForeignKey(o => o.CanceladaPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrdemServico>()
+                .HasOne(o => o.MecanicoResponsavel)
+                .WithMany()
+                .HasForeignKey(o => o.MecanicoResponsavelId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrdemServico>()
+                .HasOne(o => o.AprovadoPorUsuario)
+                .WithMany()
+                .HasForeignKey(o => o.AprovadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrdemServicoServico>()
+                .HasOne(os => os.Mecanico)
+                .WithMany()
+                .HasForeignKey(os => os.MecanicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // ApontamentoTempo: FKs Restrict e índice parcial por (MecanicoId, Fim nulo)
+            modelBuilder.Entity<ApontamentoTempo>()
+                .HasOne(a => a.OrdemServico)
+                .WithMany(o => o.ApontamentosTempo)
+                .HasForeignKey(a => a.OrdemServicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ApontamentoTempo>()
+                .HasOne(a => a.OrdemServicoServico)
+                .WithMany()
+                .HasForeignKey(a => a.OrdemServicoServicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ApontamentoTempo>()
+                .HasOne(a => a.Mecanico)
+                .WithMany()
+                .HasForeignKey(a => a.MecanicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ApontamentoTempo>()
+                .HasIndex(a => new { a.MecanicoId, a.Fim })
+                .HasFilter("fim IS NULL");
+
+            // Pagamento: FKs Restrict
+            modelBuilder.Entity<Pagamento>()
+                .HasOne(p => p.OrdemServico)
+                .WithMany(o => o.Pagamentos)
+                .HasForeignKey(p => p.OrdemServicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Pagamento>()
+                .HasOne(p => p.RegistradoPorUsuario)
+                .WithMany()
+                .HasForeignKey(p => p.RegistradoPorUsuarioId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

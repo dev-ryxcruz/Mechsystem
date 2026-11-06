@@ -116,114 +116,111 @@ public static class DatabaseSeeder
         await context.SaveChangesAsync();
 
         // 5. Ordens de Serviço em estados variados
-        var osConcluida = new OrdemServico
+        var osEntregue = new OrdemServico
         {
             VeiculoId = veiculo1.Id,
+            KmEntrada = 64000,
+            KmSaida = 64200,
+            NivelCombustivelEntrada = NivelCombustivel.Meio,
             DataEmissao = agora.AddDays(-5),
-            DataPrevisaoInicio = agora.AddDays(-5),
             DataPrevisaoEntrega = agora.AddDays(-4),
+            ValidadeOrcamentoAte = agora.AddDays(5),
             DataAutorizacao = agora.AddDays(-5).AddHours(1),
             DataConclusao = agora.AddDays(-4),
+            DataEntrega = agora.AddDays(-4),
+            GarantiaDias = 90,
             AutorizadoPor = cliente1.Nome,
-            MeioAutorizacao = "Assinatura Presencial",
-            DescricaoProblemaRelatado = "Revisão periódica de 60.000 km e barulho ao frear.",
-            ServicoAExecutar = "1x Troca de Óleo e Filtro\n1x Revisão Completa de Freios",
-            Status = OrdemServicoStatus.Concluida,
-            TempoGastoMinutos = 125,
-            ValorMaoDeObra = 340.00m,
-            ValorPecas = 463.00m,
+            TipoContatoAutorizacao = TipoContato.Presencial,
+            QueixaCliente = "Revisão periódica de 60.000 km e barulho ao frear.",
+            Diagnostico = "Pastilhas dianteiras no limite de desgaste e óleo vencido por tempo.",
+            Status = OrdemServicoStatus.Entregue,
             TokenAcompanhamento = Guid.NewGuid().ToString("N")
         };
 
         var osEmAndamento = new OrdemServico
         {
             VeiculoId = veiculo2.Id,
+            KmEntrada = 41500,
+            NivelCombustivelEntrada = NivelCombustivel.TresQuartos,
             DataEmissao = agora.AddDays(-1),
-            DataPrevisaoInicio = agora.AddDays(-1),
             DataPrevisaoEntrega = agora.AddDays(1),
+            ValidadeOrcamentoAte = agora.AddDays(9),
             DataAutorizacao = agora.AddHours(-6),
             AutorizadoPor = cliente2.Nome,
-            MeioAutorizacao = "WhatsApp",
-            DescricaoProblemaRelatado = "Luz de injeção acesa no painel e falha em retomadas.",
-            ServicoAExecutar = "1x Diagnóstico Eletrônico via Scanner",
+            TipoContatoAutorizacao = TipoContato.WhatsApp,
+            QueixaCliente = "Luz de injeção acesa no painel e falha em retomadas.",
+            Diagnostico = "Falha de ignição detectada no cilindro 2; recomendada troca do jogo de velas.",
             Status = OrdemServicoStatus.EmAndamento,
-            InicioUltimaExecucao = agora.AddMinutes(-25),
-            TempoGastoMinutos = 15,
-            ValorMaoDeObra = 140.00m,
-            ValorPecas = 210.00m,
             TokenAcompanhamento = Guid.NewGuid().ToString("N")
         };
 
         var osPausada = new OrdemServico
         {
             VeiculoId = veiculo3.Id,
+            KmEntrada = 58900,
+            NivelCombustivelEntrada = NivelCombustivel.UmQuarto,
             DataEmissao = agora.AddDays(-2),
-            DataPrevisaoInicio = agora.AddDays(-2),
             DataPrevisaoEntrega = agora.AddDays(1),
+            ValidadeOrcamentoAte = agora.AddDays(8),
             DataAutorizacao = agora.AddDays(-2).AddHours(2),
             AutorizadoPor = cliente3.Nome,
-            MeioAutorizacao = "Telefone",
-            DescricaoProblemaRelatado = "Preventiva de sincronismo do motor.",
-            ServicoAExecutar = "1x Substituição de Kit Correia Dentada",
+            TipoContatoAutorizacao = TipoContato.Ligacao,
+            QueixaCliente = "Preventiva de sincronismo do motor.",
+            Diagnostico = "Correia dentada com microfissuras.",
             Status = OrdemServicoStatus.Pausada,
-            TempoGastoMinutos = 65,
-            ValorMaoDeObra = 380.00m,
-            ValorPecas = 340.00m,
             TokenAcompanhamento = Guid.NewGuid().ToString("N")
         };
 
         var osAguardandoPecas = new OrdemServico
         {
             VeiculoId = veiculo4.Id,
+            KmEntrada = 32800,
+            NivelCombustivelEntrada = NivelCombustivel.Cheio,
             DataEmissao = agora.AddDays(-3),
-            DataPrevisaoInicio = agora.AddDays(-3),
             DataPrevisaoEntrega = agora.AddDays(2),
+            ValidadeOrcamentoAte = agora.AddDays(7),
             DataAutorizacao = agora.AddDays(-3).AddHours(3),
             AutorizadoPor = cliente4.Nome,
-            MeioAutorizacao = "WhatsApp",
-            DescricaoProblemaRelatado = "Instabilidade na suspensão dianteira em piso irregular.",
-            ServicoAExecutar = "1x Alinhamento e Balanceamento 3D",
+            TipoContatoAutorizacao = TipoContato.WhatsApp,
+            QueixaCliente = "Instabilidade na suspensão dianteira em piso irregular.",
+            Diagnostico = "Vazamento hidráulico no amortecedor dianteiro direito.",
             Status = OrdemServicoStatus.AguardandoPecas,
-            TempoGastoMinutos = 40,
-            ValorMaoDeObra = 160.00m,
-            ValorPecas = 760.00m,
             TokenAcompanhamento = Guid.NewGuid().ToString("N")
         };
 
         var osOrcamento = new OrdemServico
         {
             VeiculoId = veiculo1.Id,
+            KmEntrada = 64200,
+            NivelCombustivelEntrada = NivelCombustivel.Reserva,
             DataEmissao = agora,
-            DataPrevisaoInicio = agora.AddDays(1),
             DataPrevisaoEntrega = agora.AddDays(2),
-            DescricaoProblemaRelatado = "Cliente solicitou orçamento para alinhamento e troca de velas.",
-            ServicoAExecutar = "1x Alinhamento e Balanceamento 3D",
+            ValidadeOrcamentoAte = agora.AddDays(10),
+            QueixaCliente = "Cliente solicitou orçamento para alinhamento e troca de velas.",
             Status = OrdemServicoStatus.Orcamento,
-            ValorMaoDeObra = 160.00m,
-            ValorPecas = 210.00m,
             TokenAcompanhamento = Guid.NewGuid().ToString("N")
         };
 
-        context.OrdensServico.AddRange(osConcluida, osEmAndamento, osPausada, osAguardandoPecas, osOrcamento);
+        context.OrdensServico.AddRange(osEntregue, osEmAndamento, osPausada, osAguardandoPecas, osOrcamento);
         await context.SaveChangesAsync();
 
         context.OrdemServicoPecas.AddRange(
-            new OrdemServicoPeca { OrdemServicoId = osConcluida.Id, PecaId = pecaFiltro.Id, Quantidade = 1, PrecoBase = pecaFiltro.PrecoVenda, ValorCobrado = pecaFiltro.PrecoVenda, PrecoCustoSnapshot = pecaFiltro.PrecoCusto },
-            new OrdemServicoPeca { OrdemServicoId = osConcluida.Id, PecaId = pecaOleo.Id, Quantidade = 4, PrecoBase = pecaOleo.PrecoVenda, ValorCobrado = pecaOleo.PrecoVenda, PrecoCustoSnapshot = pecaOleo.PrecoCusto },
-            new OrdemServicoPeca { OrdemServicoId = osConcluida.Id, PecaId = pecaPastilha.Id, Quantidade = 1, PrecoBase = pecaPastilha.PrecoVenda, ValorCobrado = pecaPastilha.PrecoVenda, PrecoCustoSnapshot = pecaPastilha.PrecoCusto },
-            new OrdemServicoPeca { OrdemServicoId = osEmAndamento.Id, PecaId = pecaVela.Id, Quantidade = 1, PrecoBase = pecaVela.PrecoVenda, ValorCobrado = pecaVela.PrecoVenda, PrecoCustoSnapshot = pecaVela.PrecoCusto },
-            new OrdemServicoPeca { OrdemServicoId = osPausada.Id, PecaId = pecaCorreia.Id, Quantidade = 1, PrecoBase = pecaCorreia.PrecoVenda, ValorCobrado = pecaCorreia.PrecoVenda, PrecoCustoSnapshot = pecaCorreia.PrecoCusto },
-            new OrdemServicoPeca { OrdemServicoId = osAguardandoPecas.Id, PecaId = pecaAmort.Id, Quantidade = 1, PrecoBase = pecaAmort.PrecoVenda, ValorCobrado = pecaAmort.PrecoVenda, PrecoCustoSnapshot = pecaAmort.PrecoCusto },
-            new OrdemServicoPeca { OrdemServicoId = osOrcamento.Id, PecaId = pecaVela.Id, Quantidade = 1, PrecoBase = pecaVela.PrecoVenda, ValorCobrado = pecaVela.PrecoVenda, PrecoCustoSnapshot = pecaVela.PrecoCusto }
+            new OrdemServicoPeca { OrdemServicoId = osEntregue.Id, PecaId = pecaFiltro.Id, Quantidade = 1, PrecoBase = pecaFiltro.PrecoVenda, ValorCobrado = pecaFiltro.PrecoVenda, PrecoCustoSnapshot = pecaFiltro.PrecoCusto, Origem = OrigemPeca.Estoque, StatusItem = StatusItem.Aprovado, Aplicada = true },
+            new OrdemServicoPeca { OrdemServicoId = osEntregue.Id, PecaId = pecaOleo.Id, Quantidade = 4, PrecoBase = pecaOleo.PrecoVenda, ValorCobrado = pecaOleo.PrecoVenda, PrecoCustoSnapshot = pecaOleo.PrecoCusto, Origem = OrigemPeca.Estoque, StatusItem = StatusItem.Aprovado, Aplicada = true },
+            new OrdemServicoPeca { OrdemServicoId = osEntregue.Id, PecaId = pecaPastilha.Id, Quantidade = 1, PrecoBase = pecaPastilha.PrecoVenda, ValorCobrado = pecaPastilha.PrecoVenda, PrecoCustoSnapshot = pecaPastilha.PrecoCusto, Origem = OrigemPeca.Estoque, StatusItem = StatusItem.Aprovado, Aplicada = true },
+            new OrdemServicoPeca { OrdemServicoId = osEmAndamento.Id, PecaId = pecaVela.Id, Quantidade = 1, PrecoBase = pecaVela.PrecoVenda, ValorCobrado = pecaVela.PrecoVenda, PrecoCustoSnapshot = pecaVela.PrecoCusto, Origem = OrigemPeca.Estoque, StatusItem = StatusItem.Aprovado, Aplicada = false },
+            new OrdemServicoPeca { OrdemServicoId = osPausada.Id, PecaId = pecaCorreia.Id, Quantidade = 1, PrecoBase = pecaCorreia.PrecoVenda, ValorCobrado = pecaCorreia.PrecoVenda, PrecoCustoSnapshot = pecaCorreia.PrecoCusto, Origem = OrigemPeca.Estoque, StatusItem = StatusItem.Aprovado, Aplicada = false },
+            new OrdemServicoPeca { OrdemServicoId = osAguardandoPecas.Id, PecaId = pecaAmort.Id, Quantidade = 1, PrecoBase = pecaAmort.PrecoVenda, ValorCobrado = pecaAmort.PrecoVenda, PrecoCustoSnapshot = pecaAmort.PrecoCusto, Origem = OrigemPeca.Estoque, StatusItem = StatusItem.Aprovado, Aplicada = false },
+            new OrdemServicoPeca { OrdemServicoId = osOrcamento.Id, PecaId = pecaVela.Id, Quantidade = 1, PrecoBase = pecaVela.PrecoVenda, ValorCobrado = pecaVela.PrecoVenda, PrecoCustoSnapshot = pecaVela.PrecoCusto, Origem = OrigemPeca.Estoque, StatusItem = StatusItem.Pendente, Aplicada = false }
         );
 
         context.OrdemServicoServicos.AddRange(
-            new OrdemServicoServico { OrdemServicoId = osConcluida.Id, ServicoId = servTrocaOleo.Id, Quantidade = 1, PrecoBase = servTrocaOleo.ValorPadrao, ValorCobrado = servTrocaOleo.ValorPadrao, TempoEstimadoMinutosSnapshot = servTrocaOleo.TempoEstimadoMinutos },
-            new OrdemServicoServico { OrdemServicoId = osConcluida.Id, ServicoId = servFreios.Id, Quantidade = 1, PrecoBase = servFreios.ValorPadrao, ValorCobrado = servFreios.ValorPadrao, TempoEstimadoMinutosSnapshot = servFreios.TempoEstimadoMinutos },
-            new OrdemServicoServico { OrdemServicoId = osEmAndamento.Id, ServicoId = servScanner.Id, Quantidade = 1, PrecoBase = servScanner.ValorPadrao, ValorCobrado = servScanner.ValorPadrao, TempoEstimadoMinutosSnapshot = servScanner.TempoEstimadoMinutos },
-            new OrdemServicoServico { OrdemServicoId = osPausada.Id, ServicoId = servCorreia.Id, Quantidade = 1, PrecoBase = servCorreia.ValorPadrao, ValorCobrado = servCorreia.ValorPadrao, TempoEstimadoMinutosSnapshot = servCorreia.TempoEstimadoMinutos },
-            new OrdemServicoServico { OrdemServicoId = osAguardandoPecas.Id, ServicoId = servAlinhamento.Id, Quantidade = 1, PrecoBase = servAlinhamento.ValorPadrao, ValorCobrado = servAlinhamento.ValorPadrao, TempoEstimadoMinutosSnapshot = servAlinhamento.TempoEstimadoMinutos },
-            new OrdemServicoServico { OrdemServicoId = osOrcamento.Id, ServicoId = servAlinhamento.Id, Quantidade = 1, PrecoBase = servAlinhamento.ValorPadrao, ValorCobrado = servAlinhamento.ValorPadrao, TempoEstimadoMinutosSnapshot = servAlinhamento.TempoEstimadoMinutos }
+            new OrdemServicoServico { OrdemServicoId = osEntregue.Id, ServicoId = servTrocaOleo.Id, Quantidade = 1, PrecoBase = servTrocaOleo.ValorPadrao, ValorCobrado = servTrocaOleo.ValorPadrao, TempoEstimadoMinutosSnapshot = servTrocaOleo.TempoEstimadoMinutos, StatusItem = StatusItem.Aprovado, Executado = true },
+            new OrdemServicoServico { OrdemServicoId = osEntregue.Id, ServicoId = servFreios.Id, Quantidade = 1, PrecoBase = servFreios.ValorPadrao, ValorCobrado = servFreios.ValorPadrao, TempoEstimadoMinutosSnapshot = servFreios.TempoEstimadoMinutos, StatusItem = StatusItem.Aprovado, Executado = true },
+            new OrdemServicoServico { OrdemServicoId = osEmAndamento.Id, ServicoId = servScanner.Id, Quantidade = 1, PrecoBase = servScanner.ValorPadrao, ValorCobrado = servScanner.ValorPadrao, TempoEstimadoMinutosSnapshot = servScanner.TempoEstimadoMinutos, StatusItem = StatusItem.Aprovado, Executado = false },
+            new OrdemServicoServico { OrdemServicoId = osPausada.Id, ServicoId = servCorreia.Id, Quantidade = 1, PrecoBase = servCorreia.ValorPadrao, ValorCobrado = servCorreia.ValorPadrao, TempoEstimadoMinutosSnapshot = servCorreia.TempoEstimadoMinutos, StatusItem = StatusItem.Aprovado, Executado = false },
+            new OrdemServicoServico { OrdemServicoId = osAguardandoPecas.Id, ServicoId = servAlinhamento.Id, Quantidade = 1, PrecoBase = servAlinhamento.ValorPadrao, ValorCobrado = servAlinhamento.ValorPadrao, TempoEstimadoMinutosSnapshot = servAlinhamento.TempoEstimadoMinutos, StatusItem = StatusItem.Aprovado, Executado = false },
+            new OrdemServicoServico { OrdemServicoId = osOrcamento.Id, ServicoId = servAlinhamento.Id, Quantidade = 1, PrecoBase = servAlinhamento.ValorPadrao, ValorCobrado = servAlinhamento.ValorPadrao, TempoEstimadoMinutosSnapshot = servAlinhamento.TempoEstimadoMinutos, StatusItem = StatusItem.Pendente, Executado = false }
         );
 
         await context.SaveChangesAsync();

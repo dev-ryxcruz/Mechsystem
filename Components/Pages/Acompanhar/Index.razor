@@ -149,9 +149,16 @@
 
                 <div class="service-details p-4 rounded-4 bg-light border">
                     <h6 class="text-muted text-uppercase fw-bold mb-3" style="font-size: 0.8rem; letter-spacing: 0.5px;">
-                        <i class="bi bi-card-text me-1"></i> Serviço a Executar
+                        <i class="bi bi-card-text me-1"></i> Serviços Listados
                     </h6>
-                    <p class="mb-0 text-dark" style="white-space: pre-wrap; line-height: 1.6;">@(string.IsNullOrWhiteSpace(os.ServicoAExecutar) ? "Aguardando diagnóstico..." : os.ServicoAExecutar)</p>
+                    @if (os.ServicosAExecutarList != null && os.ServicosAExecutarList.Any())
+                    {
+                        <p class="mb-0 text-dark" style="white-space: pre-wrap; line-height: 1.6;">@string.Join("\n", os.ServicosAExecutarList.Select(s => $"- {s.Quantidade}x {s.Servico?.Nome ?? "Serviço"}"))</p>
+                    }
+                    else
+                    {
+                        <p class="mb-0 text-dark" style="white-space: pre-wrap; line-height: 1.6;">Aguardando diagnóstico...</p>
+                    }
                 </div>
             </div>
             
@@ -178,6 +185,8 @@
         {
             os = await DbContext.OrdensServico
                 .Include(o => o.Veiculo)
+                .Include(o => o.ServicosAExecutarList)
+                    .ThenInclude(s => s.Servico)
                 .FirstOrDefaultAsync(o => o.TokenAcompanhamento == Token);
         }
         finally

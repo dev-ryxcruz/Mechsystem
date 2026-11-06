@@ -180,13 +180,13 @@ else
             </div>
 
             <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
-                <h5 class="fw-bold mb-0">Diagnóstico e Serviços</h5>
+                <h5 class="fw-bold mb-0">Queixa, Diagnóstico e Serviços</h5>
                 @if (os.Status == OrdemServicoStatus.Orcamento)
                 {
                     <AuthorizeView Roles="Administrador, Atendimento">
                         <Authorized>
                             <button class="btn btn-sm btn-outline-primary d-print-none" @onclick="AbrirModalEdicao">
-                                <i class="bi bi-pencil me-1"></i>Editar Diagnóstico / Serviços / Desconto
+                                <i class="bi bi-pencil me-1"></i>Editar Queixa / Diagnóstico / Desconto
                             </button>
                         </Authorized>
                     </AuthorizeView>
@@ -194,12 +194,34 @@ else
             </div>
             <div class="row mb-4">
                 <div class="col-12 mb-3">
-                    <small class="text-muted d-block fw-bold">Problema Relatado / Diagnóstico:</small>
-                    <p class="mb-0 p-2 bg-light rounded" style="white-space: pre-wrap;">@os.DescricaoProblemaRelatado</p>
+                    <small class="text-muted d-block fw-bold">Queixa do Cliente:</small>
+                    <p class="mb-0 p-2 bg-light rounded" style="white-space: pre-wrap;">@os.QueixaCliente</p>
                 </div>
+                @if (!string.IsNullOrWhiteSpace(os.Diagnostico))
+                {
+                    <div class="col-12 mb-3">
+                        <small class="text-muted d-block fw-bold">Diagnóstico Técnico:</small>
+                        <p class="mb-0 p-2 bg-light rounded" style="white-space: pre-wrap;">@os.Diagnostico</p>
+                    </div>
+                }
                 <div class="col-12">
-                    <small class="text-muted d-block fw-bold">Serviços a Executar:</small>
-                    <p class="mb-0 p-2 bg-light rounded" style="white-space: pre-wrap;">@(string.IsNullOrWhiteSpace(os.ServicoAExecutar) ? "A definir" : os.ServicoAExecutar)</p>
+                    <small class="text-muted d-block fw-bold">Serviços Listados:</small>
+                    @if (os.ServicosAExecutarList != null && os.ServicosAExecutarList.Any())
+                    {
+                        <ul class="list-group list-group-flush border rounded mt-1">
+                            @foreach (var serv in os.ServicosAExecutarList)
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                    <span>@serv.Quantidade x @(serv.Servico?.Nome ?? "Serviço")</span>
+                                    <span class="fw-bold">@serv.Subtotal.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="mb-0 p-2 bg-light rounded">A definir</p>
+                    }
                 </div>
             </div>
 
@@ -394,9 +416,9 @@ else
                 }
             </div>
             <div class="row mb-4">
-                <div class="col-sm-4"><small class="text-muted d-block">Previsão de Início</small><strong>@(os.DataPrevisaoInicio?.ToString("dd/MM/yyyy") ?? "N/A")</strong></div>
+                <div class="col-sm-4"><small class="text-muted d-block">KM de Entrada</small><strong>@os.KmEntrada.ToString("N0") km</strong></div>
                 <div class="col-sm-4"><small class="text-muted d-block">Previsão de Entrega (CDC)</small><strong>@os.DataPrevisaoEntrega.ToString("dd/MM/yyyy")</strong></div>
-                <div class="col-sm-4"><small class="text-muted d-block">Validade Orçamento</small><strong>@os.GetValidadeOrcamento(config?.ValidadeOrcamentoDias ?? 10).ToString("dd/MM/yyyy")</strong></div>
+                <div class="col-sm-4"><small class="text-muted d-block">Validade Orçamento</small><strong>@os.ValidadeOrcamentoAte.ToBrasiliaTime().ToString("dd/MM/yyyy")</strong></div>
             </div>
 
             <AuthorizeView Roles="Administrador, Atendimento">
@@ -450,7 +472,7 @@ else
                 {
                     <div class="alert alert-success mt-3 mb-0 text-center">
                         <i class="bi bi-shield-check me-2"></i><strong>Orçamento Aprovado</strong><br />
-                        <span class="small">Autorizado por: @(os.AutorizadoPor ?? os.Veiculo?.Cliente?.Nome) no dia @(os.DataAutorizacao.ToBrasiliaTime()?.ToString("dd/MM/yyyy HH:mm")) via @(os.MeioAutorizacao)</span>
+                        <span class="small">Autorizado por: @(os.AutorizadoPor ?? os.Veiculo?.Cliente?.Nome) no dia @(os.DataAutorizacao.ToBrasiliaTime()?.ToString("dd/MM/yyyy HH:mm")) via @(os.TipoContatoAutorizacao?.ToString() ?? "Outro")</span>
                     </div>
                 }
             </div>
@@ -480,56 +502,19 @@ else
                     @if (os.Status == OrdemServicoStatus.Orcamento)
                     {
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Problema Relatado / Diagnóstico <span class="text-danger">*</span></label>
+                            <label class="form-label fw-bold">Queixa do Cliente <span class="text-danger">*</span></label>
                             <textarea class="form-control" rows="3" @bind="editDescricaoProblema"></textarea>
                         </div>
 
-                        <div class="card bg-light border mb-3">
-                            <div class="card-body p-3">
-                                <label class="form-label fw-bold mb-1"><i class="bi bi-journal-plus text-primary me-1"></i>Adicionar Serviço do Catálogo</label>
-                                <div class="input-group input-group-sm">
-                                    <select class="form-select" @bind="servicoCatalogoId">
-                                        <option value="0">-- Selecione um serviço ativo --</option>
-                                        @if (catalogoServicos != null)
-                                        {
-                                            @foreach (var s in catalogoServicos)
-                                            {
-                                                <option value="@s.Id">@s.Nome - @s.ValorPadrao.ToString("C", new System.Globalization.CultureInfo("pt-BR"))</option>
-                                            }
-                                        }
-                                    </select>
-                                    <button type="button" class="btn btn-primary" @onclick="AdicionarServicoNoModalEdicao" disabled="@(servicoCatalogoId == 0)">
-                                        <i class="bi bi-plus-lg me-1"></i>Inserir
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Serviços a Executar</label>
-                            <textarea class="form-control" rows="3" @bind="editServicoAExecutar"></textarea>
+                            <label class="form-label fw-bold">Diagnóstico Técnico</label>
+                            <textarea class="form-control" rows="2" @bind="editDiagnostico"></textarea>
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label class="form-label fw-bold">Previsão de Início</label>
-                                <input type="date" class="form-control" @bind="editDataPrevisaoInicio" />
-                            </div>
-                            <div class="col-md-6">
                                 <label class="form-label fw-bold">Previsão de Entrega (CDC) <span class="text-danger">*</span></label>
                                 <input type="date" class="form-control" @bind="editDataPrevisaoEntrega" />
-                            </div>
-                        </div>
-
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold">Valor Mão de Obra (R$)</label>
-                                <input type="number" class="form-control" step="0.01" min="0" @bind="editValorMaoDeObra"
-                                       disabled="@(os.ServicosAExecutarList != null && os.ServicosAExecutarList.Any())" />
-                                @if (os.ServicosAExecutarList != null && os.ServicosAExecutarList.Any())
-                                {
-                                    <small class="text-muted">Calculado pelos itens de serviço vinculados (@os.ValorMaoDeObraEfetivo.ToString("C")).</small>
-                                }
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">
@@ -860,13 +845,9 @@ else
 
     // Campos de edição da O.S. (2.2 / 2.3)
     private string? editDescricaoProblema;
-    private string? editServicoAExecutar;
-    private DateTime? editDataPrevisaoInicio;
+    private string? editDiagnostico;
     private DateTime editDataPrevisaoEntrega;
-    private decimal editValorMaoDeObra;
     private decimal editValorDesconto;
-    private List<Servico>? catalogoServicos;
-    private int servicoCatalogoId = 0;
 
     // Peças
     private bool mostrarModalPeca = false;
@@ -912,51 +893,23 @@ else
 
     // ─── Edição da O.S. (2.2 / 2.3) ──────────────────────────────────────────────
 
-    private async Task AbrirModalEdicao()
+    private Task AbrirModalEdicao()
     {
-        if (os == null) return;
+        if (os == null) return Task.CompletedTask;
         erroMensagem = null;
-        editDescricaoProblema = os.DescricaoProblemaRelatado;
-        editServicoAExecutar = os.ServicoAExecutar;
-        editDataPrevisaoInicio = os.DataPrevisaoInicio;
+        editDescricaoProblema = os.QueixaCliente;
+        editDiagnostico = os.Diagnostico;
         editDataPrevisaoEntrega = os.DataPrevisaoEntrega;
-        editValorMaoDeObra = os.ValorMaoDeObra;
         editValorDesconto = os.ValorDesconto;
-        servicoCatalogoId = 0;
-
-        if (os.Status == OrdemServicoStatus.Orcamento && catalogoServicos == null)
-        {
-            catalogoServicos = await DbContext.Servicos.Ativos().OrderBy(s => s.Nome).ToListAsync();
-        }
 
         mostrarModalEdicao = true;
+        return Task.CompletedTask;
     }
 
     private void FecharModalEdicao()
     {
         mostrarModalEdicao = false;
         erroMensagem = null;
-    }
-
-    private void AdicionarServicoNoModalEdicao()
-    {
-        if (servicoCatalogoId <= 0 || catalogoServicos == null) return;
-        var servico = catalogoServicos.FirstOrDefault(s => s.Id == servicoCatalogoId);
-        if (servico != null)
-        {
-            var textoInserir = $"- {servico.Nome} ({servico.ValorPadrao:C}){(servico.TempoEstimadoMinutos.HasValue ? $" - Tempo Est.: {servico.TempoEstimadoMinutos} min" : "")}";
-            if (string.IsNullOrWhiteSpace(editServicoAExecutar))
-            {
-                editServicoAExecutar = textoInserir;
-            }
-            else
-            {
-                editServicoAExecutar += $"\n{textoInserir}";
-            }
-
-            editValorMaoDeObra += servico.ValorPadrao;
-            servicoCatalogoId = 0;
-        }
     }
 
     private async Task SalvarEdicaoOS()
@@ -969,10 +922,8 @@ else
             await OrdemServicoService.AtualizarOSAsync(
                 os.Id,
                 editDescricaoProblema,
-                editServicoAExecutar,
-                editDataPrevisaoInicio,
+                editDiagnostico,
                 editDataPrevisaoEntrega,
-                editValorMaoDeObra,
                 editValorDesconto,
                 usuarioId,
                 perfil,

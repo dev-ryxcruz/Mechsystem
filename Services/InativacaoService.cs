@@ -11,9 +11,11 @@ public class InativacaoService
     public static readonly OrdemServicoStatus[] StatusEmAberto =
     [
         OrdemServicoStatus.Orcamento,
+        OrdemServicoStatus.Aprovada,
         OrdemServicoStatus.EmAndamento,
         OrdemServicoStatus.Pausada,
-        OrdemServicoStatus.AguardandoPecas
+        OrdemServicoStatus.AguardandoPecas,
+        OrdemServicoStatus.AguardandoCliente
     ];
 
     public InativacaoService(AppDbContext db)
@@ -213,15 +215,6 @@ public class InativacaoService
 
             var emOsAberta = await _db.OrdemServicoServicos
                 .AnyAsync(os => os.ServicoId == servicoId && os.OrdemServico != null && StatusEmAberto.Contains(os.OrdemServico.Status));
-
-            if (!emOsAberta && !string.IsNullOrWhiteSpace(servico.Nome))
-            {
-                var padraoTexto = $"- {servico.Nome} (";
-                emOsAberta = await _db.OrdensServico
-                    .AnyAsync(o => StatusEmAberto.Contains(o.Status)
-                        && o.ServicoAExecutar != null
-                        && o.ServicoAExecutar.Contains(padraoTexto));
-            }
 
             if (emOsAberta)
             {
