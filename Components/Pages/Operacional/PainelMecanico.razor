@@ -149,15 +149,15 @@
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Problema Relatado / Diagnóstico</label>
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Queixa do Cliente</label>
                         <div class="p-3 bg-light rounded border text-dark" style="white-space: pre-wrap;">
-                            @(string.IsNullOrWhiteSpace(osSelecionada.DescricaoProblemaRelatado) ? "Nenhum problema relatado." : osSelecionada.DescricaoProblemaRelatado)
+                            @(string.IsNullOrWhiteSpace(osSelecionada.QueixaCliente) ? "Nenhuma queixa registrada." : osSelecionada.QueixaCliente)
                         </div>
                     </div>
                     <div>
-                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Observações Adicionais</label>
+                        <label class="form-label fw-bold text-muted small text-uppercase mb-1">Diagnóstico Técnico</label>
                         <div class="p-3 bg-light rounded border text-dark" style="white-space: pre-wrap;">
-                            @(string.IsNullOrWhiteSpace(osSelecionada.ServicoAExecutar) ? "Nenhuma anotação adicional." : osSelecionada.ServicoAExecutar)
+                            @(string.IsNullOrWhiteSpace(osSelecionada.Diagnostico) ? "Nenhum diagnóstico registrado." : osSelecionada.Diagnostico)
                         </div>
                     </div>
                 </div>
@@ -381,6 +381,7 @@
             .Include(o => o.Veiculo)
             .Include(o => o.ServicosAExecutarList)
                 .ThenInclude(s => s.Servico)
+            .Include(o => o.ApontamentosTempo)
             .Where(o => o.Status != OrdemServicoStatus.Cancelada)
             .ToListAsync();
     }
@@ -430,16 +431,6 @@
                                 </li>
                             }
                         }
-                        else if (!string.IsNullOrWhiteSpace(os.ServicoAExecutar))
-                        {
-                            @foreach (var linha in SepararServicosTexto(os.ServicoAExecutar))
-                            {
-                                <li class="mb-3 d-flex align-items-start">
-                                    <input type="checkbox" class="form-check-input me-3 mt-1 shadow-sm" style="width: 1.8rem; height: 1.8rem;" checked="@isFinalizada">
-                                    <span class="fs-5 @(isFinalizada ? "text-decoration-line-through text-muted" : "fw-bold text-dark")">@linha</span>
-                                </li>
-                            }
-                        }
                         else
                         {
                             <li class="text-muted small"><i class="bi bi-info-circle me-1"></i>Nenhum serviço listado</li>
@@ -482,7 +473,7 @@
                     }
                     else if(isExecucao)
                     {
-                        @if (!os.InicioUltimaExecucao.HasValue)
+                        @if (os.ApontamentosTempo == null || !os.ApontamentosTempo.Any(a => !a.Fim.HasValue))
                         {
                             <button class="btn btn-success btn-lg fw-bold py-3 shadow-sm rounded-3 w-100" @onclick="() => IniciarServico(os.Id)">
                                 <i class="bi bi-play-fill fs-4 me-1 align-middle"></i> INICIAR SERVIÇO
@@ -552,14 +543,7 @@
 
     private string GetTempoGastoFormatado(OrdemServico os)
     {
-        int totalMinutos = os.TempoGastoMinutos;
-        
-        if (os.Status == OrdemServicoStatus.EmAndamento && os.InicioUltimaExecucao.HasValue)
-        {
-            var inicioUtc = DateTime.SpecifyKind(os.InicioUltimaExecucao.Value, DateTimeKind.Utc);
-            totalMinutos += (int)Math.Round((DateTime.UtcNow - inicioUtc).TotalMinutes);
-        }
-
+        int totalMinutos = os.TempoRealTotalMinutos;
         if (totalMinutos < 0) return "--";
 
         int horas = totalMinutos / 60;

@@ -800,18 +800,18 @@
 
         relatoriosGerados = pacoteRelatorios;
 
-        // 3. Previsão de Caixa (Em Andamento — sempre real-time, preservando fallback)
+        // 3. Previsão de Caixa (Em Andamento — sempre real-time, somando linhas não recusadas)
         var osEmAndamento = await DbContext.OrdensServico
             .AsNoTracking()
             .Where(o => o.Status == OrdemServicoStatus.EmAndamento)
             .Select(o => new
             {
-                MaoDeObra = o.ServicosAExecutarList.Any()
-                    ? o.ServicosAExecutarList.Sum(s => (decimal?)(s.Quantidade * s.ValorCobrado)) ?? 0m
-                    : o.ValorMaoDeObra,
-                Pecas = o.PecasUtilizadas.Any()
-                    ? o.PecasUtilizadas.Sum(p => (decimal?)(p.Quantidade * p.ValorCobrado)) ?? 0m
-                    : o.ValorPecas,
+                MaoDeObra = o.ServicosAExecutarList
+                    .Where(s => s.StatusItem != StatusItem.Recusado)
+                    .Sum(s => (decimal?)(s.Quantidade * s.ValorCobrado)) ?? 0m,
+                Pecas = o.PecasUtilizadas
+                    .Where(p => p.StatusItem != StatusItem.Recusado)
+                    .Sum(p => (decimal?)(p.Quantidade * p.ValorCobrado)) ?? 0m,
                 Desconto = o.ValorDesconto
             })
             .ToListAsync();

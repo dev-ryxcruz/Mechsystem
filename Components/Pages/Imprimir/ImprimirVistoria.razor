@@ -108,7 +108,7 @@ else
                 <table class="doc-dados-table">
                     <tr>
                         <td class="doc-label">KM Entrada</td>
-                        <td class="doc-value fw-bold">@os.Vistoria.QuilometragemEntrada.ToString("N0") km</td>
+                        <td class="doc-value fw-bold">@os.KmEntrada.ToString("N0") km</td>
                     </tr>
                     <tr>
                         <td class="doc-label">Combustível</td>
@@ -281,15 +281,7 @@ else
         await JSRuntime.InvokeVoidAsync("window.print");
     }
 
-    private string GetCombustivelTexto(NivelCombustivel nivel) => nivel switch
-    {
-        NivelCombustivel.Reserva => "Reserva",
-        NivelCombustivel.UmQuarto => "1/4 Tanque",
-        NivelCombustivel.Meio => "Meio Tanque",
-        NivelCombustivel.TresQuartos => "3/4 Tanque",
-        NivelCombustivel.Cheio => "Cheio",
-        _ => nivel.ToString()
-    };
+    private string GetCombustivelTexto(NivelCombustivel nivel) => nivel.ToDisplayText();
 
     public class AvariaMarker
     {

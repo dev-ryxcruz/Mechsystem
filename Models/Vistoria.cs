@@ -8,17 +8,30 @@ namespace mechsystem.Models
         [Display(Name = "Reserva")]
         Reserva = 1,
         
-        [Display(Name = "1/4 Tanque")]
+        [Display(Name = "Um quarto")]
         UmQuarto = 2,
         
-        [Display(Name = "Meio Tanque")]
+        [Display(Name = "Meio")]
         Meio = 3,
         
-        [Display(Name = "3/4 Tanque")]
+        [Display(Name = "Três quartos")]
         TresQuartos = 4,
         
         [Display(Name = "Cheio")]
         Cheio = 5
+    }
+
+    public static class NivelCombustivelExtensions
+    {
+        public static string ToDisplayText(this NivelCombustivel nivel) => nivel switch
+        {
+            NivelCombustivel.Reserva => "Reserva",
+            NivelCombustivel.UmQuarto => "Um quarto",
+            NivelCombustivel.Meio => "Meio",
+            NivelCombustivel.TresQuartos => "Três quartos",
+            NivelCombustivel.Cheio => "Cheio",
+            _ => nivel.ToString()
+        };
     }
 
     public class Vistoria
@@ -35,10 +48,6 @@ namespace mechsystem.Models
         [Display(Name = "Nível de Combustível")]
         public NivelCombustivel NivelCombustivel { get; set; } = NivelCombustivel.Reserva;
 
-        [Display(Name = "Quilometragem (Entrada)")]
-        [Required(ErrorMessage = "A KM é obrigatória.")]
-        public int QuilometragemEntrada { get; set; }
-
         // Checklist Items
         public bool TemEstepe { get; set; }
         public bool TemMacaco { get; set; }
@@ -48,7 +57,7 @@ namespace mechsystem.Models
 
         // Mapeamento de Avarias via Visual (JSON data)
         // Guardará um array do tipo [{X:10, Y:20, Desc: "Risco na porta"}]
-        [Column(TypeName = "TEXT")] // O sqlite e sqlserver aceitam string
+        [Column(TypeName = "TEXT")] // Armazenado como TEXT no PostgreSQL
         public string? AvariasJson { get; set; }
 
         [Display(Name = "Observações Adicionais")]

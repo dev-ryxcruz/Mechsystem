@@ -20,6 +20,18 @@ namespace mechsystem.Models
         Cancelada = 4,
 
         [Display(Name = "Pausada")]
-        Pausada = 5
+        Pausada = 5,
+
+        [Display(Name = "Aprovada")]
+        Aprovada = 6,
+
+        [Display(Name = "Aguardando Cliente")]
+        AguardandoCliente = 7,
+
+        [Display(Name = "Entregue")]
+        Entregue = 8,
+
+        [Display(Name = "Recusada")]
+        Recusada = 9
     }
 }

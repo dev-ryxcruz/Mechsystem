@@ -11,56 +11,57 @@ namespace mechsystem.Models
         public int VeiculoId { get; set; }
         public Veiculo? Veiculo { get; set; }
 
+        // Quilometragem e Combustível (registrados na O.S.)
+        [Required(ErrorMessage = "A quilometragem de entrada é obrigatória.")]
+        [Range(0, int.MaxValue, ErrorMessage = "A quilometragem não pode ser negativa.")]
+        [Display(Name = "KM de Entrada")]
+        public int KmEntrada { get; set; }
+
+        [Range(0, int.MaxValue, ErrorMessage = "A quilometragem não pode ser negativa.")]
+        [Display(Name = "KM de Saída")]
+        public int? KmSaida { get; set; }
+
+        [Required(ErrorMessage = "O nível de combustível de entrada é obrigatório.")]
+        [Display(Name = "Nível de Combustível (Entrada)")]
+        public NivelCombustivel NivelCombustivelEntrada { get; set; } = NivelCombustivel.Reserva;
+
         // Datas
         [Required]
         [Display(Name = "Data de Emissão")]
         public DateTime DataEmissao { get; set; } = DateTime.UtcNow;
 
-        [Display(Name = "Previsão de Início")]
-        public DateTime? DataPrevisaoInicio { get; set; }
-
         [Required(ErrorMessage = "A previsão de entrega é obrigatória (CDC).")]
         [Display(Name = "Previsão de Entrega")]
         public DateTime DataPrevisaoEntrega { get; set; }
 
-        // Valores
-        /// <summary>
-        /// Valor manual de mão de obra. Mantido para retrocompatibilidade/orçamento simples.
-        /// REGRA DE GRACEFUL DEGRADATION: Se existirem serviços vinculados em ServicosAExecutarList,
-        /// este valor é IGNORADO e sobrescrito pela soma calculada dos serviços.
-        /// </summary>
-        [Display(Name = "Valor Mão de Obra")]
-        [Column(TypeName = "decimal(18,2)")]
-        [Range(0, double.MaxValue, ErrorMessage = "O valor não pode ser negativo.")]
-        public decimal ValorMaoDeObra { get; set; } = 0;
+        [Required]
+        [Display(Name = "Validade do Orçamento Até")]
+        public DateTime ValidadeOrcamentoAte { get; set; } = DateTime.UtcNow.AddDays(10);
 
+        [Display(Name = "Garantia (Dias)")]
+        public int? GarantiaDias { get; set; }
+
+        [Display(Name = "Data da Entrega")]
+        public DateTime? DataEntrega { get; set; }
+
+        // Valores (fonte única = soma das linhas não recusadas)
         /// <summary>
-        /// Valor efetivo da mão de obra (fallback / graceful degradation).
+        /// Valor efetivo da mão de obra: soma das linhas de serviço com StatusItem != Recusado.
         /// </summary>
         [NotMapped]
         public decimal ValorMaoDeObraEfetivo =>
-            ServicosAExecutarList != null && ServicosAExecutarList.Any()
-                ? ServicosAExecutarList.Sum(s => s.Subtotal)
-                : ValorMaoDeObra;
+            ServicosAExecutarList != null
+                ? ServicosAExecutarList.Where(s => s.StatusItem != StatusItem.Recusado).Sum(s => s.Subtotal)
+                : 0m;
 
         /// <summary>
-        /// Valor manual de peças. Mantido para retrocompatibilidade.
-        /// REGRA DE GRACEFUL DEGRADATION: Se existirem peças vinculadas em PecasUtilizadas,
-        /// este valor é IGNORADO e sobrescrito pela soma calculada das peças.
-        /// </summary>
-        [Display(Name = "Valor das Peças")]
-        [Column(TypeName = "decimal(18,2)")]
-        [Range(0, double.MaxValue, ErrorMessage = "O valor não pode ser negativo.")]
-        public decimal ValorPecas { get; set; } = 0;
-
-        /// <summary>
-        /// Valor efetivo de peças (fallback / graceful degradation).
+        /// Valor efetivo de peças: soma das linhas de peça com StatusItem != Recusado.
         /// </summary>
         [NotMapped]
         public decimal ValorPecasEfetivo =>
-            PecasUtilizadas != null && PecasUtilizadas.Any()
-                ? PecasUtilizadas.Sum(p => p.Subtotal)
-                : ValorPecas;
+            PecasUtilizadas != null
+                ? PecasUtilizadas.Where(p => p.StatusItem != StatusItem.Recusado).Sum(p => p.Subtotal)
+                : 0m;
 
         /// <summary>
         /// Valor de desconto a ser aplicado diretamente na Ordem de Serviço.
@@ -73,35 +74,42 @@ namespace mechsystem.Models
         /// <summary>
         /// Valor total da OS: Mão de Obra Efetiva + Peças Efetivas - Desconto.
         /// </summary>
+        [NotMapped]
         [Display(Name = "Valor Total")]
         public decimal ValorTotal => (ValorMaoDeObraEfetivo + ValorPecasEfetivo) - ValorDesconto;
 
         /// <summary>
-        /// Tempo total estimado para realizar todos os serviços listados.
+        /// Tempo total estimado para realizar todos os serviços não recusados listados.
         /// </summary>
         [NotMapped]
         [Display(Name = "Tempo Total Estimado (Minutos)")]
         public int TempoTotalEstimadoMinutos =>
-            ServicosAExecutarList != null ? ServicosAExecutarList.Sum(s => s.TempoTotalLinhaMinutos) : 0;
+            ServicosAExecutarList != null
+                ? ServicosAExecutarList.Where(s => s.StatusItem != StatusItem.Recusado).Sum(s => s.TempoTotalLinhaMinutos)
+                : 0;
 
         /// <summary>
-        /// Tempo total real gasto na execução (acumulado em minutos).
+        /// Tempo real total acumulado a partir dos apontamentos de tempo (em minutos).
         /// </summary>
-        [Display(Name = "Tempo Gasto (Minutos)")]
-        public int TempoGastoMinutos { get; set; } = 0;
+        [NotMapped]
+        [Display(Name = "Tempo Real Total (Minutos)")]
+        public int TempoRealTotalMinutos =>
+            ApontamentosTempo != null
+                ? (int)Math.Round(ApontamentosTempo.Sum(a => ((a.Fim ?? DateTime.UtcNow) - a.Inicio).TotalMinutes))
+                : 0;
 
-        /// <summary>
-        /// Marca quando a execução foi iniciada pela última vez, para cálculo de tempo.
-        /// </summary>
-        public DateTime? InicioUltimaExecucao { get; set; }
+        // Descrições (separação entre queixa do cliente e diagnóstico técnico)
+        [Required(ErrorMessage = "A queixa do cliente é obrigatória.")]
+        [Display(Name = "Queixa do Cliente")]
+        public string QueixaCliente { get; set; } = string.Empty;
 
-        // Descrições
-        [Required(ErrorMessage = "O diagnóstico/problema relatado é obrigatório.")]
-        [Display(Name = "Problema Relatado / Diagnóstico")]
-        public string? DescricaoProblemaRelatado { get; set; }
+        [Display(Name = "Diagnóstico Técnico")]
+        public string? Diagnostico { get; set; }
 
-        [Display(Name = "Serviços a Executar")]
-        public string? ServicoAExecutar { get; set; }
+        // Responsável técnico
+        [Display(Name = "Mecânico Responsável")]
+        public int? MecanicoResponsavelId { get; set; }
+        public Usuario? MecanicoResponsavel { get; set; }
 
         // Status
         [Required]
@@ -111,8 +119,12 @@ namespace mechsystem.Models
         [Display(Name = "Autorizado por (Assinatura/Nome)")]
         public string? AutorizadoPor { get; set; }
 
-        [Display(Name = "Meio de Autorização")]
-        public string? MeioAutorizacao { get; set; } // "Presencial", "WhatsApp", "Telefone"
+        [Display(Name = "Canal de Autorização")]
+        public TipoContato? TipoContatoAutorizacao { get; set; }
+
+        [Display(Name = "Aprovado por (Usuário)")]
+        public int? AprovadoPorUsuarioId { get; set; }
+        public Usuario? AprovadoPorUsuario { get; set; }
 
         [Display(Name = "Data da Autorização")]
         public DateTime? DataAutorizacao { get; set; }
@@ -131,7 +143,8 @@ namespace mechsystem.Models
         public Usuario? CanceladaPorUsuario { get; set; }
 
         [Display(Name = "Validade do Orçamento")]
-        public DateTime GetValidadeOrcamento(int validadeDias) => DataEmissao.AddDays(validadeDias);
+        public DateTime GetValidadeOrcamento(int validadeDias) =>
+            ValidadeOrcamentoAte != default ? ValidadeOrcamentoAte : DataEmissao.AddDays(validadeDias);
 
         // Vistoria de Entrada (1 para 1)
         public Vistoria? Vistoria { get; set; }
@@ -141,6 +154,12 @@ namespace mechsystem.Models
 
         // Serviços listados na OS
         public ICollection<OrdemServicoServico> ServicosAExecutarList { get; set; } = new List<OrdemServicoServico>();
+
+        // Apontamentos de tempo
+        public ICollection<ApontamentoTempo> ApontamentosTempo { get; set; } = new List<ApontamentoTempo>();
+
+        // Pagamentos registrados
+        public ICollection<Pagamento> Pagamentos { get; set; } = new List<Pagamento>();
 
         // Comunicação com Cliente
         public string? TokenAcompanhamento { get; set; } = Guid.NewGuid().ToString("N");

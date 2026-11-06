@@ -121,9 +121,12 @@ public class InativacaoTests
         var osAberta = new OrdemServico
         {
             VeiculoId = veiculo1.Id,
-            DescricaoProblemaRelatado = "Motor falhando",
+            KmEntrada = 25000,
+            NivelCombustivelEntrada = NivelCombustivel.Meio,
+            QueixaCliente = "Motor falhando",
             DataEmissao = DateTime.UtcNow,
             DataPrevisaoEntrega = DateTime.UtcNow.AddDays(2),
+            ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(10),
             Status = OrdemServicoStatus.EmAndamento
         };
         db.OrdensServico.Add(osAberta);
@@ -202,9 +205,12 @@ public class InativacaoTests
         var os = new OrdemServico
         {
             VeiculoId = veiculo.Id,
-            DescricaoProblemaRelatado = "Falha de ignição",
+            KmEntrada = 40000,
+            NivelCombustivelEntrada = NivelCombustivel.Reserva,
+            QueixaCliente = "Falha de ignição",
             DataEmissao = DateTime.UtcNow,
             DataPrevisaoEntrega = DateTime.UtcNow.AddDays(1),
+            ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(10),
             Status = OrdemServicoStatus.Orcamento
         };
         db.OrdensServico.Add(os);
@@ -259,9 +265,12 @@ public class InativacaoTests
         var os = new OrdemServico
         {
             VeiculoId = veiculo.Id,
-            DescricaoProblemaRelatado = "Puxando para a direita",
+            KmEntrada = 15000,
+            NivelCombustivelEntrada = NivelCombustivel.UmQuarto,
+            QueixaCliente = "Puxando para a direita",
             DataEmissao = DateTime.UtcNow,
             DataPrevisaoEntrega = DateTime.UtcNow.AddDays(1),
+            ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(10),
             Status = OrdemServicoStatus.AguardandoPecas
         };
         db.OrdensServico.Add(os);
@@ -366,9 +375,12 @@ public class InativacaoTests
             db.OrdensServico.Add(new OrdemServico
             {
                 VeiculoId = veiculo.Id,
-                DescricaoProblemaRelatado = $"Problema {i:D2}",
+                KmEntrada = 10000 + i * 100,
+                NivelCombustivelEntrada = NivelCombustivel.Meio,
+                QueixaCliente = $"Problema {i:D2}",
                 DataEmissao = DateTime.UtcNow,
                 DataPrevisaoEntrega = DateTime.UtcNow.AddDays(1),
+                ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(10),
                 Status = OrdemServicoStatus.Orcamento
             });
             await db.SaveChangesAsync();

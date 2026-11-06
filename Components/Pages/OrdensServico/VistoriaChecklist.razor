@@ -66,7 +66,7 @@ else
                                     <div class="fuel-icon">
                                         @GetFuelIcon(nivel)
                                     </div>
-                                    <span class="fuel-label">@nivel.ToString().Replace("TresQuartos", "3/4").Replace("UmQuarto", "1/4")</span>
+                                    <span class="fuel-label">@nivel.ToDisplayText()</span>
                                 </button>
                             }
                         </div>
@@ -81,12 +81,11 @@ else
                     </div>
                     <div class="card-body bg-dark-subtle">
                         <div class="mb-3">
-                            <label class="form-label text-dark fw-bold">Quilometragem Exata (Entrada)</label>
+                            <label class="form-label text-dark fw-bold">Quilometragem de Entrada (O.S.)</label>
                             <div class="input-group">
-                                <InputNumber @bind-Value="Vistoria.QuilometragemEntrada" class="form-control bg-dark text-light border-secondary" placeholder="Ex: 54000" />
+                                <InputNumber @bind-Value="OrdemServico.KmEntrada" class="form-control bg-dark text-light border-secondary" placeholder="Ex: 54000" />
                                 <span class="input-group-text bg-secondary text-white border-secondary">KM</span>
                             </div>
-                            <ValidationMessage For="@(() => Vistoria.QuilometragemEntrada)" class="text-danger" />
                         </div>
                         
                         <div class="mb-3">
@@ -344,11 +343,10 @@ else
             }
             else
             {
-                // New vistoria, but initialize with the vehicle's current mileage might be nice!
                 Vistoria = new Vistoria
                 {
                     OrdemServicoId = OrdemServicoId,
-                    QuilometragemEntrada = OrdemServico.Veiculo?.Quilometragem ?? 0
+                    NivelCombustivel = OrdemServico.NivelCombustivelEntrada
                 };
             }
         }
@@ -435,6 +433,7 @@ else
     {
         // Serialize Avarias
         Vistoria.AvariasJson = JsonSerializer.Serialize(Avarias);
+        Vistoria.Status = VistoriaStatus.Concluida;
 
         if (Vistoria.Id == 0)
         {
@@ -445,11 +444,14 @@ else
             DbContext.Vistorias.Update(Vistoria);
         }
 
-        // Se a KM for maior, atualizamos no veículo.
-        if (OrdemServico?.Veiculo != null && Vistoria.QuilometragemEntrada > OrdemServico.Veiculo.Quilometragem)
+        if (OrdemServico != null)
         {
-            OrdemServico.Veiculo.Quilometragem = Vistoria.QuilometragemEntrada;
-            DbContext.Veiculos.Update(OrdemServico.Veiculo);
+            OrdemServico.NivelCombustivelEntrada = Vistoria.NivelCombustivel;
+            if (OrdemServico.Veiculo != null && OrdemServico.KmEntrada > OrdemServico.Veiculo.Quilometragem)
+            {
+                OrdemServico.Veiculo.Quilometragem = OrdemServico.KmEntrada;
+                DbContext.Veiculos.Update(OrdemServico.Veiculo);
+            }
         }
 
         await DbContext.SaveChangesAsync();

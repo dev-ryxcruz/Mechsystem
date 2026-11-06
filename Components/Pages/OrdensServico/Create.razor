@@ -41,7 +41,7 @@
                     <div class="col-md-6">
                         <label for="veiculoId" class="form-label">Veículo (Cliente)</label>
                         <div class="input-group">
-                            <InputSelect id="veiculoId" @bind-Value="os.VeiculoId" class="form-select">
+                            <InputSelect id="veiculoId" @bind-Value="os.VeiculoId" @bind-Value:after="OnVeiculoSelecionado" class="form-select">
                                 <option value="0">-- Selecione um Veículo --</option>
                                 @if (veiculos != null)
                                 {
@@ -65,21 +65,40 @@
                             </div>
                         }
                     </div>
+                    <div class="col-md-3">
+                        <label for="kmEntrada" class="form-label">KM de Entrada <span class="text-danger">*</span></label>
+                        <InputNumber id="kmEntrada" @bind-Value="os.KmEntrada" class="form-control" min="0" />
+                        <ValidationMessage For="@(() => os.KmEntrada)" class="text-danger" />
+                    </div>
+                    <div class="col-md-3">
+                        <label for="combustivelEntrada" class="form-label">Combustível (Entrada) <span class="text-danger">*</span></label>
+                        <InputSelect id="combustivelEntrada" @bind-Value="os.NivelCombustivelEntrada" class="form-select">
+                            @foreach (var nivel in Enum.GetValues<NivelCombustivel>())
+                            {
+                                <option value="@nivel">@nivel.ToDisplayText()</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => os.NivelCombustivelEntrada)" class="text-danger" />
+                    </div>
                 </div>
 
-                <h5 class="mb-3 border-bottom pb-2 mt-4">Diagnóstico e Serviço</h5>
+                <h5 class="mb-3 border-bottom pb-2 mt-4">Queixa, Diagnóstico e Serviços</h5>
                 <div class="row mb-3">
                     <div class="col-md-12 mb-3">
-                        <label for="descricao" class="form-label">Problema Relatado / Diagnóstico <span class="text-danger">*</span></label>
-                        <InputTextArea id="descricao" @bind-Value="os.DescricaoProblemaRelatado" class="form-control" rows="3"></InputTextArea>
-                        <ValidationMessage For="@(() => os.DescricaoProblemaRelatado)" class="text-danger" />
+                        <label for="queixa" class="form-label">Queixa do Cliente <span class="text-danger">*</span></label>
+                        <InputTextArea id="queixa" @bind-Value="os.QueixaCliente" class="form-control" rows="3"></InputTextArea>
+                        <ValidationMessage For="@(() => os.QueixaCliente)" class="text-danger" />
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label for="diagnostico" class="form-label">Diagnóstico Técnico (Opcional)</label>
+                        <InputTextArea id="diagnostico" @bind-Value="os.Diagnostico" class="form-control" rows="2"></InputTextArea>
                     </div>
                     <!-- Painel: Catálogo de Serviços -->
                     <div class="col-md-12 mb-3">
                         <div class="card bg-light border-secondary">
                             <div class="card-body p-3">
                                 <h6 class="fw-bold mb-2"><i class="bi bi-journal-plus text-primary me-2"></i>Catálogo de Serviços</h6>
-                                <p class="small text-muted mb-3">Selecione e adicione serviços pré-cadastrados. A descrição será gerada e o valor da Mão de Obra ajustado automaticamente.</p>
+                                <p class="small text-muted mb-3">Selecione e adicione serviços pré-cadastrados às linhas da O.S.</p>
                                 <div class="input-group">
                                     <select class="form-select" @bind="servicoSelecionadoId">
                                         <option value="0">-- Selecione um serviço --</option>
@@ -91,34 +110,40 @@
                                             }
                                         }
                                     </select>
-                                    <button type="button" class="btn btn-primary" @onclick="AdicionarServicoAoTexto" disabled="@(servicoSelecionadoId == 0)">
+                                    <button type="button" class="btn btn-primary" @onclick="AdicionarServicoNaLista" disabled="@(servicoSelecionadoId == 0)">
                                         <i class="bi bi-plus-lg me-1"></i> Adicionar
                                     </button>
                                 </div>
+                                @if (os.ServicosAExecutarList.Any())
+                                {
+                                    <ul class="list-group list-group-flush mt-3 rounded border">
+                                        @foreach (var item in os.ServicosAExecutarList)
+                                        {
+                                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                                <span><strong>@item.Quantidade x</strong> @(item.Servico?.Nome ?? "Serviço")</span>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="fw-bold text-success">@item.Subtotal.ToString("C")</span>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => RemoverServicoDaLista(item)">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
                             </div>
                         </div>
-                    </div>
-
-                    <div class="col-md-12">
-                        <label for="servicos" class="form-label">Serviços a Executar</label>
-                        <InputTextArea id="servicos" @bind-Value="os.ServicoAExecutar" class="form-control" rows="3" placeholder="Você também pode digitar manualmente aqui..."></InputTextArea>
-                        <ValidationMessage For="@(() => os.ServicoAExecutar)" class="text-danger" />
                     </div>
                 </div>
 
                 <h5 class="mb-3 border-bottom pb-2 mt-4">Datas Precisas (CDC)</h5>
                 <div class="row mb-3">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                         <label for="dataEmissao" class="form-label">Data de Emissão <span class="text-danger">*</span></label>
                         <InputDate id="dataEmissao" @bind-Value="os.DataEmissao" class="form-control" disabled />
                         <ValidationMessage For="@(() => os.DataEmissao)" class="text-danger" />
                     </div>
-                    <div class="col-md-4 mb-3">
-                        <label for="previsaoInicio" class="form-label">Previsão de Início</label>
-                        <InputDate id="previsaoInicio" @bind-Value="os.DataPrevisaoInicio" class="form-control" />
-                        <ValidationMessage For="@(() => os.DataPrevisaoInicio)" class="text-danger" />
-                    </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-6 mb-3">
                         <label for="previsaoEntrega" class="form-label">Previsão de Entrega <span class="text-danger">*</span></label>
                         <InputDate id="previsaoEntrega" @bind-Value="os.DataPrevisaoEntrega" class="form-control" />
                         <ValidationMessage For="@(() => os.DataPrevisaoEntrega)" class="text-danger" />
@@ -128,29 +153,13 @@
                 <h5 class="mb-3 border-bottom pb-2 mt-4">Discriminação de Valores (CDC)</h5>
                 <div class="row mb-3">
                     <div class="col-md-6 mb-3">
-                        <label for="valorMaoDeObra" class="form-label">
-                            Valor base Mão de Obra
-                            @if (config != null && config.TaxaMaoDeObra > 0)
-                            {
-                                <span class="badge bg-warning text-dark ms-2" title="Esta taxa será adicionada ao valor final">
-                                    + @config.TaxaMaoDeObra.ToString("0.##")% (Adicional)
-                                </span>
-                            }
-                        </label>
-                        <div class="input-group">
-                            <span class="input-group-text">R$</span>
-                            <InputNumber id="valorMaoDeObra" @bind-Value="os.ValorMaoDeObra" class="form-control" step="0.01" />
-                        </div>
-                        <ValidationMessage For="@(() => os.ValorMaoDeObra)" class="text-danger" />
-                    </div>
-                    <div class="col-md-6 mb-3">
                         <label class="form-label">Valor Total (Mão de Obra)</label>
                         <div class="input-group">
                             <span class="input-group-text bg-light">R$</span>
-                            <input type="text" class="form-control bg-light fw-bold text-success" value="@os.ValorMaoDeObra.ToString("N2")" readonly />
+                            <input type="text" class="form-control bg-light fw-bold text-success" value="@os.ValorMaoDeObraEfetivo.ToString("N2")" readonly />
                         </div>
                         <small class="text-muted mt-1 d-block">
-                            <i class="bi bi-info-circle me-1"></i>Peças serão adicionadas após a criação da O.S., na tela de detalhes.
+                            <i class="bi bi-info-circle me-1"></i>Calculado a partir dos serviços vinculados acima.
                         </small>
                     </div>
                 </div>
@@ -378,6 +387,7 @@
         os.DataPrevisaoEntrega = DateTime.UtcNow.Date.AddDays(5); // Default 5 days delivery
         
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();
+        os.ValidadeOrcamentoAte = os.DataEmissao.AddDays(config?.ValidadeOrcamentoDias ?? 10);
         
         veiculos = await DbContext.Veiculos
             .Include(v => v.Cliente)
@@ -391,23 +401,32 @@
         isLoading = false;
     }
 
+    private void OnVeiculoSelecionado()
+    {
+        var veiculo = veiculos?.FirstOrDefault(v => v.Id == os.VeiculoId);
+        if (veiculo != null && os.KmEntrada == 0)
+        {
+            os.KmEntrada = veiculo.Quilometragem;
+        }
+    }
+
     private async Task HandleValidSubmit()
     {
         if (os.VeiculoId == 0)
         {
-            // Simple validation feedback if veiculo not selected
             return;
-        }
-        
-        if (config != null && config.TaxaMaoDeObra > 0)
-        {
-            os.ValorMaoDeObra += os.ValorMaoDeObra * (config.TaxaMaoDeObra / 100m);
         }
 
         os.Status = OrdemServicoStatus.Orcamento;
+        os.ValidadeOrcamentoAte = os.DataEmissao.AddDays(config?.ValidadeOrcamentoDias ?? 10);
         if (string.IsNullOrWhiteSpace(os.TokenAcompanhamento))
         {
             os.TokenAcompanhamento = Guid.NewGuid().ToString("N");
+        }
+
+        foreach (var item in os.ServicosAExecutarList)
+        {
+            item.Servico = null;
         }
 
         DbContext.OrdensServico.Add(os);
@@ -416,27 +435,38 @@
         NavigationManager.NavigateTo($"/ordens-servico/{os.Id}");
     }
 
-    private void AdicionarServicoAoTexto()
+    private void AdicionarServicoNaLista()
     {
         if (servicoSelecionadoId <= 0 || catalogoServicos == null) return;
         
         var servico = catalogoServicos.FirstOrDefault(s => s.Id == servicoSelecionadoId);
         if (servico != null)
         {
-            var textoInserir = $"- {servico.Nome} ({servico.ValorPadrao:C}){(servico.TempoEstimadoMinutos.HasValue ? $" - Tempo Est.: {servico.TempoEstimadoMinutos} min" : "")}";
-            
-            if (string.IsNullOrWhiteSpace(os.ServicoAExecutar))
+            var existente = os.ServicosAExecutarList.FirstOrDefault(s => s.ServicoId == servico.Id);
+            if (existente != null)
             {
-                os.ServicoAExecutar = textoInserir;
+                existente.Quantidade += 1;
             }
             else
             {
-                os.ServicoAExecutar += $"\n{textoInserir}";
+                os.ServicosAExecutarList.Add(new OrdemServicoServico
+                {
+                    ServicoId = servico.Id,
+                    Servico = servico,
+                    Quantidade = 1,
+                    PrecoBase = servico.ValorPadrao,
+                    ValorCobrado = servico.ValorPadrao,
+                    TempoEstimadoMinutosSnapshot = servico.TempoEstimadoMinutos,
+                    StatusItem = StatusItem.Pendente
+                });
             }
-
-            os.ValorMaoDeObra += servico.ValorPadrao;
-            servicoSelecionadoId = 0; // Reset
+            servicoSelecionadoId = 0;
         }
+    }
+
+    private void RemoverServicoDaLista(OrdemServicoServico item)
+    {
+        os.ServicosAExecutarList.Remove(item);
     }
 
     // ─── Wizard: Métodos ─────────────────────────────────────────────────────────
