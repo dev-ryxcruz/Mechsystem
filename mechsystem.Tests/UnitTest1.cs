@@ -694,7 +694,7 @@ public class OrdemServicoStabilizationTests
                 };
                 db.OrdensServico.Add(os);
                 await db.SaveChangesAsync();
-|A
+
                 await osService.AdicionarPecaAsync(os.Id, peca1.Id, 2, null, admin.Id, PerfilUsuario.Administrador);
                 await osService.AdicionarPecaAsync(os.Id, peca2.Id, 99, null, admin.Id, PerfilUsuario.Administrador);
 
