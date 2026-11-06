@@ -112,32 +112,45 @@ public class OrdemServicoStabilizationTests
     [Fact]
     public void TransicoesDeEstado_ValidasEInvalidas_DevemRespeitarMaquinaDeEstados()
     {
-        // Transições válidas
-        Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Orcamento, OrdemServicoStatus.EmAndamento));
+        // Transições válidas Fase 2
+        Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Orcamento, OrdemServicoStatus.Aprovada));
+        Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Orcamento, OrdemServicoStatus.Recusada));
         Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Orcamento, OrdemServicoStatus.Cancelada));
+
+        Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Aprovada, OrdemServicoStatus.EmAndamento));
+        Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Aprovada, OrdemServicoStatus.Cancelada));
+
         Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.EmAndamento, OrdemServicoStatus.Pausada));
         Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Pausada, OrdemServicoStatus.EmAndamento));
+
         Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.EmAndamento, OrdemServicoStatus.AguardandoPecas));
         Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.AguardandoPecas, OrdemServicoStatus.EmAndamento));
+
+        Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.EmAndamento, OrdemServicoStatus.AguardandoCliente));
+        Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.AguardandoCliente, OrdemServicoStatus.EmAndamento));
+
         Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.EmAndamento, OrdemServicoStatus.Concluida));
+        Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Concluida, OrdemServicoStatus.Entregue));
+
         Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.EmAndamento, OrdemServicoStatus.Cancelada));
         Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Pausada, OrdemServicoStatus.Cancelada));
         Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.AguardandoPecas, OrdemServicoStatus.Cancelada));
+        Assert.True(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.AguardandoCliente, OrdemServicoStatus.Cancelada));
 
         // Transições inválidas bloqueadas
+        Assert.False(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Orcamento, OrdemServicoStatus.EmAndamento));
         Assert.False(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Orcamento, OrdemServicoStatus.Concluida));
-        Assert.False(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Orcamento, OrdemServicoStatus.Pausada));
-        Assert.False(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Pausada, OrdemServicoStatus.Concluida));
-        Assert.False(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.AguardandoPecas, OrdemServicoStatus.Concluida));
+        Assert.False(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Orcamento, OrdemServicoStatus.Entregue));
         Assert.False(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Concluida, OrdemServicoStatus.Cancelada));
-        Assert.False(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Concluida, OrdemServicoStatus.EmAndamento));
+        Assert.False(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Entregue, OrdemServicoStatus.Cancelada));
+        Assert.False(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Recusada, OrdemServicoStatus.Aprovada));
         Assert.False(OrdemServicoService.PodeTransicionar(OrdemServicoStatus.Cancelada, OrdemServicoStatus.EmAndamento));
     }
 
     [Fact]
     public async Task FluxoEstoqueOS_AprovacaoAdicaoRemocaoECancelamento_SemBaixaDuplicada()
     {
-        var (db, _, _, osService) = CreateSut();
+        var (db, _, estoqueService, osService) = CreateSut();
         var (admin, atendente, mecanico, veiculo, peca1, peca2) = await SeedBasicScenarioAsync(db);
 
         var os = new OrdemServico
@@ -154,34 +167,60 @@ public class OrdemServicoStabilizationTests
         db.OrdensServico.Add(os);
         await db.SaveChangesAsync();
 
-        // 1. Adicionar peça em Orçamento NÃO deve baixar estoque
+        // 1. Adicionar peça em Orçamento NÃO deve alterar estoque nem reserva
         await osService.AdicionarPecaAsync(os.Id, peca1.Id, 2, null, atendente.Id, PerfilUsuario.Atendimento);
-        Assert.Equal(10, (await db.Pecas.FindAsync(peca1.Id))!.EstoqueAtual);
+        var res1 = await estoqueService.ObterReservaInfoAsync(peca1.Id);
+        Assert.Equal(10, res1.EstoqueAtual);
+        Assert.Equal(0, res1.QuantidadeReservada);
+        Assert.Equal(10, res1.EstoqueDisponivel);
 
-        // 2. Aprovar O.S. deve baixar as 2 unidades de peca1 (10 -> 8)
+        // 2. Aprovar O.S. move para Aprovada e RESERVA as 2 unidades (físico: 10, reservado: 2, disponível: 8)
         await osService.AprovarOSAsync(os.Id, "Cliente Teste", "Presencial", atendente.Id, PerfilUsuario.Atendimento);
-        Assert.Equal(OrdemServicoStatus.EmAndamento, (await db.OrdensServico.FindAsync(os.Id))!.Status);
-        Assert.Equal(8, (await db.Pecas.FindAsync(peca1.Id))!.EstoqueAtual);
+        var osAprovada = await db.OrdensServico.FindAsync(os.Id);
+        Assert.Equal(OrdemServicoStatus.Aprovada, osAprovada!.Status);
 
-        // 3. Transitar EmAndamento -> AguardandoPecas -> EmAndamento NÃO deve baixar estoque novamente
-        await osService.AguardarPecasAsync(os.Id, PerfilUsuario.Mecanico);
-        await osService.IniciarOuRetomarServicoAsync(os.Id, PerfilUsuario.Mecanico);
-        Assert.Equal(8, (await db.Pecas.FindAsync(peca1.Id))!.EstoqueAtual);
+        var res2 = await estoqueService.ObterReservaInfoAsync(peca1.Id);
+        Assert.Equal(10, res2.EstoqueAtual);
+        Assert.Equal(2, res2.QuantidadeReservada);
+        Assert.Equal(8, res2.EstoqueDisponivel);
 
-        // 4. Mecânico adicionando peca2 durante EmAndamento deve baixar imediatamente (5 -> 3)
-        await osService.AdicionarPecaAsync(os.Id, peca2.Id, 2, null, mecanico.Id, PerfilUsuario.Mecanico);
-        Assert.Equal(3, (await db.Pecas.FindAsync(peca2.Id))!.EstoqueAtual);
+        // 3. Primeira execução (iniciar apontamento) move Aprovada -> EmAndamento
+        await osService.IniciarApontamentoAsync(os.Id, null, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico);
+        var osExec = await db.OrdensServico.FindAsync(os.Id);
+        Assert.Equal(OrdemServicoStatus.EmAndamento, osExec!.Status);
 
-        // 5. Remover peca1 da O.S. em andamento deve estornar imediatamente (8 -> 10)
+        // 4. Mecânico marca peca1 como aplicada -> BAIXA física do estoque (10 -> 8), reserva zerada (disponível permanece 8)
         var itemPeca1 = await db.OrdemServicoPecas.FirstAsync(op => op.OrdemServicoId == os.Id && op.PecaId == peca1.Id);
-        await osService.RemoverPecaAsync(os.Id, itemPeca1.Id, atendente.Id, PerfilUsuario.Atendimento);
-        Assert.Equal(10, (await db.Pecas.FindAsync(peca1.Id))!.EstoqueAtual);
+        await osService.MarcarPecaAplicadaAsync(itemPeca1.Id, mecanico.Id, PerfilUsuario.Mecanico);
+        var res3 = await estoqueService.ObterReservaInfoAsync(peca1.Id);
+        Assert.Equal(8, res3.EstoqueAtual);
+        Assert.Equal(0, res3.QuantidadeReservada);
+        Assert.Equal(8, res3.EstoqueDisponivel);
 
-        // 6. Cancelar a O.S. deve estornar apenas peca2 que permaneceu na O.S. (3 -> 5), sem duplicar estorno de peca1
+        // 5. Adicionar peca2 como aditivo durante a execução (físico: 5)
+        var aditivoPeca2Id = await osService.AdicionarPecaAditivaAsync(os.Id, peca2.Id, 2, null, OrigemPeca.Estoque, mecanico.Id, PerfilUsuario.Mecanico);
+        var osAguardando = await db.OrdensServico.FindAsync(os.Id);
+        Assert.Equal(OrdemServicoStatus.AguardandoCliente, osAguardando!.Status);
+
+        // Cliente aprova aditivo -> reserva 2 unidades de peca2 (físico: 5, reservado: 2, disponível: 3)
+        await osService.AprovarAditivoAsync(os.Id, null, new[] { aditivoPeca2Id }, "Cliente", TipoContato.WhatsApp, atendente.Id, PerfilUsuario.Atendimento);
+        var resPeca2Aprovada = await estoqueService.ObterReservaInfoAsync(peca2.Id);
+        Assert.Equal(5, resPeca2Aprovada.EstoqueAtual);
+        Assert.Equal(2, resPeca2Aprovada.QuantidadeReservada);
+        Assert.Equal(3, resPeca2Aprovada.EstoqueDisponivel);
+
+        // 6. Cancelar a O.S.: estorna peca1 (que foi aplicada: 8 -> 10) e libera reserva de peca2 (não aplicada: 5 mantido, reserva volta a 0)
         await osService.CancelarOSAsync(os.Id, "Cliente desistiu do reparo", admin.Id, PerfilUsuario.Administrador);
         Assert.Equal(OrdemServicoStatus.Cancelada, (await db.OrdensServico.FindAsync(os.Id))!.Status);
-        Assert.Equal(10, (await db.Pecas.FindAsync(peca1.Id))!.EstoqueAtual);
-        Assert.Equal(5, (await db.Pecas.FindAsync(peca2.Id))!.EstoqueAtual);
+
+        var resPeca1Final = await estoqueService.ObterReservaInfoAsync(peca1.Id);
+        Assert.Equal(10, resPeca1Final.EstoqueAtual);
+        Assert.Equal(0, resPeca1Final.QuantidadeReservada);
+
+        var resPeca2Final = await estoqueService.ObterReservaInfoAsync(peca2.Id);
+        Assert.Equal(5, resPeca2Final.EstoqueAtual);
+        Assert.Equal(0, resPeca2Final.QuantidadeReservada);
+        Assert.Equal(5, resPeca2Final.EstoqueDisponivel);
     }
 
     [Fact]
@@ -368,6 +407,11 @@ public class OrdemServicoStabilizationTests
         await osService.AdicionarPecaAsync(os.Id, peca1.Id, 2, 45m, admin.Id, PerfilUsuario.Administrador);
         await osService.AprovarOSAsync(os.Id, "Cliente Teste", "Presencial", admin.Id, PerfilUsuario.Administrador);
 
+        // Inicia apontamento (move Aprovada -> EmAndamento) e marca peça aplicada para liberar conclusão
+        await osService.IniciarApontamentoAsync(os.Id, null, admin.Id, admin.Id, PerfilUsuario.Administrador);
+        var itemPecaConcluir = await db.OrdemServicoPecas.FirstAsync(op => op.OrdemServicoId == os.Id);
+        await osService.MarcarPecaAplicadaAsync(itemPecaConcluir.Id, admin.Id, PerfilUsuario.Administrador);
+
         var antesConclusao = DateTime.UtcNow.AddSeconds(-2);
         await osService.ConcluirOSAsync(os.Id, PerfilUsuario.Mecanico);
 
@@ -431,7 +475,7 @@ public class OrdemServicoStabilizationTests
         var (db, _, _, osService) = CreateSut();
         var (admin, atendente, mecanico, veiculo, _, _) = await SeedBasicScenarioAsync(db);
 
-        var emissao = new DateTime(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc);
+        var emissao = DateTime.UtcNow.Date;
         var entregaInicial = emissao.AddDays(3);
 
         var servico = new Servico
@@ -566,10 +610,16 @@ public class OrdemServicoStabilizationTests
             "Atendente Teste");
 
         var contatos = await db.ContatosOS.Where(c => c.OrdemServicoId == os.Id).ToListAsync();
-        Assert.Single(contatos);
+        Assert.Equal(2, contatos.Count);
+        var contatoPrevisao = contatos.First(c => c.Descricao.Contains("Previsão alterada"));
         Assert.Equal(
             $"Previsão alterada de {emissao.AddDays(4):dd/MM/yyyy} para {novaPrevisao:dd/MM/yyyy} por Atendente Teste",
-            contatos[0].Descricao);
+            contatoPrevisao.Descricao);
+
+        // Inicia apontamento e executa serviço para permitir conclusão
+        var itemServConcluir = await db.OrdemServicoServicos.FirstAsync(s => s.OrdemServicoId == os.Id);
+        await osService.IniciarApontamentoAsync(os.Id, itemServConcluir.Id, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico);
+        await osService.MarcarServicoExecutadoAsync(itemServConcluir.Id, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico);
 
         await osService.ConcluirOSAsync(os.Id, PerfilUsuario.Mecanico, mecanico.Id);
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -694,7 +744,7 @@ public class OrdemServicoStabilizationTests
                 };
                 db.OrdensServico.Add(os);
                 await db.SaveChangesAsync();
-|A
+
                 await osService.AdicionarPecaAsync(os.Id, peca1.Id, 2, null, admin.Id, PerfilUsuario.Administrador);
                 await osService.AdicionarPecaAsync(os.Id, peca2.Id, 99, null, admin.Id, PerfilUsuario.Administrador);
 
@@ -1021,5 +1071,363 @@ public class OrdemServicoStabilizationTests
                 }
             }
         }
+    }
+
+    [Fact]
+    public async Task OrcamentoVencido_DeveBloquearAprovacao_EPermitirApenasRenovacaoPorAdmin()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (admin, atendente, mecanico, veiculo, _, _) = await SeedBasicScenarioAsync(db);
+
+        var servico = new Servico { Nome = "Troca de Óleo", ValorPadrao = 100m, TempoEstimadoMinutos = 30, Ativo = true };
+        db.Servicos.Add(servico);
+        await db.SaveChangesAsync();
+
+        var os = new OrdemServico
+        {
+            VeiculoId = veiculo.Id,
+            KmEntrada = 45000,
+            NivelCombustivelEntrada = NivelCombustivel.Meio,
+            QueixaCliente = "Revisão periódica",
+            DataEmissao = DateTime.UtcNow.AddDays(-20),
+            DataPrevisaoEntrega = DateTime.UtcNow.AddDays(2),
+            ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(-5), // Vencido há 5 dias!
+            Status = OrdemServicoStatus.Orcamento
+        };
+        db.OrdensServico.Add(os);
+        await db.SaveChangesAsync();
+
+        db.OrdemServicoServicos.Add(new OrdemServicoServico
+        {
+            OrdemServicoId = os.Id,
+            ServicoId = servico.Id,
+            Quantidade = 1,
+            PrecoBase = 100m,
+            ValorCobrado = 100m,
+            StatusItem = StatusItem.Pendente
+        });
+        await db.SaveChangesAsync();
+
+        // Tentativa de aprovação bloqueada com mensagem clara de orçamento vencido
+        var exAprov = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.AprovarOSAsync(os.Id, "Cliente Teste", "Presencial", atendente.Id, PerfilUsuario.Atendimento));
+        Assert.Contains("vencido", exAprov.Message, StringComparison.OrdinalIgnoreCase);
+
+        // Atendente e Mecânico não podem renovar validade
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.RenovarValidadeOrcamentoAsync(os.Id, DateTime.UtcNow.AddDays(10), atendente.Id, PerfilUsuario.Atendimento));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.RenovarValidadeOrcamentoAsync(os.Id, DateTime.UtcNow.AddDays(10), mecanico.Id, PerfilUsuario.Mecanico));
+
+        // Administrador renova a validade
+        var novaValidade = DateTime.UtcNow.AddDays(10);
+        await osService.RenovarValidadeOrcamentoAsync(os.Id, novaValidade, admin.Id, PerfilUsuario.Administrador);
+
+        var osRenovada = await db.OrdensServico.FindAsync(os.Id);
+        Assert.Equal(novaValidade.Date, osRenovada!.ValidadeOrcamentoAte.Date);
+
+        var contatoRenovacao = await db.ContatosOS.FirstOrDefaultAsync(c => c.OrdemServicoId == os.Id);
+        Assert.NotNull(contatoRenovacao);
+        Assert.Contains("renovada", contatoRenovacao.Descricao, StringComparison.OrdinalIgnoreCase);
+
+        // Agora aprovação pelo Atendente tem sucesso
+        await osService.AprovarOSAsync(os.Id, "Cliente Teste", "WhatsApp", atendente.Id, PerfilUsuario.Atendimento);
+        var osAprovada = await db.OrdensServico.FindAsync(os.Id);
+        Assert.Equal(OrdemServicoStatus.Aprovada, osAprovada!.Status);
+    }
+
+    [Fact]
+    public async Task AprovacaoParcial_DeveAprovarItensSelecionadosERecusarDemais_ERequisitarAoMenosUmItem()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (admin, atendente, _, veiculo, peca1, peca2) = await SeedBasicScenarioAsync(db);
+
+        var serv1 = new Servico { Nome = "Alinhamento", ValorPadrao = 120m, TempoEstimadoMinutos = 40, Ativo = true };
+        var serv2 = new Servico { Nome = "Balanceamento", ValorPadrao = 80m, TempoEstimadoMinutos = 30, Ativo = true };
+        db.Servicos.AddRange(serv1, serv2);
+        await db.SaveChangesAsync();
+
+        var os = new OrdemServico
+        {
+            VeiculoId = veiculo.Id,
+            KmEntrada = 30000,
+            NivelCombustivelEntrada = NivelCombustivel.TresQuartos,
+            QueixaCliente = "Carro puxando",
+            DataEmissao = DateTime.UtcNow,
+            DataPrevisaoEntrega = DateTime.UtcNow.AddDays(1),
+            ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(10),
+            Status = OrdemServicoStatus.Orcamento
+        };
+        db.OrdensServico.Add(os);
+        await db.SaveChangesAsync();
+
+        var itemServ1 = new OrdemServicoServico { OrdemServicoId = os.Id, ServicoId = serv1.Id, Quantidade = 1, PrecoBase = 120m, ValorCobrado = 120m, StatusItem = StatusItem.Pendente };
+        var itemServ2 = new OrdemServicoServico { OrdemServicoId = os.Id, ServicoId = serv2.Id, Quantidade = 1, PrecoBase = 80m, ValorCobrado = 80m, StatusItem = StatusItem.Pendente };
+        db.OrdemServicoServicos.AddRange(itemServ1, itemServ2);
+
+        var itemPeca1 = new OrdemServicoPeca { OrdemServicoId = os.Id, PecaId = peca1.Id, Quantidade = 1, PrecoBase = 45m, ValorCobrado = 45m, Origem = OrigemPeca.Estoque, StatusItem = StatusItem.Pendente };
+        var itemPeca2 = new OrdemServicoPeca { OrdemServicoId = os.Id, PecaId = peca2.Id, Quantidade = 1, PrecoBase = 90m, ValorCobrado = 90m, Origem = OrigemPeca.Estoque, StatusItem = StatusItem.Pendente };
+        db.OrdemServicoPecas.AddRange(itemPeca1, itemPeca2);
+        await db.SaveChangesAsync();
+
+        // Tentativa de aprovar sem nenhum item selecionado -> erro
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.AprovarOSAsync(os.Id, Array.Empty<int>(), Array.Empty<int>(), "Cliente", TipoContato.Presencial, atendente.Id, PerfilUsuario.Atendimento));
+
+        // Aprovação parcial: aprova apenas itemServ1 e itemPeca1; rejeita itemServ2 e itemPeca2
+        await osService.AprovarOSAsync(os.Id, new[] { itemServ1.Id }, new[] { itemPeca1.Id }, "Cliente", TipoContato.Presencial, atendente.Id, PerfilUsuario.Atendimento);
+
+        var osAprovada = await db.OrdensServico
+            .Include(o => o.ServicosAExecutarList)
+            .Include(o => o.PecasUtilizadas)
+            .FirstAsync(o => o.Id == os.Id);
+
+        Assert.Equal(OrdemServicoStatus.Aprovada, osAprovada.Status);
+        Assert.Equal(StatusItem.Aprovado, osAprovada.ServicosAExecutarList.First(s => s.Id == itemServ1.Id).StatusItem);
+        Assert.Equal(StatusItem.Recusado, osAprovada.ServicosAExecutarList.First(s => s.Id == itemServ2.Id).StatusItem);
+        Assert.Equal(StatusItem.Aprovado, osAprovada.PecasUtilizadas.First(p => p.Id == itemPeca1.Id).StatusItem);
+        Assert.Equal(StatusItem.Recusado, osAprovada.PecasUtilizadas.First(p => p.Id == itemPeca2.Id).StatusItem);
+
+        // ValorTotal após aprovação computa apenas itens aprovados (120 + 45 = 165)
+        Assert.Equal(120m, osAprovada.ValorMaoDeObraEfetivo);
+        Assert.Equal(45m, osAprovada.ValorPecasEfetivo);
+        Assert.Equal(165m, osAprovada.ValorTotal);
+    }
+
+    [Fact]
+    public async Task AditivoPendente_DeveBloquearConclusao_EMoverOSParaAguardandoCliente()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (admin, atendente, mecanico, veiculo, _, _) = await SeedBasicScenarioAsync(db);
+
+        var servPrincipal = new Servico { Nome = "Revisão", ValorPadrao = 200m, TempoEstimadoMinutos = 60, Ativo = true };
+        var servAdicional = new Servico { Nome = "Higienização Ar", ValorPadrao = 80m, TempoEstimadoMinutos = 30, Ativo = true };
+        db.Servicos.AddRange(servPrincipal, servAdicional);
+        await db.SaveChangesAsync();
+
+        var os = new OrdemServico
+        {
+            VeiculoId = veiculo.Id,
+            KmEntrada = 50000,
+            NivelCombustivelEntrada = NivelCombustivel.Meio,
+            QueixaCliente = "Revisão",
+            DataEmissao = DateTime.UtcNow,
+            DataPrevisaoEntrega = DateTime.UtcNow.AddDays(2),
+            ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(10),
+            Status = OrdemServicoStatus.Orcamento
+        };
+        db.OrdensServico.Add(os);
+        await db.SaveChangesAsync();
+
+        var itemServ1 = new OrdemServicoServico { OrdemServicoId = os.Id, ServicoId = servPrincipal.Id, Quantidade = 1, PrecoBase = 200m, ValorCobrado = 200m, StatusItem = StatusItem.Pendente };
+        db.OrdemServicoServicos.Add(itemServ1);
+        await db.SaveChangesAsync();
+
+        await osService.AprovarOSAsync(os.Id, "Cliente", "Presencial", atendente.Id, PerfilUsuario.Atendimento);
+        await osService.IniciarApontamentoAsync(os.Id, itemServ1.Id, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico);
+
+        // Mecânico propõe aditivo de serviço durante a execução -> O.S. passa para AguardandoCliente
+        var aditivoServId = await osService.AdicionarServicoAditivoAsync(os.Id, servAdicional.Id, 1, 80m, mecanico.Id, PerfilUsuario.Mecanico);
+        var osEmEspera = await db.OrdensServico.FindAsync(os.Id);
+        Assert.Equal(OrdemServicoStatus.AguardandoCliente, osEmEspera!.Status);
+
+        // Enquanto o aditivo estiver pendente, tentar concluir a O.S. deve falhar
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.ConcluirOSAsync(os.Id, PerfilUsuario.Mecanico, mecanico.Id));
+
+        // Mecânico tenta aprovar aditivo -> bloqueado (só Admin/Atendimento)
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.AprovarAditivoAsync(os.Id, new[] { aditivoServId }, null, "Cliente", TipoContato.WhatsApp, mecanico.Id, PerfilUsuario.Mecanico));
+
+        // Atendente aprova aditivo -> O.S. volta para EmAndamento
+        await osService.AprovarAditivoAsync(os.Id, new[] { aditivoServId }, null, "Cliente", TipoContato.WhatsApp, atendente.Id, PerfilUsuario.Atendimento);
+        var osRetomada = await db.OrdensServico.FindAsync(os.Id);
+        Assert.Equal(OrdemServicoStatus.EmAndamento, osRetomada!.Status);
+
+        // Concluir ainda falha se os serviços não estiverem executados (sem justificativa)
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.ConcluirOSAsync(os.Id, PerfilUsuario.Mecanico, mecanico.Id));
+
+        // Marca ambos os serviços como executados
+        await osService.MarcarServicoExecutadoAsync(itemServ1.Id, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico);
+        await osService.MarcarServicoExecutadoAsync(aditivoServId, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico);
+
+        // Agora conclui com sucesso persistindo o ChecklistConclusaoJson
+        var checklistJson = "{\"FluidosOk\":true,\"LimpezaOk\":true,\"FerramentasRecolhidas\":true}";
+        await osService.ConcluirOSAsync(os.Id, checklistJson, null, mecanico.Id, PerfilUsuario.Mecanico);
+
+        var osConcluida = await db.OrdensServico.FindAsync(os.Id);
+        Assert.Equal(OrdemServicoStatus.Concluida, osConcluida!.Status);
+        Assert.Equal(checklistJson, osConcluida.ChecklistConclusaoJson);
+    }
+
+    [Fact]
+    public async Task ApontamentoDuplicado_DeveBloquearSegundoApontamentoAbertoParaOMesmoMecanico()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (_, atendente, mecanico, veiculo, _, _) = await SeedBasicScenarioAsync(db);
+
+        var os1 = new OrdemServico { VeiculoId = veiculo.Id, KmEntrada = 10000, NivelCombustivelEntrada = NivelCombustivel.Cheio, QueixaCliente = "OS 1", DataEmissao = DateTime.UtcNow, DataPrevisaoEntrega = DateTime.UtcNow.AddDays(1), ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(5), Status = OrdemServicoStatus.Orcamento };
+        var os2 = new OrdemServico { VeiculoId = veiculo.Id, KmEntrada = 10000, NivelCombustivelEntrada = NivelCombustivel.Cheio, QueixaCliente = "OS 2", DataEmissao = DateTime.UtcNow, DataPrevisaoEntrega = DateTime.UtcNow.AddDays(1), ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(5), Status = OrdemServicoStatus.Orcamento };
+        db.OrdensServico.AddRange(os1, os2);
+        await db.SaveChangesAsync();
+
+        var servico = new Servico { Nome = "Diagnóstico", ValorPadrao = 50m, TempoEstimadoMinutos = 30, Ativo = true };
+        db.Servicos.Add(servico);
+        await db.SaveChangesAsync();
+
+        db.OrdemServicoServicos.Add(new OrdemServicoServico { OrdemServicoId = os1.Id, ServicoId = servico.Id, Quantidade = 1, PrecoBase = 50m, ValorCobrado = 50m, StatusItem = StatusItem.Aprovado });
+        db.OrdemServicoServicos.Add(new OrdemServicoServico { OrdemServicoId = os2.Id, ServicoId = servico.Id, Quantidade = 1, PrecoBase = 50m, ValorCobrado = 50m, StatusItem = StatusItem.Aprovado });
+        await db.SaveChangesAsync();
+
+        await osService.AprovarOSAsync(os1.Id, "Cliente", "Presencial", atendente.Id, PerfilUsuario.Atendimento);
+        await osService.AprovarOSAsync(os2.Id, "Cliente", "Presencial", atendente.Id, PerfilUsuario.Atendimento);
+
+        // Mecânico inicia apontamento na OS 1
+        var ap1Id = await osService.IniciarApontamentoAsync(os1.Id, null, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico);
+        Assert.True(ap1Id > 0);
+
+        // Tentativa de abrir apontamento na OS 2 com o mesmo mecânico -> bloqueado!
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.IniciarApontamentoAsync(os2.Id, null, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico));
+        Assert.Contains("já possui um apontamento", ex.Message, StringComparison.OrdinalIgnoreCase);
+
+        // Pausa apontamento na OS 1
+        await osService.PausarApontamentoAsync(os1.Id, ap1Id, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico);
+
+        // Agora consegue iniciar na OS 2
+        var ap2Id = await osService.IniciarApontamentoAsync(os2.Id, null, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico);
+        Assert.True(ap2Id > 0);
+    }
+
+    [Fact]
+    public async Task EntregaOS_ValidacoesKmSaidaEPagamentoERbac()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (admin, atendente, mecanico, veiculo, _, _) = await SeedBasicScenarioAsync(db);
+
+        var servico = new Servico { Nome = "Manutenção", ValorPadrao = 500m, TempoEstimadoMinutos = 120, Ativo = true };
+        db.Servicos.Add(servico);
+        await db.SaveChangesAsync();
+
+        var os = new OrdemServico
+        {
+            VeiculoId = veiculo.Id,
+            KmEntrada = 60000,
+            NivelCombustivelEntrada = NivelCombustivel.Meio,
+            QueixaCliente = "Revisão geral",
+            DataEmissao = DateTime.UtcNow,
+            DataPrevisaoEntrega = DateTime.UtcNow.AddDays(1),
+            ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(5),
+            Status = OrdemServicoStatus.Orcamento
+        };
+        db.OrdensServico.Add(os);
+        await db.SaveChangesAsync();
+
+        var itemServ = new OrdemServicoServico { OrdemServicoId = os.Id, ServicoId = servico.Id, Quantidade = 1, PrecoBase = 500m, ValorCobrado = 500m, StatusItem = StatusItem.Aprovado };
+        db.OrdemServicoServicos.Add(itemServ);
+        await db.SaveChangesAsync();
+
+        await osService.AprovarOSAsync(os.Id, "Cliente", "Presencial", atendente.Id, PerfilUsuario.Atendimento);
+        await osService.IniciarApontamentoAsync(os.Id, itemServ.Id, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico);
+        await osService.MarcarServicoExecutadoAsync(itemServ.Id, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico);
+        await osService.ConcluirOSAsync(os.Id, PerfilUsuario.Mecanico, mecanico.Id);
+
+        // 1. Mecânico não pode entregar veículo
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.EntregarOSAsync(os.Id, 60010, Array.Empty<Pagamento>(), mecanico.Id, PerfilUsuario.Mecanico));
+
+        // 2. KmSaida menor que KmEntrada -> bloqueado
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.EntregarOSAsync(os.Id, 59990, Array.Empty<Pagamento>(), atendente.Id, PerfilUsuario.Atendimento));
+
+        // 3. Pagamento insuficiente tentado por Atendente (ex: pagou R$ 300 de R$ 500) -> bloqueado
+        var pagParcial = new List<Pagamento> { new() { Forma = FormaPagamento.Pix, Valor = 300m } };
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.EntregarOSAsync(os.Id, 60010, pagParcial, atendente.Id, PerfilUsuario.Atendimento));
+
+        // 4. Administrador autoriza entrega com saldo em aberto com observação
+        await osService.EntregarOSAsync(os.Id, 60010, pagParcial, admin.Id, PerfilUsuario.Administrador, "Autorizado pelo Diretor com promissória para 10 dias.");
+
+        var osEntregue = await db.OrdensServico.Include(o => o.Veiculo).Include(o => o.Pagamentos).FirstAsync(o => o.Id == os.Id);
+        Assert.Equal(OrdemServicoStatus.Entregue, osEntregue.Status);
+        Assert.Equal(60010, osEntregue.KmSaida);
+        Assert.Equal(60010, osEntregue.Veiculo!.Quilometragem);
+        Assert.NotNull(osEntregue.DataEntrega);
+        Assert.NotNull(osEntregue.GarantiaDias);
+        Assert.Single(osEntregue.Pagamentos);
+        Assert.Equal(300m, osEntregue.Pagamentos.First().Valor);
+    }
+
+    [Fact]
+    public async Task AtribuirMecanico_DeveRespeitarRegrasDeResponsavel()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (admin, atendente, mecanico, veiculo, _, _) = await SeedBasicScenarioAsync(db);
+
+        var outroMecanico = new Usuario { Username = "mecanico2", NomeCompleto = "Mecânico 2", Perfil = PerfilUsuario.Mecanico, PasswordHash = "hash" };
+        db.Usuarios.Add(outroMecanico);
+        await db.SaveChangesAsync();
+
+        var os = new OrdemServico { VeiculoId = veiculo.Id, KmEntrada = 10000, NivelCombustivelEntrada = NivelCombustivel.Meio, QueixaCliente = "Queixa", DataEmissao = DateTime.UtcNow, DataPrevisaoEntrega = DateTime.UtcNow.AddDays(2), ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(5), Status = OrdemServicoStatus.Orcamento };
+        db.OrdensServico.Add(os);
+        await db.SaveChangesAsync();
+
+        // Mecânico assume O.S. sem dono para si mesmo -> permitido
+        await osService.AtribuirMecanicoAsync(os.Id, mecanico.Id, mecanico.Id, PerfilUsuario.Mecanico);
+        var osAssumida = await db.OrdensServico.FindAsync(os.Id);
+        Assert.Equal(mecanico.Id, osAssumida!.MecanicoResponsavelId);
+
+        // Outro mecânico tentando assumir uma O.S. que já tem dono -> bloqueado
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.AtribuirMecanicoAsync(os.Id, outroMecanico.Id, outroMecanico.Id, PerfilUsuario.Mecanico));
+
+        // Atendente ou Administrador podem reatribuir
+        await osService.AtribuirMecanicoAsync(os.Id, outroMecanico.Id, atendente.Id, PerfilUsuario.Atendimento);
+        var osReatribuida = await db.OrdensServico.FindAsync(os.Id);
+        Assert.Equal(outroMecanico.Id, osReatribuida!.MecanicoResponsavelId);
+    }
+
+    [Fact]
+    public async Task RecusarOrcamento_DeveGravarMotivoEStatusRecusada()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (admin, atendente, mecanico, veiculo, _, _) = await SeedBasicScenarioAsync(db);
+
+        var os = new OrdemServico { VeiculoId = veiculo.Id, KmEntrada = 10000, NivelCombustivelEntrada = NivelCombustivel.Meio, QueixaCliente = "Queixa", DataEmissao = DateTime.UtcNow, DataPrevisaoEntrega = DateTime.UtcNow.AddDays(2), ValidadeOrcamentoAte = DateTime.UtcNow.AddDays(5), Status = OrdemServicoStatus.Orcamento };
+        db.OrdensServico.Add(os);
+        await db.SaveChangesAsync();
+
+        // Mecânico não pode recusar orçamento
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            osService.RecusarOrcamentoAsync(os.Id, "Cliente achou caro", mecanico.Id, PerfilUsuario.Mecanico));
+
+        // Motivo menor que 5 caracteres -> erro
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.RecusarOrcamentoAsync(os.Id, "Caro", atendente.Id, PerfilUsuario.Atendimento));
+
+        // Atendente recusa com motivo válido
+        await osService.RecusarOrcamentoAsync(os.Id, "Cliente achou o valor muito alto e decidiu adiar", atendente.Id, PerfilUsuario.Atendimento);
+
+        var osRecusada = await db.OrdensServico.FindAsync(os.Id);
+        Assert.Equal(OrdemServicoStatus.Recusada, osRecusada!.Status);
+        Assert.Equal("Cliente achou o valor muito alto e decidiu adiar", osRecusada.MotivoCancelamento);
+    }
+
+    [Fact]
+    public void PrevisaoEntregaSugerida_DevePularFinaisDeSemanaECalcularCorretamente()
+    {
+        // Sexta-feira: 2026-11-06
+        var sexta = new DateTime(2026, 11, 6);
+
+        // 120 minutos (1 dia útil): pula sábado e domingo e sugere segunda-feira (2026-11-09)
+        var sug1 = OrdemServicoService.CalcularPrevisaoEntregaSugerida(120, sexta);
+        Assert.Equal(DayOfWeek.Monday, sug1.DayOfWeek);
+        Assert.Equal(new DateTime(2026, 11, 9), sug1.Date);
+
+        // 960 minutos (2 dias úteis a 480 min/dia): pula sábado e domingo e sugere terça-feira (2026-11-10)
+        var sug2 = OrdemServicoService.CalcularPrevisaoEntregaSugerida(960, sexta);
+        Assert.Equal(DayOfWeek.Tuesday, sug2.DayOfWeek);
+        Assert.Equal(new DateTime(2026, 11, 10), sug2.Date);
     }
 }

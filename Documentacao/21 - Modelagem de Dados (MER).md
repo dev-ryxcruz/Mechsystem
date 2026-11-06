@@ -151,6 +151,7 @@ erDiagram
         datetime data_cancelamento
         int cancelada_por_usuario_id FK
         string token_acompanhamento
+        string checklist_conclusao_json "Fase 2"
         decimal valor_mao_de_obra_efetivo "derivado"
         decimal valor_pecas_efetivo "derivado"
         decimal valor_total "derivado"
@@ -363,6 +364,7 @@ erDiagram
         TIMESTAMPTZ data_cancelamento
         INT cancelada_por_usuario_id FK
         VARCHAR64 token_acompanhamento UK
+        TEXT checklist_conclusao_json
     }
     VISTORIA {
         INT id PK
@@ -562,6 +564,8 @@ Modelo derivado das entidades em `Models/` e do [AppDbContext.cs](../Data/AppDbC
     - Mapeia `meio_autorizacao` textual para o enum `tipo_contato_autorizacao` (`Presencial`, `WhatsApp`, `Telefone → Ligacao`, `E-mail → Email`, demais → `Outro`).
     - Preenche `validade_orcamento_ate = data_emissao + INTERVAL '10 days'` retroativamente e `km_entrada` a partir de `vistoria.quilometragem_entrada` ou `veiculo.quilometragem`.
   - `20261105231257_Fase1RemoverColunasLegadasFluxoOS`: segunda migration que remove as colunas legadas (`descricao_problema_relatado`, `valor_mao_de_obra`, `valor_pecas`, `servico_a_executar`, `data_previsao_inicio`, `meio_autorizacao`, `tempo_gasto_minutos`, `inicio_ultima_execucao`, `vistoria.quilometragem_entrada`, `configuracao.taxa_mao_de_obra` e `configuracao.simbolo_moeda`) somente após a execução do script de dados.
+- **Refatoração do Fluxo O.S. — Fase 2 (Regras de Negócio e Checklist de Conclusão)**:
+  - `20261106222232_Fase2ChecklistConclusaoFluxoOS`: migration aditiva que adiciona a coluna `checklist_conclusao_json` (`TEXT NULL`) na tabela `ordens_servico` para persistência dos itens checados na conclusão da OS (fluidos, limpeza, ferramentas, etc.).
 
 Fora do escopo de tabelas próprias: classes `Relatorio*` (DTOs de agregação e exportação CSV gerados por `RelatorioService`; não possuem `DbSet` no contexto) e `Login` (DTO de autenticação).
 

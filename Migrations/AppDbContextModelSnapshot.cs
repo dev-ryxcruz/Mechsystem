@@ -300,6 +300,10 @@ namespace mechsystem.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("cancelada_por_usuario_id");
 
+                    b.Property<string>("ChecklistConclusaoJson")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("checklist_conclusao_json");
+
                     b.Property<DateTime?>("DataAutorizacao")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("data_autorizacao");
