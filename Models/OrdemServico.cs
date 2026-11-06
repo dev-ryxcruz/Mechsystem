@@ -46,22 +46,34 @@ namespace mechsystem.Models
 
         // Valores (fonte única = soma das linhas não recusadas)
         /// <summary>
-        /// Valor efetivo da mão de obra: soma das linhas de serviço com StatusItem != Recusado.
+        /// Valor efetivo da mão de obra: em orçamento soma linhas não recusadas; após aprovação soma apenas itens aprovados.
         /// </summary>
         [NotMapped]
         public decimal ValorMaoDeObraEfetivo =>
             ServicosAExecutarList != null
-                ? ServicosAExecutarList.Where(s => s.StatusItem != StatusItem.Recusado).Sum(s => s.Subtotal)
+                ? (Status == OrdemServicoStatus.Orcamento
+                    ? ServicosAExecutarList.Where(s => s.StatusItem != StatusItem.Recusado).Sum(s => s.Subtotal)
+                    : ServicosAExecutarList.Where(s => s.StatusItem == StatusItem.Aprovado).Sum(s => s.Subtotal))
                 : 0m;
 
         /// <summary>
-        /// Valor efetivo de peças: soma das linhas de peça com StatusItem != Recusado.
+        /// Valor efetivo de peças: em orçamento soma linhas não recusadas; após aprovação soma apenas itens aprovados.
         /// </summary>
         [NotMapped]
         public decimal ValorPecasEfetivo =>
             PecasUtilizadas != null
-                ? PecasUtilizadas.Where(p => p.StatusItem != StatusItem.Recusado).Sum(p => p.Subtotal)
+                ? (Status == OrdemServicoStatus.Orcamento
+                    ? PecasUtilizadas.Where(p => p.StatusItem != StatusItem.Recusado).Sum(p => p.Subtotal)
+                    : PecasUtilizadas.Where(p => p.StatusItem == StatusItem.Aprovado).Sum(p => p.Subtotal))
                 : 0m;
+
+        /// <summary>
+        /// Valor total de aditivos ainda pendentes de aprovação pelo cliente.
+        /// </summary>
+        [NotMapped]
+        public decimal ValorTotalAditivosPendentes =>
+            (ServicosAExecutarList?.Where(s => s.StatusItem == StatusItem.Pendente && s.EhAditivo).Sum(s => s.Subtotal) ?? 0m) +
+            (PecasUtilizadas?.Where(p => p.StatusItem == StatusItem.Pendente && p.EhAditivo).Sum(p => p.Subtotal) ?? 0m);
 
         /// <summary>
         /// Valor de desconto a ser aplicado diretamente na Ordem de Serviço.
@@ -79,13 +91,15 @@ namespace mechsystem.Models
         public decimal ValorTotal => (ValorMaoDeObraEfetivo + ValorPecasEfetivo) - ValorDesconto;
 
         /// <summary>
-        /// Tempo total estimado para realizar todos os serviços não recusados listados.
+        /// Tempo total estimado para realizar todos os serviços: em orçamento soma linhas não recusadas; após aprovação soma apenas serviços aprovados.
         /// </summary>
         [NotMapped]
         [Display(Name = "Tempo Total Estimado (Minutos)")]
         public int TempoTotalEstimadoMinutos =>
             ServicosAExecutarList != null
-                ? ServicosAExecutarList.Where(s => s.StatusItem != StatusItem.Recusado).Sum(s => s.TempoTotalLinhaMinutos)
+                ? (Status == OrdemServicoStatus.Orcamento
+                    ? ServicosAExecutarList.Where(s => s.StatusItem != StatusItem.Recusado).Sum(s => s.TempoTotalLinhaMinutos)
+                    : ServicosAExecutarList.Where(s => s.StatusItem == StatusItem.Aprovado).Sum(s => s.TempoTotalLinhaMinutos))
                 : 0;
 
         /// <summary>
@@ -131,6 +145,10 @@ namespace mechsystem.Models
 
         [Display(Name = "Data da Conclusão")]
         public DateTime? DataConclusao { get; set; }
+
+        [Display(Name = "Checklist de Conclusão (JSON)")]
+        [Column(TypeName = "TEXT")]
+        public string? ChecklistConclusaoJson { get; set; }
 
         [MaxLength(500)]
         [Display(Name = "Motivo do Cancelamento")]

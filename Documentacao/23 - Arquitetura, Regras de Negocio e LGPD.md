@@ -12,38 +12,70 @@ Toda transição de status e edição de uma Ordem de Serviço é centralizada e
 stateDiagram-v2
     [*] --> Orcamento : Criação da O.S. (gera TokenAcompanhamento)
 
-    Orcamento --> EmAndamento : AprovarOSAsync()\n[Admin / Atendimento]\nBaixa estoque em transação
+    Orcamento --> Aprovada : AprovarOSAsync()\n[Admin / Atendimento]\nReserva peças de estoque
+    Orcamento --> Recusada : RecusarOrcamentoAsync(motivo)\n[Admin / Atendimento]\nSem impacto no estoque
     Orcamento --> Cancelada : CancelarOSAsync(motivo)\n[Admin / Atendimento]\nSem impacto no estoque
 
-    EmAndamento --> Pausada : PausarServicoAsync()\n[Admin / Atendimento / Mecânico]\nAcumula tempo executado
-    Pausada --> EmAndamento : IniciarOuRetomarServicoAsync()\n[Admin / Atendimento / Mecânico]\nReinicia cronômetro
+    Aprovada --> EmAndamento : IniciarApontamentoAsync()\n[Admin / Atendimento / Mecânico]\nPrimeira execução
+    Aprovada --> Cancelada : CancelarOSAsync(motivo)\n[Admin / Atendimento]\nLibera reservas
 
-    EmAndamento --> AguardandoPecas : AguardarPecasAsync()\n[Admin / Atendimento / Mecânico]\nAcumula tempo executado
-    AguardandoPecas --> EmAndamento : IniciarOuRetomarServicoAsync()\n[Admin / Atendimento / Mecânico]\nSem nova baixa de estoque
+    EmAndamento --> Pausada : PausarServicoAsync() / PausarApontamentoAsync()\n[Admin / Atendimento / Mecânico]
+    Pausada --> EmAndamento : IniciarApontamentoAsync() / IniciarOuRetomarServicoAsync()\n[Admin / Atendimento / Mecânico]
 
-    EmAndamento --> Concluida : ConcluirOSAsync()\n[Admin / Atendimento / Mecânico]\nRegistra DataConclusao (UTC)
+    EmAndamento --> AguardandoPecas : AguardarPecasAsync()\n[Admin / Atendimento / Mecânico]
+    AguardandoPecas --> EmAndamento : IniciarApontamentoAsync() / IniciarOuRetomarServicoAsync()\n[Admin / Atendimento / Mecânico]
 
-    EmAndamento --> Cancelada : CancelarOSAsync(motivo)\n[Admin / Atendimento]\nEstorna saldo líquido de peças
-    Pausada --> Cancelada : CancelarOSAsync(motivo)\n[Admin / Atendimento]\nEstorna saldo líquido de peças
-    AguardandoPecas --> Cancelada : CancelarOSAsync(motivo)\n[Admin / Atendimento]\nEstorna saldo líquido de peças
+    EmAndamento --> AguardandoCliente : AdicionarServicoAditivoAsync() / AdicionarPecaAditivaAsync()\n[Admin / Atendimento / Mecânico]\nCria aditivo Pendente
+    AguardandoCliente --> EmAndamento : AprovarAditivoAsync()\n[Admin / Atendimento]\nAprova/Recusa aditivos e reserva
 
-    Concluida --> [*]
+    EmAndamento --> Concluida : ConcluirOSAsync()\n[Admin / Atendimento / Mecânico]\nExige itens executados/aplicados e sem aditivos
+    Concluida --> Entregue : EntregarOSAsync(kmSaida, pagamentos)\n[Admin / Atendimento]\nExige KmSaida >= KmEntrada e quitação
+
+    EmAndamento --> Cancelada : CancelarOSAsync(motivo)\n[Admin / Atendimento]\nEstorna peças aplicadas e libera reservas
+    Pausada --> Cancelada : CancelarOSAsync(motivo)\n[Admin / Atendimento]\nEstorna peças aplicadas e libera reservas
+    AguardandoPecas --> Cancelada : CancelarOSAsync(motivo)\n[Admin / Atendimento]\nEstorna peças aplicadas e libera reservas
+    AguardandoCliente --> Cancelada : CancelarOSAsync(motivo)\n[Admin / Atendimento]\nEstorna peças aplicadas e libera reservas
+
+    Recusada --> [*]
+    Entregue --> [*]
     Cancelada --> [*]
 ```
 
-### Regras de Transição e Edição (`AtualizarOSAsync`) e Modelo da Fase 1
+### Regras de Transição e Edição (`AtualizarOSAsync`) e Modelo da Fase 2
 1. **`Orcamento` (Estado Inicial)**: Peças e serviços podem ser orçados livremente sem reservar nem descontar saldo físico do estoque. Na abertura da O.S., são registrados obrigatoriamente `QueixaCliente`, `KmEntrada`, `NivelCombustivelEntrada` e `ValidadeOrcamentoAte` (`DataEmissao + Configuracao.ValidadeOrcamentoDias`). Permite editar queixa do cliente (`QueixaCliente`), diagnóstico técnico (`Diagnostico`), previsão de entrega (`DataPrevisaoEntrega >= DataEmissao`), catálogo de serviços vinculados e desconto (`ValorDesconto`, restrito ao perfil `Administrador`).
-2. **Fonte Única de Valores (Fase 1)**: Foram removidos os campos avulsos `ValorMaoDeObra`, `ValorPecas` e `ServicoAExecutar`. `ValorMaoDeObraEfetivo` e `ValorPecasEfetivo` são calculados exclusivamente pela soma das linhas de `OrdemServicoServico` e `OrdemServicoPeca` com `StatusItem != StatusItem.Recusado`, e `ValorTotal = (ValorMaoDeObraEfetivo + ValorPecasEfetivo) - ValorDesconto`.
-3. **Novos Estados, Entidades e Campos Preparados na Fase 1**:
-   - Enum `OrdemServicoStatus` ampliado (sem renumerar `0..5`) com `Aprovada = 6`, `AguardandoCliente = 7`, `Entregue = 8` e `Recusada = 9`.
-   - Itens de serviço (`OrdemServicoServico`) possuem `StatusItem` (`Pendente`, `Aprovado`, `Recusado`), `Executado`, `MecanicoId` e `EhAditivo`.
-   - Itens de peça (`OrdemServicoPeca`) possuem `Origem` (`Estoque`, `SobDemanda`, `ClienteTrouxe`), `StatusItem`, `Aplicada` e `EhAditivo`.
-   - Entidades `ApontamentoTempo` (cronometragem por mecânico/serviço com índice parcial `WHERE fim IS NULL`) e `Pagamento` (recebimentos por forma de pagamento na entrega).
-4. **`EmAndamento` (Execução Ativa)**: Atingido na aprovação do orçamento (`AprovarOSAsync`, que exige vistoria prévia caso `Configuracao.ObrigarVistoriaParaOS == true` e grava `AprovadoPorUsuarioId` e `TipoContatoAutorizacao`) ou na retomada após pausa/espera de peça.
-5. **`Pausada` e `AguardandoPecas` (Estados Intermediários com Estoque Baixado)**: Pausam a execução mantendo as peças já baixadas alocadas à O.S. Retomar o serviço (`IniciarOuRetomarServicoAsync`) volta para `EmAndamento` sem baixar novamente.
-6. **Edição Pós-Aprovação (`Aprovada`, `EmAndamento`, `Pausada`, `AguardandoPecas`, `AguardandoCliente`)**: Após a aprovação do cliente, a queixa inicial (`QueixaCliente`), o escopo contratado e o desconto ficam bloqueados para edição; apenas o **diagnóstico técnico** (`Diagnostico`) e a **previsão de entrega** (`DataPrevisaoEntrega >= DataEmissao`) podem ser atualizados, gerando automaticamente um registro de auditoria em `ContatoOS` quando a previsão muda (`"Previsão alterada de X para Y por <usuário>"`).
-7. **`Concluida` e `Entregue` (Estados de Encerramento Operacional)**: `Concluida` preenche `DataConclusao = DateTime.UtcNow`; `Entregue` registra `DataEntrega`, `KmSaida` e o snapshot `GarantiaDias` (a máquina de estados completa de aprovação/execução/aditivos/entrega será expandida na Fase 2).
-8. **`Cancelada` (Estado Final Imutável com Auditoria)**: Exige motivo obrigatório (`MotivoCancelamento`, mínimo de 5 caracteres), registra `DataCancelamento = DateTime.UtcNow` e `CanceladaPorUsuarioId`. Se a O.S. estava em estado com estoque baixado (`EmAndamento`, `Pausada` ou `AguardandoPecas`), realiza automaticamente o estorno integral das peças vinculadas.
+2. **Aprovação do Orçamento (`AprovarOSAsync`)**:
+   - Restrito a `Administrador` e `Atendimento`.
+   - Bloqueado se `ValidadeOrcamentoAte < hoje` (horário de Brasília). Exige renovação prévia por `Administrador` (`RenovarValidadeOrcamentoAsync`), que registra `ContatoOS`.
+   - Se `Configuracao.ObrigarVistoriaParaOS == true`, exige vistoria com `Status == Concluida`.
+   - Permite aprovação parcial por item: itens aprovados ficam `StatusItem.Aprovado`, os demais ficam `StatusItem.Recusado`. Exige ao menos um item aprovado.
+   - **Reserva de Estoque**: Peças de origem Estoque aprovadas são **reservadas** (não baixadas fisicamente). A disponibilidade é validada como `EstoqueAtual - QuantidadeReservada`.
+   - Grava `AprovadoPorUsuarioId`, `DataAutorizacao`, `AutorizadoPor`, `TipoContatoAutorizacao`, transita para `Aprovada` e registra `ContatoOS` automático.
+3. **Recusa do Orçamento (`RecusarOrcamentoAsync`)**: Transita `Orcamento → Recusada`, grava motivo obrigatório (≥ 5 caracteres) e registra `ContatoOS`.
+4. **Atribuição de Mecânico (`AtribuirMecanicoAsync`)**: `Atendimento` e `Administrador` podem atribuir qualquer mecânico. Um `Mecanico` pode assumir para si uma O.S. sem responsável.
+5. **Execução e Apontamentos de Tempo (`IniciarApontamentoAsync` / `PausarApontamentoAsync`)**:
+   - Cria `ApontamentoTempo` vinculado ao mecânico e à O.S./item de serviço. Bloqueia a criação de dois apontamentos abertos concorrentes para o mesmo mecânico.
+   - O primeiro apontamento move a O.S. de `Aprovada → EmAndamento`.
+   - `PausarApontamentoAsync` fecha o apontamento registrando `Fim = DateTime.UtcNow`.
+6. **Aplicação de Peças (`MarcarPecaAplicadaAsync`)**:
+   - Converte a reserva em saída física real no inventário (`_estoqueService.BaixarPecaAplicadaAsync`), marcando `Aplicada = true`.
+7. **Aditivos (`AdicionarServicoAditivoAsync` / `AdicionarPecaAditivaAsync` / `AprovarAditivoAsync`)**:
+   - Mecânicos, Atendimento ou Administrador podem propor aditivos durante a execução. O item nasce com `EhAditivo = true`, `StatusItem = Pendente` e move a O.S. para `AguardandoCliente`.
+   - Itens pendentes não entram em `ValorTotal` aprovado, mas são totalizados em `ValorTotalAditivosPendentes`.
+   - Apenas `Administrador` e `Atendimento` podem aprovar aditivos (`AprovarAditivoAsync`). Itens aprovados passam a compor o escopo aprovado (e peças de estoque são reservadas); itens rejeitados tornam-se `Recusado`. A O.S. retorna para `EmAndamento` com registro de `ContatoOS`.
+8. **Conclusão da O.S. (`ConcluirOSAsync`)**:
+   - Exige que todos os itens aprovados estejam marcados como `Executado` / `Aplicada` (ou justificativa formal informada).
+   - Bloqueia a conclusão se houver qualquer aditivo pendente.
+   - Fecha automaticamente apontamentos em aberto.
+   - Persiste o checklist de conclusão (fluidos, limpeza, ferramentas etc.) no campo `ChecklistConclusaoJson`.
+   - Transita para `Concluida` e preenche `DataConclusao = DateTime.UtcNow`.
+9. **Entrega do Veículo (`EntregarOSAsync`)**:
+   - Transita `Concluida → Entregue`.
+   - Valida `KmSaida >= KmEntrada`.
+   - Valida que a soma dos pagamentos cobre `ValorTotal` (ou autoriza com saldo em aberto exclusivamente pelo perfil `Administrador`, registrando observação em `ContatoOS`).
+   - Persiste os registros em `Pagamento`, grava snapshot de `GarantiaDias` (vindo de `Configuracao`), preenche `DataEntrega = DateTime.UtcNow` e atualiza `Veiculo.Quilometragem` com `KmSaida`.
+10. **Cancelamento da O.S. (`CancelarOSAsync`)**:
+    - Exige motivo obrigatório (≥ 5 caracteres) e perfil `Administrador` ou `Atendimento`.
+    - Estorna fisicamente apenas peças que estavam marcadas como `Aplicada = true`. Peças apenas reservadas têm suas reservas liberadas automaticamente.
 
 ---
 
@@ -56,8 +88,22 @@ Além da ocultação visual na interface (`<AuthorizeView>`), todas as operaçõ
 | Criar O.S. / Orçamento (`/ordens-servico/nova`) | ✅ | ✅ | ❌ | ❌ |
 | Editar O.S. (`AtualizarOSAsync`) | ✅ (inclui Desconto) | ✅ (sem alterar Desconto) | ❌ | ❌ |
 | Realizar Checklist de Vistoria | ✅ | ✅ | ✅ | ❌ |
-| Aprovar Orçamento (`AprovarOSAsync`) | ✅ | ✅ | ❌ | ❌ |
+| Aprovar Orçamento (`AprovarOSAsync`) | ✅ | ✅ | ❌ (Bloqueado) | ❌ |
+| Renovar Validade do Orçamento (`RenovarValidadeOrcamentoAsync`) | ✅ | ❌ (Bloqueado) | ❌ (Bloqueado) | ❌ |
+| Recusar Orçamento (`RecusarOrcamentoAsync`) | ✅ | ✅ | ❌ (Bloqueado) | ❌ |
+| Atribuir Mecânico Responsável (`AtribuirMecanicoAsync`) | ✅ | ✅ | ✅ (Apenas assumir O.S. sem dono) | ❌ |
+| Iniciar / Pausar Apontamento de Tempo (`IniciarApontamentoAsync`) | ✅ | ✅ | ✅ | ❌ |
+| Marcar Peça Aplicada / Serviço Executado | ✅ | ✅ | ✅ | ❌ |
+| Propor Aditivo (Serviço ou Peça) | ✅ | ✅ | ✅ | ❌ |
+| Aprovar / Recusar Aditivo (`AprovarAditivoAsync`) | ✅ | ✅ | ❌ (Bloqueado) | ❌ |
+| Concluir O.S. com Checklist (`ConcluirOSAsync`) | ✅ | ✅ | ✅ | ❌ |
+| Entregar Veículo e Registrar Pagamentos (`EntregarOSAsync`) | ✅ (Permite saldo em aberto) | ✅ (Apenas com quitação integral) | ❌ (Bloqueado) | ❌ |
 | Cancelar O.S. com Motivo (`CancelarOSAsync`) | ✅ | ✅ | ❌ | ❌ |
+| Adicionar Peça pelo Preço Base (`AdicionarPecaAsync`) | ✅ | ✅ | ✅ (Painel) | ❌ |
+| Adicionar Peça **com Desconto** (`ValorCobrado < PrecoVenda`) | ✅ | ❌ (Bloqueado) | ❌ (Bloqueado) | ❌ |
+| Remover Peça da O.S. (`RemoverPecaAsync`) | ✅ | ✅ | ❌ | ❌ |
+| Inativar / Reativar Cadastros (`InativacaoService`) | ✅ | ❌ (Bloqueado) | ❌ (Bloqueado) | ❌ |
+| Acompanhar O.S. via Token (`/acompanhar/{token}`) | ✅ | ✅ | ✅ | ✅ (Somente leitura) |
 | Iniciar / Retomar / Pausar / Concluir Execução | ✅ | ✅ | ✅ | ❌ |
 | Adicionar Peça pelo Preço Base (`AdicionarPecaAsync`) | ✅ | ✅ | ✅ (Painel) | ❌ |
 | Adicionar Peça **com Desconto** (`ValorCobrado < PrecoVenda`) | ✅ | ❌ (Bloqueado) | ❌ (Bloqueado) | ❌ |
