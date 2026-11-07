@@ -421,11 +421,14 @@ WHERE o.km_entrada = 0;
 
 -- 8. NivelCombustivelEntrada a partir da Vistoria; senão Reserva (1)
 UPDATE ordens_servico o
-SET nivel_combustivel_entrada = COALESCE(
-    (SELECT v.nivel_combustivel FROM vistorias v WHERE v.ordem_servico_id = o.id AND v.nivel_combustivel BETWEEN 1 AND 5 LIMIT 1),
-    1
-)
-WHERE o.nivel_combustivel_entrada NOT BETWEEN 1 AND 5;
+SET nivel_combustivel_entrada = v.nivel_combustivel
+FROM vistorias v
+WHERE v.ordem_servico_id = o.id
+  AND v.nivel_combustivel BETWEEN 1 AND 5;
+
+UPDATE ordens_servico
+SET nivel_combustivel_entrada = 1
+WHERE nivel_combustivel_entrada NOT BETWEEN 1 AND 5;
 ");
         }
 
