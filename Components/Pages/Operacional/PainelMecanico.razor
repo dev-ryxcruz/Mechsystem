@@ -468,6 +468,22 @@
                     </div>
                 </div>
 
+                @{
+                    var abertoGeral = os.ApontamentosTempo.FirstOrDefault(a => !a.Fim.HasValue && a.OrdemServicoServicoId == null);
+                }
+                @if (abertoGeral != null)
+                {
+                    <div class="alert alert-primary py-2 px-3 d-flex justify-content-between align-items-center small mb-3">
+                        <span><i class="bi bi-stopwatch-fill me-1"></i>Cronômetro geral em andamento (@FormatarMinutos(abertoGeral.DuracaoMinutos))</span>
+                        @if (podeOperar)
+                        {
+                            <button class="btn btn-outline-warning btn-sm fw-bold" @onclick="() => PausarApontamento(os, abertoGeral)">
+                                <i class="bi bi-pause-fill me-1"></i>Pausar
+                            </button>
+                        }
+                    </div>
+                }
+
                 @if (os.Status == OrdemServicoStatus.AguardandoCliente)
                 {
                     <div class="alert alert-warning py-2 small"><i class="bi bi-hourglass-split me-1"></i>Aguardando aprovação do cliente (aditivo).</div>

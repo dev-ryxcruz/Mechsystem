@@ -8,8 +8,10 @@
   * Controle de acesso baseado em três perfis (`Administrador`, `Atendimento` e `Mecanico`), com revalidação automática de sessão (`OnValidatePrincipal`).
   * Senhas com hash `BCrypt.Net-Next`, política mínima de complexidade e proteção contra força bruta (*Rate Limiting*) no endpoint de login.
 * **Gestão de Ordens de Serviço (O.S.)**:
-  * Máquina de estados centralizada (`Orcamento` → `EmAndamento` ⇄ `Pausada` / `AguardandoPecas` → `Concluida`, além de `Cancelada`) validada no servidor.
-  * Checklist obrigatório de vistoria de entrada, catálogo de serviços e vínculo de peças com validação de desconto por perfil.
+  * Máquina de estados centralizada com 10 status (`Orcamento`, `Aprovada`, `EmAndamento`, `Pausada`, `AguardandoPecas`, `AguardandoCliente`, `Concluida`, `Entregue`, `Recusada`, `Cancelada`) validada no servidor.
+  * KM e nível de combustível de entrada obrigatórios na abertura da O.S.; checklist completo de vistoria obrigatório antes da aprovação apenas quando `Configuracao.ObrigarVistoriaParaOS` estiver ativo.
+  * Aprovação individual por item (`StatusItem`), catálogo de serviços e vínculo de peças com validação de desconto por perfil, além de aditivos (`EhAditivo`) durante a execução com autorização do cliente (`AguardandoCliente`).
+  * Apontamento de tempo por mecânico/serviço (`ApontamentoTempo`), conclusão com checklist e entrega do veículo com `KmSaida` e registro de pagamentos (`Pagamento`).
   * Rastreamento público da O.S. sem necessidade de login (`/acompanhar/{token}`) com **QR Code gerado localmente** via `QRCoder`.
 * **Controle de Estoque e Movimentações**:
   * Baixa e estorno de estoque unificados e transacionais vinculados ao ciclo de vida da O.S., prevenindo baixa duplicada ou saldo negativo.
@@ -114,7 +116,7 @@ O MechSystem adota princípios de minimização, finalidade e segurança no trat
 * `/Components`: Componentes e páginas Blazor Server (`Pages/OrdensServico`, `Pages/PainelMecanico`, `Pages/Acompanhar`, `Pages/Estoque`, etc.).
 * `/Data`: `AppDbContext` (com conversão automática de `DateTime` para UTC) e `DatabaseSeeder`.
 * `/Endpoints`: Minimal APIs de autenticação (`/api/auth/login` com rate limiting e `/api/auth/logout`).
-* `/Models`: Entidades de domínio (`OrdemServico`, `Peca` com token `xmin`, `MovimentacaoEstoque`, `Cliente`, `Veiculo`, `Usuario`, etc.).
+* `/Models`: Entidades de domínio (`OrdemServico`, `OrdemServicoServico`, `OrdemServicoPeca`, `ApontamentoTempo`, `Pagamento`, `Vistoria`, `ContatoOS`, `Configuracao`, `Peca` com token `xmin`, `MovimentacaoEstoque`, `Cliente`, `Veiculo`, `Usuario`, etc.).
 * `/Repositories`: Repositórios de acesso a dados.
 * `/Services`: Camada de regras de negócio (`OrdemServicoService`, `EstoqueService`, `UsuarioService`, `DomainErrorHelper`, `DateTimeExtensions`).
 * `/mechsystem.Tests`: Projeto xUnit de testes unitários e de integração.

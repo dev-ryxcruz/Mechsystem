@@ -145,6 +145,58 @@ public class OrdemServicoService
     }
 
     // ==========================================
+    // 0. CRIAÇÃO DE ORÇAMENTO / O.S.
+    // ==========================================
+
+    public async Task<int> CriarOrcamentoAsync(
+        OrdemServico os,
+        int usuarioId = 0,
+        string? nomeUsuario = null)
+    {
+        if (os == null)
+        {
+            throw new ArgumentNullException(nameof(os));
+        }
+
+        if (os.VeiculoId <= 0)
+        {
+            throw new InvalidOperationException("O veículo é obrigatório.");
+        }
+
+        var veiculo = await _db.Veiculos.FindAsync(os.VeiculoId)
+            ?? throw new InvalidOperationException("Veículo não encontrado.");
+
+        if (os.KmEntrada <= 0)
+        {
+            throw new InvalidOperationException("O KM de entrada deve ser maior que zero.");
+        }
+
+        if ((int)os.NivelCombustivelEntrada < 1 || (int)os.NivelCombustivelEntrada > 5)
+        {
+            throw new InvalidOperationException("O nível de combustível de entrada é obrigatório.");
+        }
+
+        if (os.KmEntrada < veiculo.Quilometragem)
+        {
+            var operador = !string.IsNullOrWhiteSpace(nomeUsuario)
+                ? nomeUsuario
+                : await ObterNomeOperadorAsync(usuarioId);
+
+            os.Contatos.Add(new ContatoOS
+            {
+                Tipo = TipoContato.Outro,
+                Descricao = $"Observação na entrada: KM de entrada ({os.KmEntrada:N0}) menor que a quilometragem registrada no veículo ({veiculo.Quilometragem:N0} km).",
+                RegistradoPor = operador,
+                DataContato = DateTime.UtcNow
+            });
+        }
+
+        _db.OrdensServico.Add(os);
+        await _db.SaveChangesAsync();
+        return os.Id;
+    }
+
+    // ==========================================
     // 1. APROVAÇÃO DE ORÇAMENTO & RESERVA
     // ==========================================
 
@@ -200,10 +252,10 @@ public class OrdemServicoService
                     $"Orçamento vencido em {os.ValidadeOrcamentoAte.ToBrasiliaTime():dd/MM/yyyy}. Um Administrador deve renovar a validade do orçamento antes da aprovação.");
             }
 
-            // Exigir KmEntrada e combustível
-            if (os.KmEntrada < 0)
+            // Exigir KmEntrada > 0 e combustível 1..5
+            if (os.KmEntrada <= 0)
             {
-                throw new InvalidOperationException("O KM de entrada não pode ser negativo.");
+                throw new InvalidOperationException("O KM de entrada deve ser maior que zero.");
             }
             if ((int)os.NivelCombustivelEntrada < 1 || (int)os.NivelCombustivelEntrada > 5)
             {
@@ -494,7 +546,11 @@ public class OrdemServicoService
             throw new InvalidOperationException($"Não é permitido iniciar apontamentos de tempo em uma O.S. com status '{os.Status}'.");
         }
 
-        var mecId = mecanicoId > 0 ? mecanicoId : usuarioId;
+        var mecId = mecanicoId > 0 ? mecanicoId : (usuarioId > 0 ? usuarioId : os.MecanicoResponsavelId ?? 0);
+        if (mecId <= 0)
+        {
+            throw new InvalidOperationException("É necessário identificar o usuário/mecânico para iniciar o apontamento de tempo.");
+        }
 
         // Impedir dois apontamentos abertos para o mesmo mecânico
         var temAberto = await _db.ApontamentosTempo.AnyAsync(a => a.MecanicoId == mecId && a.Fim == null);
@@ -565,29 +621,7 @@ public class OrdemServicoService
 
     public async Task IniciarOuRetomarServicoAsync(int osId, PerfilUsuario? perfilUsuario = null, int usuarioId = 0)
     {
-        var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
-        if (!EhPerfilValido(perfil))
-        {
-            throw new UnauthorizedAccessException("Usuário sem permissão para iniciar ou retomar a execução da ordem de serviço.");
-        }
-
-        var os = await _db.OrdensServico
-            .Include(o => o.ApontamentosTempo)
-            .FirstOrDefaultAsync(o => o.Id == osId)
-            ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
-
-        if (os.Status == OrdemServicoStatus.Orcamento)
-        {
-            throw new InvalidOperationException("A O.S. ainda está em Orçamento e precisa ser aprovada antes de iniciar a execução.");
-        }
-
-        if (os.Status != OrdemServicoStatus.EmAndamento)
-        {
-            ValidarTransicao(os.Status, OrdemServicoStatus.EmAndamento);
-            os.Status = OrdemServicoStatus.EmAndamento;
-        }
-
-        await _db.SaveChangesAsync();
+        await IniciarApontamentoAsync(osId, null, usuarioId, usuarioId, perfilUsuario);
     }
 
     public async Task PausarServicoAsync(int osId, PerfilUsuario? perfilUsuario = null, int usuarioId = 0)

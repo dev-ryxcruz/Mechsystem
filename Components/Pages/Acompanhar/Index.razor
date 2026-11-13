@@ -48,12 +48,7 @@
                 <!-- Status Timeline/Progress -->
                 <div class="status-section text-center mb-5 mt-2">
                     @{
-                        int step = 1;
-                        if (os.Status == OrdemServicoStatus.Orcamento) step = 1;
-                        else if (os.Status == OrdemServicoStatus.AguardandoPecas) step = 2;
-                        else if (os.Status == OrdemServicoStatus.EmAndamento || os.Status == OrdemServicoStatus.Pausada) step = 3;
-                        else if (os.Status == OrdemServicoStatus.Concluida) step = 4;
-                        else if (os.Status == OrdemServicoStatus.Cancelada) step = 0;
+                        int step = GetProgressStep(os.Status);
                     }
 
                     @if (os.Status == OrdemServicoStatus.Cancelada)
@@ -63,6 +58,16 @@
                             <div class="text-start">
                                 <h5 class="mb-0 fw-bold text-danger">Serviço Cancelado</h5>
                                 <small class="text-danger opacity-75">Entre em contato para mais detalhes.</small>
+                            </div>
+                        </div>
+                    }
+                    else if (os.Status == OrdemServicoStatus.Recusada)
+                    {
+                        <div class="alert alert-warning d-inline-flex align-items-center mb-0 px-4 py-3 border-0 shadow-sm rounded-4">
+                            <i class="bi bi-hand-thumbs-down-fill fs-3 me-3 text-warning"></i>
+                            <div class="text-start">
+                                <h5 class="mb-0 fw-bold text-dark">Orçamento Recusado</h5>
+                                <small class="text-muted">Entre em contato para mais detalhes.</small>
                             </div>
                         </div>
                     }
@@ -78,22 +83,28 @@
                                 <span class="step-label">Orçamento</span>
                             </div>
                             <div class="progress-line @(step >= 2 ? "active" : "")"></div>
-                            
+
                             <div class="progress-step @(step >= 2 ? "active" : "")">
                                 <div class="step-icon"><i class="bi bi-check-circle"></i></div>
-                                <span class="step-label">Aprovado</span>
+                                <span class="step-label">Aprovada</span>
                             </div>
                             <div class="progress-line @(step >= 3 ? "active" : "")"></div>
-                            
+
                             <div class="progress-step @(step >= 3 ? "active" : "")">
                                 <div class="step-icon"><i class="bi bi-gear-wide-connected"></i></div>
-                                <span class="step-label">Na Oficina</span>
+                                <span class="step-label">Execução</span>
                             </div>
                             <div class="progress-line @(step >= 4 ? "active" : "")"></div>
-                            
+
                             <div class="progress-step @(step >= 4 ? "active" : "")">
                                 <div class="step-icon"><i class="bi bi-flag-fill"></i></div>
-                                <span class="step-label">Pronto</span>
+                                <span class="step-label">Concluída</span>
+                            </div>
+                            <div class="progress-line @(step >= 5 ? "active" : "")"></div>
+
+                            <div class="progress-step @(step >= 5 ? "active" : "")">
+                                <div class="step-icon"><i class="bi bi-patch-check-fill"></i></div>
+                                <span class="step-label">Entregue</span>
                             </div>
                         </div>
                     }
@@ -113,7 +124,11 @@
                         @{
                             var hojeBrasilia = DateTimeExtensions.TodayBrasilia();
                             var diasAtraso = (hojeBrasilia - os.DataPrevisaoEntrega.Date).Days;
-                            bool isAtrasado = diasAtraso > 0 && os.Status != OrdemServicoStatus.Concluida && os.Status != OrdemServicoStatus.Cancelada;
+                            bool estaFinalizada = os.Status == OrdemServicoStatus.Concluida
+                                || os.Status == OrdemServicoStatus.Entregue
+                                || os.Status == OrdemServicoStatus.Cancelada
+                                || os.Status == OrdemServicoStatus.Recusada;
+                            bool isAtrasado = diasAtraso > 0 && !estaFinalizada;
                             var diasRestantes = (os.DataPrevisaoEntrega.Date - hojeBrasilia).Days;
                         }
                         <div class="info-box @(isAtrasado ? "border-danger bg-danger bg-opacity-10" : "")">
@@ -123,7 +138,7 @@
                                 <span class="fw-bold fs-6 @(isAtrasado ? "text-danger" : "")">
                                     @os.DataPrevisaoEntrega.ToString("dd/MM/yyyy")
                                 </span>
-                                @if (os.Status != OrdemServicoStatus.Concluida && os.Status != OrdemServicoStatus.Cancelada)
+                                @if (!estaFinalizada)
                                 {
                                     @if (isAtrasado)
                                     {
@@ -195,36 +210,59 @@
         }
     }
 
-    private string GetStatusName(OrdemServicoStatus status) => status switch
+    public static int GetProgressStep(OrdemServicoStatus status) => status switch
     {
-        OrdemServicoStatus.Orcamento => "Orçamento em Análise",
-        OrdemServicoStatus.EmAndamento => "Serviço em Andamento",
-        OrdemServicoStatus.Pausada => "Serviço Pausado",
-        OrdemServicoStatus.AguardandoPecas => "Aguardando Peças",
-        OrdemServicoStatus.Concluida => "Serviço Concluído",
+        OrdemServicoStatus.Orcamento => 1,
+        OrdemServicoStatus.Aprovada => 2,
+        OrdemServicoStatus.EmAndamento or OrdemServicoStatus.AguardandoPecas or OrdemServicoStatus.Pausada or OrdemServicoStatus.AguardandoCliente => 3,
+        OrdemServicoStatus.Concluida => 4,
+        OrdemServicoStatus.Entregue => 5,
+        OrdemServicoStatus.Recusada or OrdemServicoStatus.Cancelada => 0,
+        _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Status de O.S. não mapeado.")
+    };
+
+    public static string GetStatusName(OrdemServicoStatus status) => status switch
+    {
+        OrdemServicoStatus.Orcamento => "Orçamento em análise",
+        OrdemServicoStatus.Aprovada => "Orçamento aprovado",
+        OrdemServicoStatus.AguardandoPecas => "Aguardando peças",
+        OrdemServicoStatus.EmAndamento => "Serviço em andamento",
+        OrdemServicoStatus.Pausada => "Serviço pausado",
+        OrdemServicoStatus.AguardandoCliente => "Aguardando sua autorização",
+        OrdemServicoStatus.Concluida => "Serviço concluído, pronto para retirada",
+        OrdemServicoStatus.Entregue => "Veículo entregue",
+        OrdemServicoStatus.Recusada => "Orçamento recusado",
         OrdemServicoStatus.Cancelada => "Cancelada",
-        _ => status.ToString()
+        _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Status de O.S. não mapeado.")
     };
 
-    private string GetStatusColor(OrdemServicoStatus status) => status switch
+    public static string GetStatusColor(OrdemServicoStatus status) => status switch
     {
-        OrdemServicoStatus.Orcamento => "#6c757d",      // Secondary
-        OrdemServicoStatus.EmAndamento => "#0d6efd",    // Primary
-        OrdemServicoStatus.Pausada => "#ffc107",        // Warning / Amber
-        OrdemServicoStatus.AguardandoPecas => "#fd7e14", // Orange
-        OrdemServicoStatus.Concluida => "#198754",      // Success
-        OrdemServicoStatus.Cancelada => "#dc3545",      // Danger
-        _ => "#6c757d"
+        OrdemServicoStatus.Orcamento => "#6c757d",         // Secondary
+        OrdemServicoStatus.Aprovada => "#0dcaf0",          // Info
+        OrdemServicoStatus.AguardandoPecas => "#fd7e14",   // Orange
+        OrdemServicoStatus.EmAndamento => "#0d6efd",       // Primary
+        OrdemServicoStatus.Pausada => "#ffc107",           // Warning / Amber
+        OrdemServicoStatus.AguardandoCliente => "#fd7e14", // Orange
+        OrdemServicoStatus.Concluida => "#198754",         // Success
+        OrdemServicoStatus.Entregue => "#198754",          // Success
+        OrdemServicoStatus.Recusada => "#ffc107",          // Warning
+        OrdemServicoStatus.Cancelada => "#dc3545",         // Danger
+        _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Status de O.S. não mapeado.")
     };
 
-    private string GetStatusIcon(OrdemServicoStatus status) => status switch
+    public static string GetStatusIcon(OrdemServicoStatus status) => status switch
     {
         OrdemServicoStatus.Orcamento => "bi bi-file-earmark-text",
+        OrdemServicoStatus.Aprovada => "bi bi-check-circle",
+        OrdemServicoStatus.AguardandoPecas => "bi bi-box-seam",
         OrdemServicoStatus.EmAndamento => "bi bi-tools",
         OrdemServicoStatus.Pausada => "bi bi-pause-circle",
-        OrdemServicoStatus.AguardandoPecas => "bi bi-box-seam",
-        OrdemServicoStatus.Concluida => "bi bi-stars",
+        OrdemServicoStatus.AguardandoCliente => "bi bi-hourglass-split",
+        OrdemServicoStatus.Concluida => "bi bi-flag-fill",
+        OrdemServicoStatus.Entregue => "bi bi-patch-check-fill",
+        OrdemServicoStatus.Recusada => "bi bi-hand-thumbs-down-fill",
         OrdemServicoStatus.Cancelada => "bi bi-x-circle",
-        _ => "bi bi-info-circle"
+        _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Status de O.S. não mapeado.")
     };
 }

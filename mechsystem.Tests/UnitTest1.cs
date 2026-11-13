@@ -1044,6 +1044,22 @@ public class OrdemServicoStabilizationTests
                 // Sem vistoria -> KmEntrada puxado de Veiculo.Quilometragem (82000) e MeioAutorizacao 'WhatsApp' -> TipoContato.WhatsApp
                 Assert.Equal(82000, os2.KmEntrada);
                 Assert.Equal(TipoContato.WhatsApp, os2.TipoContatoAutorizacao);
+                // CorrigirNivelCombustivelEntrada: OS sem vistoria com combustível fora de 1..5 recebe 1 (Reserva)
+                Assert.Equal(NivelCombustivel.Reserva, os2.NivelCombustivelEntrada);
+
+                // Testar idempotência da migration CorrigirNivelCombustivelEntrada em dados corrompidos/legados:
+                // volta 1 migration antes da CorrigirNivelCombustivelEntrada, força nivel_combustivel_entrada = 0 em os1 (com vistoria=4) e os2 (sem vistoria), e re-aplica.
+                await migrator.MigrateAsync("20261106222232_Fase2ChecklistConclusaoFluxoOS");
+                await dbLegado.Database.ExecuteSqlRawAsync(@"
+                    UPDATE ordens_servico SET nivel_combustivel_entrada = 0;
+                ");
+                await dbLegado.Database.MigrateAsync();
+
+                dbLegado.ChangeTracker.Clear();
+                var os1Corrigida = await dbLegado.OrdensServico.FirstAsync(o => o.TokenAcompanhamento == "tok_legado_1");
+                var os2Corrigida = await dbLegado.OrdensServico.FirstAsync(o => o.TokenAcompanhamento == "tok_legado_2");
+                Assert.Equal(NivelCombustivel.TresQuartos, os1Corrigida.NivelCombustivelEntrada);
+                Assert.Equal(NivelCombustivel.Reserva, os2Corrigida.NivelCombustivelEntrada);
             }
         }
         finally
@@ -1472,5 +1488,161 @@ public class OrdemServicoStabilizationTests
         var (todos, totalTodos) = await osService.ListarPaginadoAsync(null, 1, 10, null);
         Assert.Equal(2, totalTodos);
         Assert.Equal(2, todos.Count);
+    }
+
+    [Fact]
+    public void PaginaPublica_DeveMapearTodosOsStatusSemExcecao()
+    {
+        var todosStatus = Enum.GetValues<OrdemServicoStatus>();
+        Assert.Equal(10, todosStatus.Length);
+
+        foreach (var status in todosStatus)
+        {
+            var nome = mechsystem.Components.Pages.Acompanhar.Index.GetStatusName(status);
+            var cor = mechsystem.Components.Pages.Acompanhar.Index.GetStatusColor(status);
+            var icone = mechsystem.Components.Pages.Acompanhar.Index.GetStatusIcon(status);
+            var step = mechsystem.Components.Pages.Acompanhar.Index.GetProgressStep(status);
+
+            Assert.False(string.IsNullOrWhiteSpace(nome));
+            if (status == OrdemServicoStatus.Cancelada)
+                Assert.Equal("Cancelada", nome);
+            else
+                Assert.NotEqual(status.ToString(), nome);
+            Assert.StartsWith("#", cor);
+            Assert.StartsWith("bi ", icone);
+            Assert.InRange(step, 0, 5);
+        }
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            mechsystem.Components.Pages.Acompanhar.Index.GetStatusName((OrdemServicoStatus)999));
+    }
+
+    [Fact]
+    public async Task CriarOrcamentoEAprovarOS_KmZero_DeveRejeitar()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (admin, _, _, veiculo, peca1, _) = await SeedBasicScenarioAsync(db);
+
+        var osKmZero = new OrdemServico
+        {
+            VeiculoId = veiculo.Id,
+            KmEntrada = 0,
+            NivelCombustivelEntrada = NivelCombustivel.Meio,
+            QueixaCliente = "Barulho na suspensão",
+            DataEmissao = DateTime.UtcNow.Date,
+            DataPrevisaoEntrega = DateTime.UtcNow.Date.AddDays(2),
+            ValidadeOrcamentoAte = DateTime.UtcNow.Date.AddDays(10)
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.CriarOrcamentoAsync(osKmZero, admin.Id, admin.NomeCompleto));
+
+        // Também deve rejeitar em AprovarOSAsync caso exista no banco com KmEntrada <= 0
+        db.OrdensServico.Add(osKmZero);
+        osKmZero.PecasUtilizadas.Add(new OrdemServicoPeca
+        {
+            PecaId = peca1.Id,
+            Quantidade = 1,
+            PrecoBase = peca1.PrecoVenda,
+            ValorCobrado = peca1.PrecoVenda,
+            Origem = OrigemPeca.Estoque
+        });
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.AprovarOSAsync(osKmZero.Id, "Cliente", "Presencial", admin.Id, PerfilUsuario.Administrador));
+    }
+
+    [Fact]
+    public async Task CriarOrcamentoEAprovarOS_CombustivelAusente_DeveRejeitar()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (admin, _, _, veiculo, peca1, _) = await SeedBasicScenarioAsync(db);
+
+        var osSemCombustivel = new OrdemServico
+        {
+            VeiculoId = veiculo.Id,
+            KmEntrada = 40000,
+            NivelCombustivelEntrada = (NivelCombustivel)0,
+            QueixaCliente = "Revisão geral",
+            DataEmissao = DateTime.UtcNow.Date,
+            DataPrevisaoEntrega = DateTime.UtcNow.Date.AddDays(2),
+            ValidadeOrcamentoAte = DateTime.UtcNow.Date.AddDays(10)
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.CriarOrcamentoAsync(osSemCombustivel, admin.Id, admin.NomeCompleto));
+
+        db.OrdensServico.Add(osSemCombustivel);
+        osSemCombustivel.PecasUtilizadas.Add(new OrdemServicoPeca
+        {
+            PecaId = peca1.Id,
+            Quantidade = 1,
+            PrecoBase = peca1.PrecoVenda,
+            ValorCobrado = peca1.PrecoVenda,
+            Origem = OrigemPeca.Estoque
+        });
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            osService.AprovarOSAsync(osSemCombustivel.Id, "Cliente", "Presencial", admin.Id, PerfilUsuario.Administrador));
+
+        // KM menor que Veiculo.Quilometragem deve permitir criar e registrar observação
+        var osKmMenor = new OrdemServico
+        {
+            VeiculoId = veiculo.Id,
+            KmEntrada = 100,
+            NivelCombustivelEntrada = NivelCombustivel.Reserva,
+            QueixaCliente = "Troca de óleo",
+            DataEmissao = DateTime.UtcNow.Date,
+            DataPrevisaoEntrega = DateTime.UtcNow.Date.AddDays(1),
+            ValidadeOrcamentoAte = DateTime.UtcNow.Date.AddDays(10)
+        };
+        var idCriada = await osService.CriarOrcamentoAsync(osKmMenor, admin.Id, admin.NomeCompleto);
+        var osSalva = await db.OrdensServico.Include(o => o.Contatos).FirstAsync(o => o.Id == idCriada);
+        Assert.Contains(osSalva.Contatos, c => c.Descricao.Contains("menor que a quilometragem"));
+    }
+
+    [Fact]
+    public async Task IniciarOuRetomarServico_DeveCriarApontamentoTempo_EPausarDeveFechar()
+    {
+        var (db, _, _, osService) = CreateSut();
+        var (admin, _, mecanico, veiculo, peca1, _) = await SeedBasicScenarioAsync(db);
+
+        var os = new OrdemServico
+        {
+            VeiculoId = veiculo.Id,
+            KmEntrada = 40000,
+            NivelCombustivelEntrada = NivelCombustivel.Meio,
+            QueixaCliente = "Freio",
+            DataEmissao = DateTime.UtcNow.Date,
+            DataPrevisaoEntrega = DateTime.UtcNow.Date.AddDays(2),
+            ValidadeOrcamentoAte = DateTime.UtcNow.Date.AddDays(10),
+            Status = OrdemServicoStatus.Orcamento
+        };
+        os.PecasUtilizadas.Add(new OrdemServicoPeca
+        {
+            PecaId = peca1.Id,
+            Quantidade = 1,
+            PrecoBase = peca1.PrecoVenda,
+            ValorCobrado = peca1.PrecoVenda,
+            Origem = OrigemPeca.Estoque
+        });
+        await osService.CriarOrcamentoAsync(os, admin.Id, admin.NomeCompleto);
+        await osService.AprovarOSAsync(os.Id, "Cliente", "Presencial", admin.Id, PerfilUsuario.Administrador);
+
+        await osService.IniciarOuRetomarServicoAsync(os.Id, PerfilUsuario.Mecanico, mecanico.Id);
+
+        var osEmAndamento = await db.OrdensServico.Include(o => o.ApontamentosTempo).FirstAsync(o => o.Id == os.Id);
+        Assert.Equal(OrdemServicoStatus.EmAndamento, osEmAndamento.Status);
+        var apontamento = Assert.Single(osEmAndamento.ApontamentosTempo);
+        Assert.Equal(mecanico.Id, apontamento.MecanicoId);
+        Assert.Null(apontamento.Fim);
+
+        await osService.PausarServicoAsync(os.Id, PerfilUsuario.Mecanico, mecanico.Id);
+
+        var osPausada = await db.OrdensServico.Include(o => o.ApontamentosTempo).FirstAsync(o => o.Id == os.Id);
+        Assert.Equal(OrdemServicoStatus.Pausada, osPausada.Status);
+        Assert.NotNull(osPausada.ApontamentosTempo.Single().Fim);
     }
 }

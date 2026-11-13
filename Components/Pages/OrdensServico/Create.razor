@@ -7,8 +7,10 @@
 @using mechsystem.Services
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 @attribute [Authorize(Roles = "Administrador, Atendimento")]
 @inject AppDbContext DbContext
+@inject OrdemServicoService OrdemServicoService
 @inject NavigationManager NavigationManager
 @inject IClienteRepository ClienteRepository
 @inject IVeiculoRepository VeiculoRepository
@@ -70,18 +72,36 @@
                     </div>
                     <div class="col-md-3">
                         <label for="kmEntrada" class="form-label">KM de Entrada <span class="text-danger">*</span></label>
-                        <InputNumber id="kmEntrada" @bind-Value="os.KmEntrada" class="form-control" min="0" />
+                        <InputNumber id="kmEntrada" @bind-Value="os.KmEntrada" class="form-control" min="1" />
                         <ValidationMessage For="@(() => os.KmEntrada)" class="text-danger" />
+                        @if (!string.IsNullOrEmpty(erroKm))
+                        {
+                            <div class="text-danger small mt-1">@erroKm</div>
+                        }
+                        @{
+                            var veiculoSel = veiculos?.FirstOrDefault(v => v.Id == os.VeiculoId);
+                        }
+                        @if (veiculoSel != null && os.KmEntrada > 0 && os.KmEntrada < veiculoSel.Quilometragem)
+                        {
+                            <div class="alert alert-warning py-1 px-2 small mt-1 mb-0">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                KM informado (@os.KmEntrada.ToString("N0")) é menor que a quilometragem do veículo (@veiculoSel.Quilometragem.ToString("N0") km). Ao salvar, a observação será registrada.
+                            </div>
+                        }
                     </div>
                     <div class="col-md-3">
                         <label for="combustivelEntrada" class="form-label">Combustível (Entrada) <span class="text-danger">*</span></label>
-                        <InputSelect id="combustivelEntrada" @bind-Value="os.NivelCombustivelEntrada" class="form-select">
+                        <InputSelect id="combustivelEntrada" @bind-Value="nivelCombustivelSelecionado" class="form-select">
+                            <option value="">Selecione...</option>
                             @foreach (var nivel in Enum.GetValues<NivelCombustivel>())
                             {
                                 <option value="@nivel">@nivel.ToDisplayText()</option>
                             }
                         </InputSelect>
-                        <ValidationMessage For="@(() => os.NivelCombustivelEntrada)" class="text-danger" />
+                        @if (!string.IsNullOrEmpty(erroCombustivel))
+                        {
+                            <div class="text-danger small mt-1">@erroCombustivel</div>
+                        }
                     </div>
                 </div>
 
@@ -467,6 +487,11 @@
         
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         isAdmin = authState.User.IsInRole("Administrador");
+        if (int.TryParse(authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid))
+        {
+            usuarioIdAtual = uid;
+        }
+        nomeUsuarioAtual = authState.User.Identity?.Name;
 
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();
         os.ValidadeOrcamentoAte = os.DataEmissao.AddDays(config?.ValidadeOrcamentoDias ?? 10);
@@ -495,7 +520,21 @@
     private async Task HandleValidSubmit()
     {
         erroItens = null;
+        erroKm = null;
+        erroCombustivel = null;
         if (os.VeiculoId == 0) return;
+
+        if (os.KmEntrada <= 0)
+        {
+            erroKm = "O KM de entrada deve ser maior que zero.";
+            return;
+        }
+        if (!nivelCombustivelSelecionado.HasValue || (int)nivelCombustivelSelecionado.Value < 1 || (int)nivelCombustivelSelecionado.Value > 5)
+        {
+            erroCombustivel = "Selecione o nível de combustível de entrada.";
+            return;
+        }
+        os.NivelCombustivelEntrada = nivelCombustivelSelecionado.Value;
 
         if (!linhasServico.Any() && !linhasPeca.Any())
         {
@@ -558,8 +597,7 @@
             }).ToList();
 
             // Apenas a raiz é adicionada; as coleções entram pelo grafo (sem Add duplicado)
-            DbContext.OrdensServico.Add(os);
-            await DbContext.SaveChangesAsync();
+            await OrdemServicoService.CriarOrcamentoAsync(os, usuarioIdAtual, nomeUsuarioAtual);
 
             NavigationManager.NavigateTo($"/ordens-servico/{os.Id}");
         }
@@ -604,6 +642,11 @@
     private string? buscaPeca;
     private OrigemPeca origemNovaPeca = OrigemPeca.Estoque;
     private string? erroItens;
+    private string? erroKm;
+    private string? erroCombustivel;
+    private NivelCombustivel? nivelCombustivelSelecionado;
+    private int usuarioIdAtual;
+    private string? nomeUsuarioAtual;
     private bool salvando;
     private bool isAdmin;
     private bool previsaoEditadaManualmente;

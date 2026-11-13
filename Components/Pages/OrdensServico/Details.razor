@@ -1,5 +1,6 @@
 @page "/ordens-servico/{id:int}"
 @rendermode InteractiveServer
+@implements IDisposable
 @using Microsoft.EntityFrameworkCore
 @using mechsystem.Data
 @using mechsystem.Models
@@ -503,8 +504,16 @@ else
             }
 
             <!-- Apontamentos de tempo -->
-            <div class="border-bottom pb-2 mb-3 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bold mb-0"><i class="bi bi-stopwatch me-2"></i>Apontamentos de Tempo</h5>
+            <div class="border-bottom pb-2 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 class="fw-bold mb-0">
+                    <i class="bi bi-stopwatch me-2"></i>Apontamentos de Tempo
+                    @if (os.ApontamentosTempo.Any(a => a.Fim == null))
+                    {
+                        <span class="badge bg-primary ms-2 fs-6">
+                            <i class="bi bi-stopwatch-fill me-1"></i>Cronômetro ativo: @FormatarMinutos(tempoRealTotal)
+                        </span>
+                    }
+                </h5>
                 <small class="text-muted">
                     Real: <strong>@FormatarMinutos(tempoRealTotal)</strong> × Estimado: <strong>@FormatarMinutos(os.TempoTotalEstimadoMinutos)</strong>
                 </small>
@@ -1532,6 +1541,17 @@ else
         }
 
         await LoadData();
+
+        _uiTimer = new System.Timers.Timer(30000);
+        _uiTimer.Elapsed += async (sender, e) => await InvokeAsync(StateHasChanged);
+        _uiTimer.Start();
+    }
+
+    private System.Timers.Timer? _uiTimer;
+
+    public void Dispose()
+    {
+        _uiTimer?.Dispose();
     }
 
     private async Task LoadData()

@@ -1,3 +1,5 @@
+> **Aviso (13/11/2026):** Documento histórico (estado de outubro/2026), mantido apenas para referência do ciclo de estabilização.
+
 # Análise Técnica e Funcional — MechSystem (Atualizado Pós-Estabilização)
 
 **Data da Auditoria Original:** Abril de 2026  

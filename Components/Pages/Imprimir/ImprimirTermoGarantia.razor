@@ -16,12 +16,12 @@
         <p class="mt-2">Preparando documento...</p>
     </div>
 }
-else if (os.Status != OrdemServicoStatus.Concluida)
+else if (os.Status != OrdemServicoStatus.Concluida && os.Status != OrdemServicoStatus.Entregue)
 {
     <div class="container mt-5">
         <div class="alert alert-warning text-center">
             <h4>Operação não permitida</h4>
-            <p>O Termo de Garantia só pode ser emitido para Ordens de Serviço com status <strong>Concluída</strong>.</p>
+            <p>O Termo de Garantia só pode ser emitido para Ordens de Serviço com status <strong>Concluída</strong> ou <strong>Entregue</strong>.</p>
             <button class="btn btn-secondary" @onclick='() => Nav.NavigateTo($"/ordens-servico/{Id}")'>Voltar</button>
         </div>
     </div>
@@ -98,12 +98,19 @@ else
                 </div>
                 <div class="doc-field">
                     <span class="doc-label">Quilometragem (Na Saída)</span>
-                    <span class="doc-value">@os.Veiculo?.Quilometragem.ToString("N0") km</span>
+                    <span class="doc-value">@((os.Status == OrdemServicoStatus.Entregue && os.KmSaida.HasValue ? os.KmSaida.Value : os.Veiculo?.Quilometragem ?? 0).ToString("N0")) km</span>
                 </div>
                 <div class="doc-field">
-                    <span class="doc-label">Data de Conclusão / Entrega</span>
-                    <span class="doc-value">@((os.DataConclusao.ToBrasiliaTime() ?? os.DataPrevisaoEntrega).ToString("dd/MM/yyyy"))</span>
+                    <span class="doc-label">@(os.Status == OrdemServicoStatus.Entregue ? "Data da Entrega" : "Data de Conclusão")</span>
+                    <span class="doc-value">@((os.Status == OrdemServicoStatus.Entregue && os.DataEntrega.HasValue ? os.DataEntrega.ToBrasiliaTime() : (os.DataConclusao.ToBrasiliaTime() ?? os.DataPrevisaoEntrega))?.ToString("dd/MM/yyyy"))</span>
                 </div>
+                @if (os.Status == OrdemServicoStatus.Entregue)
+                {
+                    <div class="doc-field">
+                        <span class="doc-label">Forma de Pagamento</span>
+                        <span class="doc-value">@FormatarFormasPagamento()</span>
+                    </div>
+                }
             </div>
         </div>
 
@@ -112,7 +119,7 @@ else
             <div class="doc-field doc-field-full mb-3">
                 <span class="doc-label">Prazo de Garantia</span>
                 <div class="doc-text-box" style="font-size: 11pt; font-weight: bold; background-color: #f1f3f5; color: #1a1a1a; padding: 1rem; text-align: center;">
-                    @(config?.GarantiaPadraoDias ?? 90) DIAS A PARTIR DA DATA DE ENTREGA DO VEÍCULO
+                    @(os.GarantiaDias ?? config?.GarantiaPadraoDias ?? 90) DIAS A PARTIR DA DATA DE ENTREGA DO VEÍCULO
                 </div>
             </div>
             
@@ -182,6 +189,7 @@ else
         os = await DbContext.OrdensServico
             .Include(o => o.Veiculo)
                 .ThenInclude(v => v!.Cliente)
+            .Include(o => o.Pagamentos)
             .FirstOrDefaultAsync(o => o.Id == Id);
 
         config = await DbContext.Configuracoes.FirstOrDefaultAsync();
@@ -189,12 +197,33 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && os != null && os.Status == OrdemServicoStatus.Concluida)
+        if (firstRender && os != null && (os.Status == OrdemServicoStatus.Concluida || os.Status == OrdemServicoStatus.Entregue))
         {
             await Task.Delay(300);
             await JSRuntime.InvokeVoidAsync("window.print");
         }
     }
+
+    private string FormatarFormasPagamento()
+    {
+        if (os?.Pagamentos == null || !os.Pagamentos.Any())
+            return "Não informado";
+
+        return string.Join(", ", os.Pagamentos
+            .Select(p => $"{NomeFormaPagamento(p.Forma)} ({p.Valor:C})")
+            .Distinct());
+    }
+
+    private static string NomeFormaPagamento(FormaPagamento forma) => forma switch
+    {
+        FormaPagamento.Dinheiro => "Dinheiro",
+        FormaPagamento.Pix => "Pix",
+        FormaPagamento.Debito => "Cartão de Débito",
+        FormaPagamento.Credito => "Cartão de Crédito",
+        FormaPagamento.Boleto => "Boleto",
+        FormaPagamento.Outro => "Outro",
+        _ => forma.ToString()
+    };
 
     private async Task Imprimir()
     {
