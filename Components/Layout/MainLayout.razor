@@ -28,7 +28,27 @@
         </div>
 
         <article class="content px-4">
-            @Body
+            <ErrorBoundary @ref="errorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent>
+                    <div class="alert alert-danger shadow-sm my-4" role="alert">
+                        <h5 class="alert-heading fw-bold">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>Não foi possível exibir esta tela
+                        </h5>
+                        <p class="mb-3">Ocorreu um erro inesperado ao carregar este conteúdo. Tente novamente ou volte para o início.</p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-danger btn-sm" @onclick="() => errorBoundary?.Recover()">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Tentar novamente
+                            </button>
+                            <a href="/" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-house me-1"></i>Ir para o início
+                            </a>
+                        </div>
+                    </div>
+                </ErrorContent>
+            </ErrorBoundary>
         </article>
     </main>
 </div>
@@ -38,3 +58,7 @@
     <a href="." class="reload">Recarregar</a>
     <button type="button" class="dismiss btn btn-link p-0 border-0" aria-label="Fechar">🗙</button>
 </div>
+
+@code {
+    private ErrorBoundary? errorBoundary;
+}

@@ -20,9 +20,24 @@
 
 <PageTitle>Ordem de Serviço Nº @Id.ToString("D4")</PageTitle>
 
-@if (os == null)
+@if (carregando)
 {
-    <p><em>Carregando...</em></p>
+    <div class="text-center p-5" aria-live="polite">
+        <div class="spinner-border text-accent" role="status">
+            <span class="visually-hidden">Carregando...</span>
+        </div>
+        <p class="mt-2 text-muted">Carregando ordem de serviço...</p>
+    </div>
+}
+else if (os == null)
+{
+    <div class="alert alert-warning my-4" role="alert">
+        <h5 class="alert-heading fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Ordem de Serviço não encontrada</h5>
+        <p class="mb-3">Não foi possível localizar a O.S. #@Id.ToString("D4").</p>
+        <a href="/ordens-servico" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Voltar para Ordens de Serviço
+        </a>
+    </div>
 }
 else
 {
@@ -1388,6 +1403,7 @@ else
     private OrdemServico? os;
     private Configuracao? config;
     private string? erroMensagem;
+    private bool carregando = true;
     [Inject] private ILogger<Details> Logger { get; set; } = default!;
 
     // Contexto do usuário
@@ -1549,14 +1565,21 @@ else
 
     private async Task LoadData()
     {
-        os = await OrdemServicoQueryService.ObterDetalhesAsync(Id);
-
-        if (os != null)
+        try
         {
-            autorizadoPor = os.Veiculo?.Cliente?.Nome ?? "";
-        }
+            os = await OrdemServicoQueryService.ObterDetalhesAsync(Id);
 
-        config = await OrdemServicoQueryService.ObterConfiguracaoAsync();
+            if (os != null)
+            {
+                autorizadoPor = os.Veiculo?.Cliente?.Nome ?? "";
+            }
+
+            config = await OrdemServicoQueryService.ObterConfiguracaoAsync();
+        }
+        finally
+        {
+            carregando = false;
+        }
     }
 
     private async Task<(int usuarioId, PerfilUsuario perfil, string nomeUsuario)> GetUsuarioContextoCompletoAtual()
