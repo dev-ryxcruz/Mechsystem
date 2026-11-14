@@ -49,6 +49,13 @@
     --nav-item-height: 2.75rem;
     --nav-item-gap: .125rem;
     --nav-pad-x: 1rem;
+
+    /* Tokens de Utilitários MechSystem (--mech-*) */
+    --mech-modal-backdrop: rgba(0, 0, 0, 0.5);
+    --mech-modal-backdrop-strong: rgba(0, 0, 0, 0.6);
+    --mech-fs-xs: 0.75rem;
+    --mech-fs-sm: 0.85rem;
+    --mech-purple: #6f42c1;
 }
 
 /* ==============================================
@@ -1098,4 +1105,42 @@ h1:focus {
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+/* ==============================================
+   UTILITÁRIOS PADRONIZADOS (.mech-*)
+   ============================================== */
+.mech-modal-backdrop {
+    background-color: var(--mech-modal-backdrop);
+}
+
+.mech-modal-backdrop-strong {
+    background-color: var(--mech-modal-backdrop-strong);
+    z-index: 1055;
+}
+
+.mech-pre-wrap {
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+.mech-check-lg {
+    width: 2rem;
+    height: 2rem;
+}
+
+.mech-cursor-pointer {
+    cursor: pointer;
+}
+
+.mech-text-accent {
+    color: var(--accent);
+}
+
+.mech-text-xs {
+    font-size: var(--mech-fs-xs);
+}
+
+.mech-text-sm {
+    font-size: var(--mech-fs-sm);
 }

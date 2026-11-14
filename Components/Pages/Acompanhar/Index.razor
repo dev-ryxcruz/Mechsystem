@@ -182,11 +182,11 @@
                     </h6>
                     @if (os.ServicosAExecutarList != null && os.ServicosAExecutarList.Any())
                     {
-                        <p class="mb-0 text-dark" style="white-space: pre-wrap; line-height: 1.6;">@string.Join("\n", os.ServicosAExecutarList.Select(s => $"- {s.Quantidade}x {s.Servico?.Nome ?? "Serviço"}"))</p>
+                        <p class="mb-0 text-dark mech-pre-wrap">@string.Join("\n", os.ServicosAExecutarList.Select(s => $"- {s.Quantidade}x {s.Servico?.Nome ?? "Serviço"}"))</p>
                     }
                     else
                     {
-                        <p class="mb-0 text-dark" style="white-space: pre-wrap; line-height: 1.6;">Aguardando diagnóstico...</p>
+                        <p class="mb-0 text-dark mech-pre-wrap">Aguardando diagnóstico...</p>
                     }
                 </div>
             </div>

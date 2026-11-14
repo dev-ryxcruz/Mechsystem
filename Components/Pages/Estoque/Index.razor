@@ -256,7 +256,7 @@
 
 @if (mostrarModalExclusao && pecaParaExcluir != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Inativar Peça" style="background-color: rgba(0,0,0,0.5);" @onkeydown='e => { if (e.Key == "Escape") CancelarExclusao(); }'>
+    <div class="modal fade show d-block mech-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true" aria-label="Inativar Peça" @onkeydown='e => { if (e.Key == "Escape") CancelarExclusao(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header border-bottom-0 bg-warning text-dark">
@@ -295,7 +295,7 @@
 
 @if (mostrarModalReativar && pecaParaReativar != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Reativar Peça" style="background-color: rgba(0,0,0,0.5);" @onkeydown='e => { if (e.Key == "Escape") FecharModalReativar(); }'>
+    <div class="modal fade show d-block mech-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true" aria-label="Reativar Peça" @onkeydown='e => { if (e.Key == "Escape") FecharModalReativar(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header border-bottom-0 bg-success text-white">

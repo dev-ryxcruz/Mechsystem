@@ -184,7 +184,7 @@
 
 @if (ShowConfirmModal && clienteSelecionado != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Confirmar Inativação de Cliente" style="background-color: rgba(0,0,0,0.5);" @onkeydown='e => { if (e.Key == "Escape") CloseConfirmModal(); }'>
+    <div class="modal fade show d-block mech-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true" aria-label="Confirmar Inativação de Cliente" @onkeydown='e => { if (e.Key == "Escape") CloseConfirmModal(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow-lg border-0">
                 <div class="modal-header bg-warning text-dark border-0">
@@ -231,7 +231,7 @@
 
 @if (ShowReativarModal && clienteSelecionado != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Confirmar Reativação" style="background-color: rgba(0,0,0,0.5);" @onkeydown='e => { if (e.Key == "Escape") CloseReativarModal(); }'>
+    <div class="modal fade show d-block mech-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true" aria-label="Confirmar Reativação" @onkeydown='e => { if (e.Key == "Escape") CloseReativarModal(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow-lg border-0">
                 <div class="modal-header bg-success text-white border-0">

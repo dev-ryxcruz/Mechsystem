@@ -74,7 +74,7 @@
 <!-- Modal de Notas -->
 @if (osSelecionada != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Notas da O.S." style="background: rgba(0,0,0,0.5); z-index: 1050;" @onkeydown='e => { if (e.Key == "Escape") FecharModalNotas(); }'>
+    <div class="modal fade show d-block mech-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true" aria-label="Notas da O.S." style="z-index: 1050;" @onkeydown='e => { if (e.Key == "Escape") FecharModalNotas(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header border-bottom-0 pb-0">
@@ -86,13 +86,13 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label fw-bold text-muted small text-uppercase mb-1">Queixa do Cliente</label>
-                        <div class="p-3 bg-light rounded border text-dark" style="white-space: pre-wrap;">
+                        <div class="p-3 bg-light rounded border text-dark mech-pre-wrap">
                             @(string.IsNullOrWhiteSpace(osSelecionada.QueixaCliente) ? "Nenhuma queixa registrada." : osSelecionada.QueixaCliente)
                         </div>
                     </div>
                     <div>
                         <label class="form-label fw-bold text-muted small text-uppercase mb-1">Diagnóstico Técnico</label>
-                        <div class="p-3 bg-light rounded border text-dark" style="white-space: pre-wrap;">
+                        <div class="p-3 bg-light rounded border text-dark mech-pre-wrap">
                             @(string.IsNullOrWhiteSpace(osSelecionada.Diagnostico) ? "Nenhum diagnóstico registrado." : osSelecionada.Diagnostico)
                         </div>
                     </div>
@@ -108,7 +108,7 @@
 <!-- Modal Reportar Problema -->
 @if (osReportar != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Reportar Problema" style="background: rgba(0,0,0,0.6); z-index: 1055;" @onkeydown='e => { if (e.Key == "Escape") FecharModalReportar(); }'>
+    <div class="modal fade show d-block mech-modal-backdrop-strong" tabindex="-1" role="dialog" aria-modal="true" aria-label="Reportar Problema" @onkeydown='e => { if (e.Key == "Escape") FecharModalReportar(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-danger text-white border-bottom-0 pb-3">
@@ -147,7 +147,7 @@
 <!-- Modal Propor Aditivo -->
 @if (osAditivo != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Propor Aditivo" style="background: rgba(0,0,0,0.6); z-index: 1055;" @onkeydown='e => { if (e.Key == "Escape") FecharModalAditivo(); }'>
+    <div class="modal fade show d-block mech-modal-backdrop-strong" tabindex="-1" role="dialog" aria-modal="true" aria-label="Propor Aditivo" @onkeydown='e => { if (e.Key == "Escape") FecharModalAditivo(); }'>
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-primary text-white border-bottom-0 pb-3">
@@ -272,15 +272,15 @@
                     <p class="text-muted mb-4 fs-5">Confirme as etapas abaixo para concluir a O.S. <strong>@osParaConcluir.Veiculo?.Placa</strong>:</p>
 
                     <div class="form-check mb-4 d-flex align-items-center">
-                        <input class="form-check-input me-3 shadow-sm" type="checkbox" id="chkFluidos" style="width: 2rem; height: 2rem;" @bind="checklistFluidos">
+                        <input class="form-check-input me-3 shadow-sm mech-check-lg" type="checkbox" id="chkFluidos" @bind="checklistFluidos">
                         <label class="form-check-label fs-5 fw-medium text-dark" for="chkFluidos">Verificação de fluidos e freios</label>
                     </div>
                     <div class="form-check mb-4 d-flex align-items-center">
-                        <input class="form-check-input me-3 shadow-sm" type="checkbox" id="chkLimpeza" style="width: 2rem; height: 2rem;" @bind="checklistLimpeza">
+                        <input class="form-check-input me-3 shadow-sm mech-check-lg" type="checkbox" id="chkLimpeza" @bind="checklistLimpeza">
                         <label class="form-check-label fs-5 fw-medium text-dark" for="chkLimpeza">Limpeza da área de trabalho</label>
                     </div>
                     <div class="form-check mb-4 d-flex align-items-center">
-                        <input class="form-check-input me-3 shadow-sm" type="checkbox" id="chkFerramentas" style="width: 2rem; height: 2rem;" @bind="checklistFerramentas">
+                        <input class="form-check-input me-3 shadow-sm mech-check-lg" type="checkbox" id="chkFerramentas" @bind="checklistFerramentas">
                         <label class="form-check-label fs-5 fw-medium text-dark" for="chkFerramentas">Recolha de todas as ferramentas</label>
                     </div>
 
