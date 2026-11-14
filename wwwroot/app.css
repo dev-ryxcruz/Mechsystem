@@ -5,6 +5,7 @@
     /* Accent & Brand */
     --accent: #ff751f;
     --accent-hover: #e05c0d;
+    --mech-accent-text: #b84400;
     --accent-glow: rgba(255, 117, 31, 0.35);
     --accent-subtle: rgba(255, 117, 31, 0.10);
 
@@ -17,8 +18,8 @@
 
     /* Texto */
     --text-primary: #1a1a2e;
-    --text-secondary: #6c757d;
-    --text-muted: #9ca3af;
+    --text-secondary: #5c636a;
+    --text-muted: #5c636a;
     --text-on-dark: #e4e6ea;
     --text-on-dark-muted: #8b949e;
 

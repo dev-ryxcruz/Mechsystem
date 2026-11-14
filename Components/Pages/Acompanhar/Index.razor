@@ -262,15 +262,15 @@
 
     public static string GetStatusColor(OrdemServicoStatus status) => status switch
     {
-        OrdemServicoStatus.Orcamento => "#6c757d",         // Secondary
-        OrdemServicoStatus.Aprovada => "#0dcaf0",          // Info
-        OrdemServicoStatus.AguardandoPecas => "#fd7e14",   // Orange
+        OrdemServicoStatus.Orcamento => "#5c636a",         // Secondary (contraste >= 4.5:1)
+        OrdemServicoStatus.Aprovada => "#087990",          // Info escuro (contraste >= 4.5:1)
+        OrdemServicoStatus.AguardandoPecas => "#b84400",   // Orange escuro (contraste >= 4.5:1)
         OrdemServicoStatus.EmAndamento => "#0d6efd",       // Primary
-        OrdemServicoStatus.Pausada => "#ffc107",           // Warning / Amber
-        OrdemServicoStatus.AguardandoCliente => "#fd7e14", // Orange
-        OrdemServicoStatus.Concluida => "#198754",         // Success
-        OrdemServicoStatus.Entregue => "#198754",          // Success
-        OrdemServicoStatus.Recusada => "#ffc107",          // Warning
+        OrdemServicoStatus.Pausada => "#997404",           // Amber escuro (contraste >= 4.5:1)
+        OrdemServicoStatus.AguardandoCliente => "#b84400", // Orange escuro (contraste >= 4.5:1)
+        OrdemServicoStatus.Concluida => "#146c43",         // Success
+        OrdemServicoStatus.Entregue => "#146c43",          // Success
+        OrdemServicoStatus.Recusada => "#997404",          // Amber escuro
         OrdemServicoStatus.Cancelada => "#dc3545",         // Danger
         _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Status de O.S. não mapeado.")
     };

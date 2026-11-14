@@ -38,7 +38,7 @@
         @foreach (var col in Colunas)
         {
             <li class="nav-item" role="presentation">
-                <button class="nav-link rounded-pill fw-semibold small text-nowrap @(ActiveTab == col.Chave ? $"active bg-{col.Cor} shadow-sm" : "text-muted")" @onclick="@(() => ActiveTab = col.Chave)">@col.Abreviado</button>
+                <button class="nav-link rounded-pill fw-semibold small text-nowrap @(ActiveTab == col.Chave ? $"active bg-{col.Cor} {(col.Cor is "warning" or "info" ? "text-dark" : "")} shadow-sm" : "text-muted")" @onclick="@(() => ActiveTab = col.Chave)">@col.Abreviado</button>
             </li>
         }
     </ul>
@@ -50,8 +50,8 @@
             var itens = ObterOrdensColuna(col.Chave);
             <div class="col-11 col-sm-8 col-md-6 col-lg-6 col-xl @(ActiveTab == col.Chave ? "d-block" : "d-none d-lg-block")">
                 <div class="d-flex align-items-center mb-3 d-none d-lg-flex">
-                    <h5 class="mb-0 fw-bold text-@col.Cor"><i class="bi @col.Icone me-2"></i>@col.Titulo</h5>
-                    <span class="badge bg-@col.Cor ms-auto rounded-pill px-2 py-1">@itens.Count</span>
+                    <h5 class="mb-0 fw-bold text-@col.Cor-emphasis"><i class="bi @col.Icone me-2"></i>@col.Titulo</h5>
+                    <span class="badge bg-@col.Cor @(col.Cor is "warning" or "info" ? "text-dark" : "") ms-auto rounded-pill px-2 py-1">@itens.Count</span>
                 </div>
                 <div>
                     @if (itens.Any())
