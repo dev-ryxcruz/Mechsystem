@@ -38,9 +38,9 @@ else
 {
     @if (ShowSuccessMessage)
     {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <div class="alert alert-success alert-dismissible fade show" role="alert" aria-live="polite">
             <i class="bi bi-check-circle-fill me-2"></i> Vistoria salva com sucesso!
-            <button type="button" class="btn-close" @onclick="() => ShowSuccessMessage = false" aria-label="Close"></button>
+            <button type="button" class="btn-close" @onclick="() => ShowSuccessMessage = false" aria-label="Fechar"></button>
         </div>
     }
 

@@ -213,12 +213,12 @@
 
 @if (ShowConfirmModal && veiculoSelecionado != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Confirmar Inativação de Veículo" style="background-color: rgba(0,0,0,0.5);" @onkeydown='e => { if (e.Key == "Escape") CloseConfirmModal(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow-lg border-0">
                 <div class="modal-header bg-warning text-dark border-0">
                     <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i> Confirmar Inativação de Veículo</h5>
-                    <button type="button" class="btn-close" @onclick="CloseConfirmModal"></button>
+                    <button type="button" class="btn-close" aria-label="Fechar" @onclick="CloseConfirmModal"></button>
                 </div>
                 <div class="modal-body">
                     @if (!string.IsNullOrEmpty(erroModal))
@@ -249,12 +249,12 @@
 
 @if (ShowReativarModal && veiculoSelecionado != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Confirmar Reativação" style="background-color: rgba(0,0,0,0.5);" @onkeydown='e => { if (e.Key == "Escape") CloseReativarModal(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content shadow-lg border-0">
                 <div class="modal-header bg-success text-white border-0">
                     <h5 class="modal-title fw-bold"><i class="bi bi-arrow-counterclockwise me-2"></i> Confirmar Reativação</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="CloseReativarModal"></button>
+                    <button type="button" class="btn-close btn-close-white" aria-label="Fechar" @onclick="CloseReativarModal"></button>
                 </div>
                 <div class="modal-body">
                     @if (!string.IsNullOrEmpty(erroModal))

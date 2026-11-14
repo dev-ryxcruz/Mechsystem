@@ -156,7 +156,7 @@
                                                 <td><InputNumber @bind-Value="l.Quantidade" @bind-Value:after="AtualizarPrevisaoSugerida" class="form-control form-control-sm" min="1" /></td>
                                                 <td><InputNumber @bind-Value="l.Valor" class="form-control form-control-sm" min="0" step="0.01" /></td>
                                                 <td class="text-end fw-bold text-success">@l.Subtotal.ToString("C")</td>
-                                                <td><button type="button" class="btn btn-sm btn-outline-danger" title="Remover" @onclick="() => RemoverServico(l)"><i class="bi bi-trash"></i></button></td>
+                                                <td><button type="button" class="btn btn-sm btn-outline-danger" title="Remover" aria-label="Remover serviço @l.Nome" @onclick="() => RemoverServico(l)"><i class="bi bi-trash"></i></button></td>
                                             </tr>
                                         }
                                     </tbody>

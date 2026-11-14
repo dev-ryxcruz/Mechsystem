@@ -41,18 +41,18 @@ else
     <!-- ALERT MESSAGES -->
     @if (showSuccess)
     {
-        <div class="cfg-alert cfg-alert-success" @onclick="() => showSuccess = false">
+        <div class="cfg-alert cfg-alert-success" role="alert" aria-live="polite" @onclick="() => showSuccess = false">
             <i class="bi bi-check-circle-fill"></i>
             <span>Configurações salvas com sucesso!</span>
-            <button class="cfg-alert-close"><i class="bi bi-x-lg"></i></button>
+            <button type="button" class="cfg-alert-close" aria-label="Fechar aviso"><i class="bi bi-x-lg"></i></button>
         </div>
     }
     @if (!string.IsNullOrEmpty(errorMessage))
     {
-        <div class="cfg-alert cfg-alert-danger" @onclick="() => errorMessage = string.Empty">
+        <div class="cfg-alert cfg-alert-danger" role="alert" @onclick="() => errorMessage = string.Empty">
             <i class="bi bi-exclamation-triangle-fill"></i>
             <span>@errorMessage</span>
-            <button class="cfg-alert-close"><i class="bi bi-x-lg"></i></button>
+            <button type="button" class="cfg-alert-close" aria-label="Fechar erro"><i class="bi bi-x-lg"></i></button>
         </div>
     }
 

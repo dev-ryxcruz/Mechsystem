@@ -256,12 +256,12 @@
 
 @if (mostrarModalExclusao && pecaParaExcluir != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Inativar Peça" style="background-color: rgba(0,0,0,0.5);" @onkeydown='e => { if (e.Key == "Escape") CancelarExclusao(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header border-bottom-0 bg-warning text-dark">
                     <h5 class="modal-title fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Inativar Peça</h5>
-                    <button type="button" class="btn-close" @onclick="CancelarExclusao"></button>
+                    <button type="button" class="btn-close" aria-label="Fechar" @onclick="CancelarExclusao"></button>
                 </div>
                 <div class="modal-body py-4">
                     @if (!string.IsNullOrEmpty(erroModal))
@@ -295,12 +295,12 @@
 
 @if (mostrarModalReativar && pecaParaReativar != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Reativar Peça" style="background-color: rgba(0,0,0,0.5);" @onkeydown='e => { if (e.Key == "Escape") FecharModalReativar(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header border-bottom-0 bg-success text-white">
                     <h5 class="modal-title fw-bold"><i class="bi bi-arrow-counterclockwise me-2"></i>Reativar Peça</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="FecharModalReativar"></button>
+                    <button type="button" class="btn-close btn-close-white" aria-label="Fechar" @onclick="FecharModalReativar"></button>
                 </div>
                 <div class="modal-body py-4">
                     @if (!string.IsNullOrEmpty(erroModal))

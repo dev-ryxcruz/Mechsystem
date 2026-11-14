@@ -50,14 +50,14 @@
 
     <!-- Filtro de Período -->
     <div class="period-filter d-flex align-items-center gap-2 mb-4 flex-wrap">
-        <div class="btn-group shadow-sm" role="group">
-            <button class="btn btn-sm btn-outline-secondary" @onclick="PreviousMonth" disabled="@isAllTime" title="Mês anterior">
+        <div class="btn-group shadow-sm" role="group" aria-label="Navegação de período">
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="PreviousMonth" disabled="@isAllTime" title="Mês anterior" aria-label="Mês anterior">
                 <i class="bi bi-chevron-left"></i>
             </button>
             <span class="btn btn-sm btn-outline-secondary px-3 fw-bold pe-none" style="min-width: 180px; opacity: 1 !important; color: var(--text-color, #333) !important;">
                 <i class="bi bi-calendar3 me-1"></i>@GetPeriodLabel()
             </span>
-            <button class="btn btn-sm btn-outline-secondary" @onclick="NextMonth" disabled="@(isAllTime || IsCurrentMonth())" title="Próximo mês">
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="NextMonth" disabled="@(isAllTime || IsCurrentMonth())" title="Próximo mês" aria-label="Próximo mês">
                 <i class="bi bi-chevron-right"></i>
             </button>
         </div>

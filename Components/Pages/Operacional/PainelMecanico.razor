@@ -29,7 +29,7 @@
     {
         <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
             <i class="bi bi-exclamation-triangle-fill me-2"></i>@erroOperacional
-            <button type="button" class="btn-close" @onclick="() => erroOperacional = null"></button>
+            <button type="button" class="btn-close" aria-label="Fechar" @onclick="() => erroOperacional = null"></button>
         </div>
     }
 
@@ -74,14 +74,14 @@
 <!-- Modal de Notas -->
 @if (osSelecionada != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); z-index: 1050;">
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Notas da O.S." style="background: rgba(0,0,0,0.5); z-index: 1050;" @onkeydown='e => { if (e.Key == "Escape") FecharModalNotas(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow">
                 <div class="modal-header border-bottom-0 pb-0">
                     <h5 class="modal-title fw-bold">
                         <i class="bi bi-card-checklist text-primary me-2"></i>Notas da O.S. @osSelecionada.Id.ToString("D4")
                     </h5>
-                    <button type="button" class="btn-close shadow-none" @onclick="FecharModalNotas"></button>
+                    <button type="button" class="btn-close shadow-none" aria-label="Fechar" @onclick="FecharModalNotas"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
@@ -108,12 +108,12 @@
 <!-- Modal Reportar Problema -->
 @if (osReportar != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.6); z-index: 1055;">
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Reportar Problema" style="background: rgba(0,0,0,0.6); z-index: 1055;" @onkeydown='e => { if (e.Key == "Escape") FecharModalReportar(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-danger text-white border-bottom-0 pb-3">
                     <h5 class="modal-title fw-bold fs-4"><i class="bi bi-exclamation-triangle me-2"></i>Reportar Problema</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="FecharModalReportar"></button>
+                    <button type="button" class="btn-close btn-close-white" aria-label="Fechar" @onclick="FecharModalReportar"></button>
                 </div>
                 <div class="modal-body p-4">
                     <p class="text-muted mb-3">O.S. <strong>@osReportar.Veiculo?.Placa</strong> — Descreva o problema encontrado:</p>
@@ -147,12 +147,12 @@
 <!-- Modal Propor Aditivo -->
 @if (osAditivo != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.6); z-index: 1055;">
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Propor Aditivo" style="background: rgba(0,0,0,0.6); z-index: 1055;" @onkeydown='e => { if (e.Key == "Escape") FecharModalAditivo(); }'>
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-primary text-white border-bottom-0 pb-3">
                     <h5 class="modal-title fw-bold fs-4"><i class="bi bi-plus-circle me-2"></i>Propor Aditivo</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="FecharModalAditivo"></button>
+                    <button type="button" class="btn-close btn-close-white" aria-label="Fechar" @onclick="FecharModalAditivo"></button>
                 </div>
                 <div class="modal-body p-4">
                     <p class="text-muted mb-3">
@@ -261,12 +261,12 @@
 <!-- Modal de Conclusão da OS -->
 @if (osParaConcluir != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.6); z-index: 1060;">
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Finalizar O.S." style="background: rgba(0,0,0,0.6); z-index: 1060;" @onkeydown='e => { if (e.Key == "Escape") CancelarConclusao(); }'>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header bg-primary text-white border-bottom-0 pb-3">
                     <h5 class="modal-title fw-bold fs-4"><i class="bi bi-list-check me-2"></i>Finalizar O.S.</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="CancelarConclusao"></button>
+                    <button type="button" class="btn-close btn-close-white" aria-label="Fechar" @onclick="CancelarConclusao"></button>
                 </div>
                 <div class="modal-body p-4">
                     <p class="text-muted mb-4 fs-5">Confirme as etapas abaixo para concluir a O.S. <strong>@osParaConcluir.Veiculo?.Placa</strong>:</p>
