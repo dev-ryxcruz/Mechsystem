@@ -1,21 +1,19 @@
 @page "/ordens-servico/{id:int}"
 @rendermode InteractiveServer
 @implements IDisposable
-@using Microsoft.EntityFrameworkCore
-@using mechsystem.Data
 @using mechsystem.Models
 @using mechsystem.Services
+@using mechsystem.Services.Queries
 @using mechsystem.Interfaces
 @using Microsoft.AspNetCore.Authorization
-@using System.Security.Claims
 @using System.Globalization
 @using System.Reflection
 @using System.ComponentModel.DataAnnotations
 @attribute [Authorize]
-@inject AppDbContext DbContext
+@inject OrdemServicoQueryService OrdemServicoQueryService
+@inject ICurrentUserService CurrentUserService
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
-@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject EstoqueService EstoqueService
 @inject OrdemServicoService OrdemServicoService
 @inject IPecaRepository PecaRepository
@@ -1529,16 +1527,11 @@ else
     // ─── Carga ───────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        isAdmin = user.IsInRole("Administrador");
-        isAtendimento = user.IsInRole("Atendimento");
-        isMecanico = user.IsInRole("Mecanico") || user.IsInRole("Mecânico");
-        if (int.TryParse(user.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid)) usuarioIdAtual = uid;
-        if (Enum.TryParse<PerfilUsuario>(user.FindFirst(ClaimTypes.Role)?.Value, out var perfil))
-        {
-            isMecanico = perfil == PerfilUsuario.Mecanico;
-        }
+        var contexto = await CurrentUserService.ObterContextoAtualAsync();
+        usuarioIdAtual = contexto.UsuarioId;
+        isAdmin = contexto.Perfil == PerfilUsuario.Administrador;
+        isAtendimento = contexto.Perfil == PerfilUsuario.Atendimento;
+        isMecanico = contexto.Perfil == PerfilUsuario.Mecanico;
 
         await LoadData();
 
@@ -1556,60 +1549,20 @@ else
 
     private async Task LoadData()
     {
-        DbContext.ChangeTracker.Clear();
-        os = await DbContext.OrdensServico
-            .AsSplitQuery()
-            .Include(o => o.Vistoria)
-            .Include(o => o.Veiculo)
-                .ThenInclude(v => v!.Cliente)
-            .Include(o => o.PecasUtilizadas)
-                .ThenInclude(p => p.Peca)
-            .Include(o => o.ServicosAExecutarList)
-                .ThenInclude(s => s.Servico)
-            .Include(o => o.ServicosAExecutarList)
-                .ThenInclude(s => s.Mecanico)
-            .Include(o => o.ApontamentosTempo)
-                .ThenInclude(a => a.Mecanico)
-            .Include(o => o.Pagamentos)
-            .Include(o => o.MecanicoResponsavel)
-            .Include(o => o.CanceladaPorUsuario)
-            .Include(o => o.Contatos)
-            .FirstOrDefaultAsync(o => o.Id == Id);
+        os = await OrdemServicoQueryService.ObterDetalhesAsync(Id);
 
         if (os != null)
         {
             autorizadoPor = os.Veiculo?.Cliente?.Nome ?? "";
         }
 
-        config = await DbContext.Configuracoes.FirstOrDefaultAsync();
+        config = await OrdemServicoQueryService.ObterConfiguracaoAsync();
     }
 
     private async Task<(int usuarioId, PerfilUsuario perfil, string nomeUsuario)> GetUsuarioContextoCompletoAtual()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        if (user.Identity?.IsAuthenticated != true)
-        {
-            throw new UnauthorizedAccessException("Usuário não autenticado.");
-        }
-
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var usuarioId))
-        {
-            throw new UnauthorizedAccessException("Identificador de usuário inválido.");
-        }
-
-        var roleClaim = user.FindFirst(ClaimTypes.Role)?.Value;
-        if (!Enum.TryParse<PerfilUsuario>(roleClaim, out var perfil))
-        {
-            throw new UnauthorizedAccessException("Perfil de usuário inválido.");
-        }
-
-        var nomeUsuario = user.FindFirst(ClaimTypes.GivenName)?.Value
-            ?? user.Identity?.Name
-            ?? "Usuário";
-
-        return (usuarioId, perfil, nomeUsuario);
+        var contexto = await CurrentUserService.ObterContextoAtualAsync();
+        return (contexto.UsuarioId, contexto.Perfil, contexto.NomeUsuario);
     }
 
     private async Task<(int usuarioId, PerfilUsuario perfil)> GetUsuarioContextoAtual()
@@ -1673,24 +1626,11 @@ else
     {
         if (os == null || string.IsNullOrWhiteSpace(novoContatoDescricao)) return;
 
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var nomeUsuario = authState.User.FindFirst(ClaimTypes.GivenName)?.Value
-                        ?? authState.User.Identity?.Name ?? "Usuário";
-
-        var contato = new ContatoOS
+        await Executar(async (uid, _, nome) =>
         {
-            OrdemServicoId = os.Id,
-            Tipo = novoContatoTipo,
-            Descricao = novoContatoDescricao,
-            RegistradoPor = nomeUsuario,
-            DataContato = DateTime.UtcNow
-        };
-
-        DbContext.ContatosOS.Add(contato);
-        await DbContext.SaveChangesAsync();
-
-        novoContatoDescricao = "";
-        await LoadData();
+            await OrdemServicoService.RegistrarContatoAsync(os.Id, novoContatoTipo, novoContatoDescricao, uid, nome);
+            novoContatoDescricao = "";
+        }, "Não foi possível registrar o contato na Ordem de Serviço.");
     }
 
     private async Task CopiarLinkAcompanhamento()
@@ -1774,10 +1714,7 @@ else
     private async Task AbrirModalMecanico()
     {
         erroMensagem = null;
-        mecanicos = await DbContext.Usuarios
-            .Where(u => u.Ativo && u.Perfil == PerfilUsuario.Mecanico)
-            .OrderBy(u => u.NomeCompleto)
-            .ToListAsync();
+        mecanicos = await OrdemServicoQueryService.ListarMecanicosAtivosAsync();
         mecanicoSelecionadoId = os?.MecanicoResponsavelId ?? 0;
         mostrarModalMecanico = true;
     }

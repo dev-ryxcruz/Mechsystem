@@ -147,7 +147,7 @@ namespace mechsystem.Models
         public DateTime? DataConclusao { get; set; }
 
         [Display(Name = "Checklist de Conclusão (JSON)")]
-        [Column(TypeName = "TEXT")]
+        [Column(TypeName = "jsonb")]
         public string? ChecklistConclusaoJson { get; set; }
 
         [MaxLength(500)]
@@ -182,6 +182,75 @@ namespace mechsystem.Models
         // Comunicação com Cliente
         public string? TokenAcompanhamento { get; set; } = Guid.NewGuid().ToString("N");
         public ICollection<ContatoOS> Contatos { get; set; } = new List<ContatoOS>();
+
+        private static readonly Dictionary<OrdemServicoStatus, HashSet<OrdemServicoStatus>> TransicoesPermitidas = new()
+        {
+            [OrdemServicoStatus.Orcamento] = new()
+            {
+                OrdemServicoStatus.Aprovada,
+                OrdemServicoStatus.Recusada,
+                OrdemServicoStatus.Cancelada
+            },
+            [OrdemServicoStatus.Aprovada] = new()
+            {
+                OrdemServicoStatus.EmAndamento,
+                OrdemServicoStatus.Cancelada
+            },
+            [OrdemServicoStatus.EmAndamento] = new()
+            {
+                OrdemServicoStatus.Pausada,
+                OrdemServicoStatus.AguardandoPecas,
+                OrdemServicoStatus.AguardandoCliente,
+                OrdemServicoStatus.Concluida,
+                OrdemServicoStatus.Cancelada
+            },
+            [OrdemServicoStatus.Pausada] = new()
+            {
+                OrdemServicoStatus.EmAndamento,
+                OrdemServicoStatus.Cancelada
+            },
+            [OrdemServicoStatus.AguardandoPecas] = new()
+            {
+                OrdemServicoStatus.EmAndamento,
+                OrdemServicoStatus.Cancelada
+            },
+            [OrdemServicoStatus.AguardandoCliente] = new()
+            {
+                OrdemServicoStatus.EmAndamento,
+                OrdemServicoStatus.Cancelada
+            },
+            [OrdemServicoStatus.Concluida] = new()
+            {
+                OrdemServicoStatus.Entregue
+            },
+            [OrdemServicoStatus.Entregue] = new(),
+            [OrdemServicoStatus.Recusada] = new(),
+            [OrdemServicoStatus.Cancelada] = new()
+        };
+
+        public static bool PodeTransicionar(OrdemServicoStatus origem, OrdemServicoStatus destino) =>
+            TransicoesPermitidas.TryGetValue(origem, out var destinos) && destinos.Contains(destino);
+
+        public static void ValidarTransicao(OrdemServicoStatus origem, OrdemServicoStatus destino)
+        {
+            if (!PodeTransicionar(origem, destino))
+            {
+                throw new InvalidOperationException(
+                    $"Transição de status inválida: não é permitido alterar a O.S. de '{origem}' para '{destino}'.");
+            }
+        }
+
+        public void ValidarTransicaoPara(OrdemServicoStatus destino) => ValidarTransicao(Status, destino);
+
+        public void FecharApontamentosAbertos(DateTime? instanteUtc = null)
+        {
+            if (ApontamentosTempo == null) return;
+            var agora = instanteUtc ?? DateTime.UtcNow;
+            foreach (var apontamento in ApontamentosTempo.Where(a => !a.Fim.HasValue))
+            {
+                apontamento.Fim = agora;
+            }
+        }
 
         public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
         {

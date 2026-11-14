@@ -1,21 +1,18 @@
 @page "/ordens-servico/nova"
 @rendermode InteractiveServer
-@using Microsoft.EntityFrameworkCore
-@using mechsystem.Data
 @using mechsystem.Models
 @using mechsystem.Interfaces
 @using mechsystem.Services
-@using Microsoft.AspNetCore.Components.Authorization
+@using mechsystem.Services.Queries
 @using Microsoft.AspNetCore.Authorization
-@using System.Security.Claims
 @attribute [Authorize(Roles = "Administrador, Atendimento")]
-@inject AppDbContext DbContext
+@inject OrdemServicoQueryService OrdemServicoQueryService
 @inject OrdemServicoService OrdemServicoService
+@inject ICurrentUserService CurrentUserService
 @inject NavigationManager NavigationManager
 @inject IClienteRepository ClienteRepository
 @inject IVeiculoRepository VeiculoRepository
 @inject IJSRuntime JS
-@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Nova Ordem de Serviço</PageTitle>
 
@@ -479,32 +476,26 @@
     private string? erroWizard;
     private bool salvandoWizard = false;
 
+    private PerfilUsuario perfilAtual = PerfilUsuario.Atendimento;
+
     protected override async Task OnInitializedAsync()
     {
         os ??= new();
         os.DataEmissao = DateTime.UtcNow.Date;
         os.DataPrevisaoEntrega = OrdemServicoService.CalcularPrevisaoEntregaSugerida(0);
-        
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        isAdmin = authState.User.IsInRole("Administrador");
-        if (int.TryParse(authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid))
-        {
-            usuarioIdAtual = uid;
-        }
-        nomeUsuarioAtual = authState.User.Identity?.Name;
 
-        config = await DbContext.Configuracoes.FirstOrDefaultAsync();
+        var contexto = await CurrentUserService.ObterContextoAtualAsync();
+        usuarioIdAtual = contexto.UsuarioId;
+        perfilAtual = contexto.Perfil;
+        nomeUsuarioAtual = contexto.NomeUsuario;
+        isAdmin = perfilAtual == PerfilUsuario.Administrador;
+
+        config = await OrdemServicoQueryService.ObterConfiguracaoAsync();
         os.ValidadeOrcamentoAte = os.DataEmissao.AddDays(config?.ValidadeOrcamentoDias ?? 10);
-        
-        veiculos = await DbContext.Veiculos
-            .Include(v => v.Cliente)
-            .Ativos()
-            .Where(v => v.Cliente != null && v.Cliente.Ativo)
-            .OrderBy(v => v.Cliente!.Nome)
-            .ToListAsync();
-            
-        catalogoServicos = await DbContext.Servicos.Ativos().OrderBy(s => s.Nome).ToListAsync();
-            
+
+        veiculos = await OrdemServicoQueryService.ListarVeiculosAtivosParaSelecaoAsync();
+        catalogoServicos = await OrdemServicoQueryService.ListarServicosAtivosAsync();
+
         isLoading = false;
     }
 
@@ -524,82 +515,39 @@
         erroCombustivel = null;
         if (os.VeiculoId == 0) return;
 
-        if (os.KmEntrada <= 0)
-        {
-            erroKm = "O KM de entrada deve ser maior que zero.";
-            return;
-        }
         if (!nivelCombustivelSelecionado.HasValue || (int)nivelCombustivelSelecionado.Value < 1 || (int)nivelCombustivelSelecionado.Value > 5)
         {
             erroCombustivel = "Selecione o nível de combustível de entrada.";
-            return;
-        }
-        os.NivelCombustivelEntrada = nivelCombustivelSelecionado.Value;
-
-        if (!linhasServico.Any() && !linhasPeca.Any())
-        {
-            erroItens = "Adicione ao menos um serviço ou peça ao orçamento.";
-            return;
-        }
-        if (linhasServico.Any(l => l.Quantidade < 1) || linhasPeca.Any(l => l.Quantidade < 1))
-        {
-            erroItens = "A quantidade de cada item deve ser pelo menos 1.";
-            return;
-        }
-        if (linhasServico.Any(l => l.Valor < 0) || linhasPeca.Any(l => l.Valor < 0))
-        {
-            erroItens = "O valor de um item não pode ser negativo.";
-            return;
-        }
-        if (!isAdmin && (linhasServico.Any(l => l.Valor < l.PrecoBase) || linhasPeca.Any(l => l.Valor < l.PrecoBase)))
-        {
-            erroItens = "Apenas Administradores podem cobrar abaixo do preço base sugerido.";
-            return;
-        }
-        if (!isAdmin) os.ValorDesconto = 0;
-        if (os.ValorDesconto > TotalServicos + TotalPecas)
-        {
-            erroItens = "O desconto não pode ser maior que o total dos itens.";
             return;
         }
 
         salvando = true;
         try
         {
-            os.Status = OrdemServicoStatus.Orcamento;
-            os.DataEmissao = DateTime.UtcNow.Date;
-            os.ValidadeOrcamentoAte = os.DataEmissao.AddDays(config?.ValidadeOrcamentoDias ?? 10);
-            if (string.IsNullOrWhiteSpace(os.TokenAcompanhamento))
-            {
-                os.TokenAcompanhamento = Guid.NewGuid().ToString("N");
-            }
+            var request = new CriarOrcamentoRequest(
+                os.VeiculoId,
+                os.KmEntrada,
+                nivelCombustivelSelecionado.Value,
+                os.QueixaCliente,
+                os.Diagnostico,
+                os.DataPrevisaoEntrega,
+                os.ValorDesconto,
+                linhasServico.Select(l => new CriarOrcamentoServicoItem(
+                    l.ServicoId,
+                    l.Quantidade,
+                    l.PrecoBase,
+                    l.Valor,
+                    l.TempoMinutos)).ToList(),
+                linhasPeca.Select(l => new CriarOrcamentoPecaItem(
+                    l.PecaId,
+                    l.Quantidade,
+                    l.PrecoBase,
+                    l.PrecoCusto,
+                    l.Valor,
+                    l.Origem)).ToList());
 
-            // Constrói as linhas a partir do estado da tela (somente FKs, sem navegações)
-            os.ServicosAExecutarList = linhasServico.Select(l => new OrdemServicoServico
-            {
-                ServicoId = l.ServicoId,
-                Quantidade = l.Quantidade,
-                PrecoBase = l.PrecoBase,
-                ValorCobrado = l.Valor,
-                TempoEstimadoMinutosSnapshot = l.TempoMinutos,
-                StatusItem = StatusItem.Pendente
-            }).ToList();
-
-            os.PecasUtilizadas = linhasPeca.Select(l => new OrdemServicoPeca
-            {
-                PecaId = l.PecaId,
-                Quantidade = l.Quantidade,
-                PrecoBase = l.PrecoBase,
-                ValorCobrado = l.Valor,
-                PrecoCustoSnapshot = l.PrecoCusto,
-                Origem = l.Origem,
-                StatusItem = StatusItem.Pendente
-            }).ToList();
-
-            // Apenas a raiz é adicionada; as coleções entram pelo grafo (sem Add duplicado)
-            await OrdemServicoService.CriarOrcamentoAsync(os, usuarioIdAtual, nomeUsuarioAtual);
-
-            NavigationManager.NavigateTo($"/ordens-servico/{os.Id}");
+            var osId = await OrdemServicoService.CriarOrcamentoAsync(request, usuarioIdAtual, perfilAtual, nomeUsuarioAtual);
+            NavigationManager.NavigateTo($"/ordens-servico/{osId}");
         }
         catch (Exception ex)
         {
@@ -691,19 +639,7 @@
 
     private async Task BuscarPecas()
     {
-        var termo = buscaPeca?.Trim();
-        if (string.IsNullOrEmpty(termo) || termo.Length < 2)
-        {
-            resultadoPecas = new();
-            return;
-        }
-        var t = termo.ToLower();
-        resultadoPecas = await DbContext.Pecas.AsNoTracking()
-            .Ativos()
-            .Where(p => p.Nome.ToLower().Contains(t) || p.Sku.ToLower().Contains(t))
-            .OrderBy(p => p.Nome)
-            .Take(8)
-            .ToListAsync();
+        resultadoPecas = await OrdemServicoQueryService.BuscarPecasRapidoAsync(buscaPeca);
     }
 
     private void AdicionarPeca(Peca peca)
@@ -800,12 +736,7 @@
             await VeiculoRepository.Salvar(novoVeiculo);
 
             // Recarregar a lista de veículos
-            veiculos = await DbContext.Veiculos
-                .Include(v => v.Cliente)
-                .Ativos()
-            .Where(v => v.Cliente != null && v.Cliente.Ativo)
-                .OrderBy(v => v.Cliente!.Nome)
-                .ToListAsync();
+            veiculos = await OrdemServicoQueryService.ListarVeiculosAtivosParaSelecaoAsync();
 
             // Pré-selecionar o veículo recém-criado
             os.VeiculoId = novoVeiculo.Id;

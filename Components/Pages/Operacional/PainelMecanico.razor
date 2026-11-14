@@ -1,17 +1,16 @@
 @page "/operacional/painel"
 @rendermode InteractiveServer
 @implements IDisposable
-@using mechsystem.Data
+@using mechsystem.Interfaces
 @using mechsystem.Models
 @using mechsystem.Services
+@using mechsystem.Services.Queries
 @using System.Text.Json
-@using Microsoft.EntityFrameworkCore
 @using Microsoft.AspNetCore.Authorization
-@using System.Security.Claims
 @attribute [Authorize(Roles = "Administrador, Atendimento, Mecanico")]
-@inject AppDbContext DbContext
+@inject OrdemServicoQueryService OrdemServicoQueryService
 @inject OrdemServicoService OrdemServicoService
-@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ICurrentUserService CurrentUserService
 @inject NavigationManager NavManager
 
 <PageTitle>Painel do Mecânico</PageTitle>
@@ -377,38 +376,7 @@
 
     private async Task CarregarOrdens()
     {
-        var statusAtivos = new[]
-        {
-            OrdemServicoStatus.Aprovada, OrdemServicoStatus.EmAndamento, OrdemServicoStatus.Pausada,
-            OrdemServicoStatus.AguardandoPecas, OrdemServicoStatus.AguardandoCliente
-        };
-        var limiteConclusao = DateTime.UtcNow.AddDays(-2);
-        bool soMecanico = perfilAtual == PerfilUsuario.Mecanico;
-        int uid = usuarioIdAtual;
-
-        var query = DbContext.OrdensServico
-            .AsNoTracking()
-            .AsSplitQuery()
-            .Include(o => o.Veiculo)
-            .Include(o => o.MecanicoResponsavel)
-            .Include(o => o.ServicosAExecutarList).ThenInclude(s => s.Servico)
-            .Include(o => o.PecasUtilizadas).ThenInclude(p => p.Peca)
-            .Include(o => o.ApontamentosTempo)
-            .Where(o => statusAtivos.Contains(o.Status)
-                || (o.Status == OrdemServicoStatus.Concluida && o.DataConclusao >= limiteConclusao));
-
-        if (soMecanico)
-        {
-            query = query.Where(o => o.MecanicoResponsavelId == uid
-                || (o.MecanicoResponsavelId == null && o.Status != OrdemServicoStatus.Concluida));
-        }
-
-        var carregadas = await query.OrderBy(o => o.Id).ToListAsync();
-        var hoje = DateTimeExtensions.TodayBrasilia();
-        ordens = carregadas
-            .Where(o => o.Status != OrdemServicoStatus.Concluida
-                || (o.DataConclusao.HasValue && o.DataConclusao.Value.ToBrasiliaTime().Date == hoje))
-            .ToList();
+        ordens = await OrdemServicoQueryService.ListarOrdensPainelMecanicoAsync(usuarioIdAtual, perfilAtual);
     }
 
     private List<OrdemServico> ObterOrdensColuna(string chave)
@@ -708,20 +676,12 @@
         var os = osReportar;
         await Executar(async () =>
         {
-            DbContext.ContatosOS.Add(new ContatoOS
-            {
-                OrdemServicoId = os.Id,
-                Tipo = TipoContato.Outro,
-                Descricao = $"[{reportarTipo}] {reportarDescricao}",
-                RegistradoPor = "Mecânico",
-                DataContato = DateTime.UtcNow
-            });
-            await DbContext.SaveChangesAsync();
-
-            if (reportarTipo == "Falta de peça" && os.Status == OrdemServicoStatus.EmAndamento)
-            {
-                await OrdemServicoService.AguardarPecasAsync(os.Id, perfilAtual, usuarioIdAtual);
-            }
+            await OrdemServicoService.ReportarProblemaAsync(
+                os.Id,
+                reportarTipo,
+                reportarDescricao,
+                usuarioIdAtual,
+                perfilAtual);
             osReportar = null;
         }, "Não foi possível registrar o reporte na O.S.");
     }
@@ -739,8 +699,8 @@
             aditivoQuantidade = 1;
             aditivoOrigem = OrigemPeca.Estoque;
             aditivoMensagem = "";
-            servicosCatalogo = await DbContext.Servicos.AsNoTracking().Where(s => s.Ativo).OrderBy(s => s.Nome).ToListAsync();
-            pecasCatalogo = await DbContext.Pecas.AsNoTracking().Where(p => p.Ativo).OrderBy(p => p.Nome).ToListAsync();
+            servicosCatalogo = await OrdemServicoQueryService.ListarServicosAtivosAsync();
+            pecasCatalogo = await OrdemServicoQueryService.ListarPecasAtivasAsync();
         }
         catch (Exception ex)
         {
@@ -829,25 +789,7 @@
 
     private async Task<(int usuarioId, PerfilUsuario perfil)> GetUsuarioContextoAtual()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        if (user.Identity?.IsAuthenticated != true)
-        {
-            throw new UnauthorizedAccessException("Usuário não autenticado.");
-        }
-
-        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var usuarioId))
-        {
-            throw new UnauthorizedAccessException("Identificador de usuário inválido.");
-        }
-
-        var roleClaim = user.FindFirst(ClaimTypes.Role)?.Value;
-        if (!Enum.TryParse<PerfilUsuario>(roleClaim, out var perfil))
-        {
-            throw new UnauthorizedAccessException("Perfil de usuário inválido.");
-        }
-
-        return (usuarioId, perfil);
+        var contexto = await CurrentUserService.ObterContextoAtualAsync();
+        return (contexto.UsuarioId, contexto.Perfil);
     }
 }

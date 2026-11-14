@@ -231,6 +231,30 @@ namespace mechsystem.Data
                 .WithMany()
                 .HasForeignKey(p => p.RegistradoPorUsuarioId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Índices compostos/parciais e CHECK constraints (PostgreSQL)
+            modelBuilder.Entity<OrdemServico>()
+                .HasIndex(o => new { o.Status, o.DataConclusao });
+
+            modelBuilder.Entity<OrdemServico>()
+                .HasIndex(o => new { o.Status, o.DataEmissao });
+
+            modelBuilder.Entity<OrdemServico>()
+                .HasIndex(o => new { o.Status, o.MecanicoResponsavelId });
+
+            modelBuilder.Entity<OrdemServico>()
+                .ToTable(t =>
+                {
+                    t.HasCheckConstraint("ck_ordens_servico_nivel_combustivel", "nivel_combustivel_entrada BETWEEN 1 AND 5");
+                    t.HasCheckConstraint("ck_ordens_servico_valor_desconto", "valor_desconto >= 0");
+                });
+
+            modelBuilder.Entity<OrdemServicoPeca>()
+                .HasIndex(op => new { op.PecaId, op.OrdemServicoId })
+                .HasFilter("origem = 0 AND status_item = 1 AND aplicada = false");
+
+            modelBuilder.Entity<MovimentacaoEstoque>()
+                .HasIndex(m => new { m.DataHora, m.Tipo });
         }
     }
 

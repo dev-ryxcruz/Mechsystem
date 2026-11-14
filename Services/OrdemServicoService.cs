@@ -5,55 +5,50 @@ using Microsoft.EntityFrameworkCore;
 
 namespace mechsystem.Services;
 
+public record CriarOrcamentoServicoItem(
+    int ServicoId,
+    int Quantidade,
+    decimal PrecoBase,
+    decimal ValorCobrado,
+    int? TempoEstimadoMinutosSnapshot);
+
+public record CriarOrcamentoPecaItem(
+    int PecaId,
+    int Quantidade,
+    decimal PrecoBase,
+    decimal PrecoCustoSnapshot,
+    decimal ValorCobrado,
+    OrigemPeca Origem);
+
+public record CriarOrcamentoRequest(
+    int VeiculoId,
+    int KmEntrada,
+    NivelCombustivel? NivelCombustivelEntrada,
+    string QueixaCliente,
+    string? Diagnostico,
+    DateTime DataPrevisaoEntrega,
+    decimal ValorDesconto,
+    List<CriarOrcamentoServicoItem> Servicos,
+    List<CriarOrcamentoPecaItem> Pecas);
+
+public record OrdemServicoListaItemDto(
+    int Id,
+    DateTime DataEmissao,
+    DateTime ValidadeOrcamentoAte,
+    OrdemServicoStatus Status,
+    string? VeiculoModelo,
+    string? VeiculoPlaca,
+    bool VeiculoAtivo,
+    string? ClienteNome,
+    bool ClienteAtivo,
+    string? MecanicoNome,
+    bool PossuiVistoria,
+    decimal ValorTotal);
+
 public class OrdemServicoService
 {
     private readonly AppDbContext _db;
     private readonly EstoqueService _estoqueService;
-
-    private static readonly Dictionary<OrdemServicoStatus, HashSet<OrdemServicoStatus>> TransicoesPermitidas = new()
-    {
-        [OrdemServicoStatus.Orcamento] = new()
-        {
-            OrdemServicoStatus.Aprovada,
-            OrdemServicoStatus.Recusada,
-            OrdemServicoStatus.Cancelada
-        },
-        [OrdemServicoStatus.Aprovada] = new()
-        {
-            OrdemServicoStatus.EmAndamento,
-            OrdemServicoStatus.Cancelada
-        },
-        [OrdemServicoStatus.EmAndamento] = new()
-        {
-            OrdemServicoStatus.Pausada,
-            OrdemServicoStatus.AguardandoPecas,
-            OrdemServicoStatus.AguardandoCliente,
-            OrdemServicoStatus.Concluida,
-            OrdemServicoStatus.Cancelada
-        },
-        [OrdemServicoStatus.Pausada] = new()
-        {
-            OrdemServicoStatus.EmAndamento,
-            OrdemServicoStatus.Cancelada
-        },
-        [OrdemServicoStatus.AguardandoPecas] = new()
-        {
-            OrdemServicoStatus.EmAndamento,
-            OrdemServicoStatus.Cancelada
-        },
-        [OrdemServicoStatus.AguardandoCliente] = new()
-        {
-            OrdemServicoStatus.EmAndamento,
-            OrdemServicoStatus.Cancelada
-        },
-        [OrdemServicoStatus.Concluida] = new()
-        {
-            OrdemServicoStatus.Entregue
-        },
-        [OrdemServicoStatus.Entregue] = new(),
-        [OrdemServicoStatus.Recusada] = new(),
-        [OrdemServicoStatus.Cancelada] = new()
-    };
 
     public OrdemServicoService(AppDbContext db, EstoqueService estoqueService)
     {
@@ -66,14 +61,64 @@ public class OrdemServicoService
         if (pagina < 1) pagina = 1;
         if (tamanhoPagina <= 0) tamanhoPagina = 10;
 
-        var query = _db.OrdensServico
+        var query = ConstruirQueryListagem(termoBusca, status)
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(o => o.Veiculo)
                 .ThenInclude(v => v!.Cliente)
             .Include(o => o.Vistoria)
             .Include(o => o.PecasUtilizadas)
             .Include(o => o.ServicosAExecutarList)
-            .Include(o => o.MecanicoResponsavel)
-            .AsQueryable();
+            .Include(o => o.MecanicoResponsavel);
+
+        var totalCount = await query.CountAsync();
+        var itens = await query
+            .OrderByDescending(o => o.Id)
+            .Skip((pagina - 1) * tamanhoPagina)
+            .Take(tamanhoPagina)
+            .ToListAsync();
+
+        return (itens, totalCount);
+    }
+
+    public async Task<(List<OrdemServicoListaItemDto> Itens, int TotalCount)> ListarResumoPaginadoAsync(string? termoBusca, int pagina, int tamanhoPagina, OrdemServicoStatus? status = null)
+    {
+        if (pagina < 1) pagina = 1;
+        if (tamanhoPagina <= 0) tamanhoPagina = 10;
+
+        var query = ConstruirQueryListagem(termoBusca, status).AsNoTracking();
+
+        var totalCount = await query.CountAsync();
+        var itens = await query
+            .OrderByDescending(o => o.Id)
+            .Skip((pagina - 1) * tamanhoPagina)
+            .Take(tamanhoPagina)
+            .Select(o => new OrdemServicoListaItemDto(
+                o.Id,
+                o.DataEmissao,
+                o.ValidadeOrcamentoAte,
+                o.Status,
+                o.Veiculo != null ? o.Veiculo.Modelo : null,
+                o.Veiculo != null ? o.Veiculo.Placa : null,
+                o.Veiculo != null && o.Veiculo.Ativo,
+                o.Veiculo != null && o.Veiculo.Cliente != null ? o.Veiculo.Cliente.Nome : null,
+                o.Veiculo != null && o.Veiculo.Cliente != null && o.Veiculo.Cliente.Ativo,
+                o.MecanicoResponsavel != null ? o.MecanicoResponsavel.NomeCompleto : null,
+                o.Vistoria != null,
+                (o.Status == OrdemServicoStatus.Orcamento
+                    ? (o.ServicosAExecutarList.Where(s => s.StatusItem != StatusItem.Recusado).Sum(s => (decimal?)(s.Quantidade * s.ValorCobrado)) ?? 0m)
+                      + (o.PecasUtilizadas.Where(p => p.StatusItem != StatusItem.Recusado).Sum(p => (decimal?)(p.Quantidade * p.ValorCobrado)) ?? 0m)
+                    : (o.ServicosAExecutarList.Where(s => s.StatusItem == StatusItem.Aprovado).Sum(s => (decimal?)(s.Quantidade * s.ValorCobrado)) ?? 0m)
+                      + (o.PecasUtilizadas.Where(p => p.StatusItem == StatusItem.Aprovado).Sum(p => (decimal?)(p.Quantidade * p.ValorCobrado)) ?? 0m))
+                - o.ValorDesconto))
+            .ToListAsync();
+
+        return (itens, totalCount);
+    }
+
+    private IQueryable<OrdemServico> ConstruirQueryListagem(string? termoBusca, OrdemServicoStatus? status)
+    {
+        var query = _db.OrdensServico.AsQueryable();
 
         if (status.HasValue)
             query = query.Where(o => o.Status == status.Value);
@@ -91,29 +136,14 @@ public class OrdemServicoService
                 (o.Veiculo != null && o.Veiculo.Cliente != null && o.Veiculo.Cliente.Nome != null && o.Veiculo.Cliente.Nome.ToLower().Contains(termo)));
         }
 
-        var totalCount = await query.CountAsync();
-        var itens = await query
-            .OrderByDescending(o => o.Id)
-            .Skip((pagina - 1) * tamanhoPagina)
-            .Take(tamanhoPagina)
-            .ToListAsync();
-
-        return (itens, totalCount);
+        return query;
     }
 
-    public static bool PodeTransicionar(OrdemServicoStatus origem, OrdemServicoStatus destino)
-    {
-        return TransicoesPermitidas.TryGetValue(origem, out var destinos) && destinos.Contains(destino);
-    }
+    public static bool PodeTransicionar(OrdemServicoStatus origem, OrdemServicoStatus destino) =>
+        OrdemServico.PodeTransicionar(origem, destino);
 
-    public static void ValidarTransicao(OrdemServicoStatus origem, OrdemServicoStatus destino)
-    {
-        if (!PodeTransicionar(origem, destino))
-        {
-            throw new InvalidOperationException(
-                $"Transição de status inválida: não é permitido alterar a O.S. de '{origem}' para '{destino}'.");
-        }
-    }
+    public static void ValidarTransicao(OrdemServicoStatus origem, OrdemServicoStatus destino) =>
+        OrdemServico.ValidarTransicao(origem, destino);
 
     private static bool EhPerfilValido(PerfilUsuario? perfil) =>
         perfil == PerfilUsuario.Administrador
@@ -147,6 +177,97 @@ public class OrdemServicoService
     // ==========================================
     // 0. CRIAÇÃO DE ORÇAMENTO / O.S.
     // ==========================================
+
+    public async Task<int> CriarOrcamentoAsync(
+        CriarOrcamentoRequest request,
+        int usuarioId = 0,
+        PerfilUsuario? perfilUsuario = null,
+        string? nomeUsuario = null)
+    {
+        if (request == null) throw new ArgumentNullException(nameof(request));
+        if (request.VeiculoId <= 0) throw new InvalidOperationException("O veículo é obrigatório.");
+        if (request.KmEntrada <= 0) throw new InvalidOperationException("O KM de entrada deve ser maior que zero.");
+        if (!request.NivelCombustivelEntrada.HasValue
+            || (int)request.NivelCombustivelEntrada.Value < 1
+            || (int)request.NivelCombustivelEntrada.Value > 5)
+        {
+            throw new InvalidOperationException("Selecione o nível de combustível de entrada.");
+        }
+        if (string.IsNullOrWhiteSpace(request.QueixaCliente))
+        {
+            throw new InvalidOperationException("A queixa do cliente é obrigatória.");
+        }
+
+        var servicos = request.Servicos ?? new List<CriarOrcamentoServicoItem>();
+        var pecas = request.Pecas ?? new List<CriarOrcamentoPecaItem>();
+
+        if (!servicos.Any() && !pecas.Any())
+        {
+            throw new InvalidOperationException("Adicione ao menos um serviço ou peça ao orçamento.");
+        }
+        if (servicos.Any(l => l.Quantidade < 1) || pecas.Any(l => l.Quantidade < 1))
+        {
+            throw new InvalidOperationException("A quantidade de cada item deve ser pelo menos 1.");
+        }
+        if (servicos.Any(l => l.ValorCobrado < 0) || pecas.Any(l => l.ValorCobrado < 0))
+        {
+            throw new InvalidOperationException("O valor de um item não pode ser negativo.");
+        }
+
+        var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
+        var isAdmin = perfil == PerfilUsuario.Administrador;
+
+        if (!isAdmin && (servicos.Any(l => l.ValorCobrado < l.PrecoBase) || pecas.Any(l => l.ValorCobrado < l.PrecoBase)))
+        {
+            throw new UnauthorizedAccessException("Apenas Administradores podem cobrar abaixo do preço base sugerido.");
+        }
+
+        var desconto = isAdmin ? Math.Max(0m, request.ValorDesconto) : 0m;
+        var totalItens = servicos.Sum(s => s.Quantidade * s.ValorCobrado) + pecas.Sum(p => p.Quantidade * p.ValorCobrado);
+        if (desconto > totalItens)
+        {
+            throw new InvalidOperationException("O desconto não pode ser maior que o total dos itens.");
+        }
+
+        var config = await _db.Configuracoes.AsNoTracking().FirstOrDefaultAsync();
+        var dataEmissao = DateTime.UtcNow.Date;
+
+        var os = new OrdemServico
+        {
+            VeiculoId = request.VeiculoId,
+            KmEntrada = request.KmEntrada,
+            NivelCombustivelEntrada = request.NivelCombustivelEntrada.Value,
+            QueixaCliente = request.QueixaCliente.Trim(),
+            Diagnostico = string.IsNullOrWhiteSpace(request.Diagnostico) ? null : request.Diagnostico.Trim(),
+            DataEmissao = dataEmissao,
+            DataPrevisaoEntrega = request.DataPrevisaoEntrega,
+            ValidadeOrcamentoAte = dataEmissao.AddDays(config?.ValidadeOrcamentoDias ?? 10),
+            ValorDesconto = desconto,
+            Status = OrdemServicoStatus.Orcamento,
+            TokenAcompanhamento = Guid.NewGuid().ToString("N"),
+            ServicosAExecutarList = servicos.Select(l => new OrdemServicoServico
+            {
+                ServicoId = l.ServicoId,
+                Quantidade = l.Quantidade,
+                PrecoBase = l.PrecoBase,
+                ValorCobrado = l.ValorCobrado,
+                TempoEstimadoMinutosSnapshot = l.TempoEstimadoMinutosSnapshot,
+                StatusItem = StatusItem.Pendente
+            }).ToList(),
+            PecasUtilizadas = pecas.Select(l => new OrdemServicoPeca
+            {
+                PecaId = l.PecaId,
+                Quantidade = l.Quantidade,
+                PrecoBase = l.PrecoBase,
+                ValorCobrado = l.ValorCobrado,
+                PrecoCustoSnapshot = l.PrecoCustoSnapshot,
+                Origem = l.Origem,
+                StatusItem = StatusItem.Pendente
+            }).ToList()
+        };
+
+        return await CriarOrcamentoAsync(os, usuarioId, nomeUsuario);
+    }
 
     public async Task<int> CriarOrcamentoAsync(
         OrdemServico os,
@@ -1444,6 +1565,87 @@ public class OrdemServicoService
         });
     }
 
+    public async Task RegistrarContatoAsync(
+        int osId,
+        TipoContato tipo,
+        string descricao,
+        int usuarioId = 0,
+        string? nomeOperador = null)
+    {
+        if (string.IsNullOrWhiteSpace(descricao))
+        {
+            throw new InvalidOperationException("A descrição do contato é obrigatória.");
+        }
+
+        var existe = await _db.OrdensServico.AnyAsync(o => o.Id == osId);
+        if (!existe)
+        {
+            throw new InvalidOperationException("Ordem de Serviço não encontrada.");
+        }
+
+        var operador = !string.IsNullOrWhiteSpace(nomeOperador)
+            ? nomeOperador.Trim()
+            : await ObterNomeOperadorAsync(usuarioId);
+
+        _db.ContatosOS.Add(new ContatoOS
+        {
+            OrdemServicoId = osId,
+            Tipo = tipo,
+            Descricao = descricao.Trim(),
+            RegistradoPor = operador,
+            DataContato = DateTime.UtcNow
+        });
+
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task ReportarProblemaAsync(
+        int osId,
+        string tipoProblema,
+        string descricao,
+        int usuarioId,
+        PerfilUsuario? perfilUsuario = null,
+        string? nomeOperador = null)
+    {
+        if (string.IsNullOrWhiteSpace(tipoProblema) || string.IsNullOrWhiteSpace(descricao))
+        {
+            throw new InvalidOperationException("Tipo e descrição do problema são obrigatórios.");
+        }
+
+        var perfil = await ObterPerfilAsync(usuarioId, perfilUsuario);
+        if (!EhPerfilValido(perfil))
+        {
+            throw new UnauthorizedAccessException("Perfil sem permissão para reportar problemas na O.S.");
+        }
+
+        await ExecutarEmTransacaoAsync(async () =>
+        {
+            var os = await _db.OrdensServico.FirstOrDefaultAsync(o => o.Id == osId)
+                ?? throw new InvalidOperationException("Ordem de Serviço não encontrada.");
+
+            var operador = !string.IsNullOrWhiteSpace(nomeOperador)
+                ? nomeOperador.Trim()
+                : await ObterNomeOperadorAsync(usuarioId);
+
+            _db.ContatosOS.Add(new ContatoOS
+            {
+                OrdemServicoId = os.Id,
+                Tipo = TipoContato.Outro,
+                Descricao = $"[{tipoProblema.Trim()}] {descricao.Trim()}",
+                RegistradoPor = operador,
+                DataContato = DateTime.UtcNow
+            });
+
+            if (tipoProblema.Trim() == "Falta de peça" && os.Status == OrdemServicoStatus.EmAndamento)
+            {
+                ValidarTransicao(os.Status, OrdemServicoStatus.AguardandoPecas);
+                os.Status = OrdemServicoStatus.AguardandoPecas;
+            }
+
+            await _db.SaveChangesAsync();
+        });
+    }
+
     public static TipoContato? ConverterMeioAutorizacao(string? meioAutorizacao)
     {
         if (string.IsNullOrWhiteSpace(meioAutorizacao))
@@ -1532,17 +1734,6 @@ public class OrdemServicoService
         }
     }
 
-    private static void FecharApontamentosAbertos(OrdemServico os)
-    {
-        if (os.ApontamentosTempo == null)
-        {
-            return;
-        }
-
-        var agora = DateTime.UtcNow;
-        foreach (var apontamento in os.ApontamentosTempo.Where(a => !a.Fim.HasValue))
-        {
-            apontamento.Fim = agora;
-        }
-    }
+    private static void FecharApontamentosAbertos(OrdemServico os) =>
+        os.FecharApontamentosAbertos();
 }

@@ -95,12 +95,52 @@ namespace mechsystem.Services
             var itens = await query.ToListAsync();
 
             // Agrupa por PecaId para o caso de múltiplas linhas da mesma peça
-            var agrupados = itens.GroupBy(i => i.PecaId);
+            var agrupados = itens
+                .GroupBy(i => i.PecaId)
+                .Select(g => new { PecaId = g.Key, TotalNecessario = g.Sum(i => i.Quantidade) })
+                .ToList();
+
+            if (!agrupados.Any())
+            {
+                return;
+            }
+
+            var pecaIds = agrupados.Select(g => g.PecaId).ToList();
+
+            var pecasPorId = await _context.Pecas
+                .AsNoTracking()
+                .Where(p => pecaIds.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id);
+
+            var reservasPorPeca = await _context.OrdemServicoPecas
+                .Where(op => pecaIds.Contains(op.PecaId)
+                    && op.Origem == OrigemPeca.Estoque
+                    && op.StatusItem == StatusItem.Aprovado
+                    && !op.Aplicada
+                    && op.OrdemServico != null
+                    && op.OrdemServico.Status != OrdemServicoStatus.Cancelada
+                    && op.OrdemServico.Status != OrdemServicoStatus.Recusada
+                    && op.OrdemServico.Status != OrdemServicoStatus.Entregue
+                    && op.OrdemServicoId != ordemServicoId)
+                .GroupBy(op => op.PecaId)
+                .Select(g => new { PecaId = g.Key, Reservada = g.Sum(op => op.Quantidade) })
+                .ToDictionaryAsync(x => x.PecaId, x => x.Reservada);
+
             foreach (var grupo in agrupados)
             {
-                var pecaId = grupo.Key;
-                var totalNecessario = grupo.Sum(i => i.Quantidade);
-                await ValidarDisponibilidadeParaReservaAsync(pecaId, totalNecessario, ordemServicoId);
+                if (!pecasPorId.TryGetValue(grupo.PecaId, out var peca))
+                {
+                    throw new InvalidOperationException($"Peça ID {grupo.PecaId} não encontrada.");
+                }
+
+                var reservada = reservasPorPeca.GetValueOrDefault(grupo.PecaId, 0);
+                var disponivel = Math.Max(0, peca.EstoqueAtual - reservada);
+
+                if (grupo.TotalNecessario > disponivel)
+                {
+                    throw new InvalidOperationException(
+                        $"Estoque insuficiente para reservar '{peca.Nome}' (SKU: {peca.Sku}). Físico: {peca.EstoqueAtual}, Reservado: {reservada}, Disponível: {disponivel}, Solicitado: {grupo.TotalNecessario}.");
+                }
             }
         }
 

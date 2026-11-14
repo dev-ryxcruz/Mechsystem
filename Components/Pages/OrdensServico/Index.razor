@@ -77,15 +77,15 @@
                                     <td class="text-center fw-bold">#@os.Id.ToString("D4")</td>
                                     <td class="text-center">@os.DataEmissao.ToBrasiliaTime().ToString("dd/MM/yyyy")</td>
                                     <td class="text-start">
-                                        @os.Veiculo?.Modelo — <span class="badge bg-light text-dark border">@os.Veiculo?.Placa</span>
-                                        @if (os.Veiculo != null && !os.Veiculo.Ativo)
+                                        @os.VeiculoModelo — <span class="badge bg-light text-dark border">@os.VeiculoPlaca</span>
+                                        @if (!string.IsNullOrEmpty(os.VeiculoPlaca) && !os.VeiculoAtivo)
                                         {
                                             <span class="badge bg-secondary ms-1">Veículo Inativo</span>
                                         }
                                     </td>
                                     <td class="text-start">
-                                        @os.Veiculo?.Cliente?.Nome
-                                        @if (os.Veiculo?.Cliente != null && !os.Veiculo.Cliente.Ativo)
+                                        @os.ClienteNome
+                                        @if (!string.IsNullOrEmpty(os.ClienteNome) && !os.ClienteAtivo)
                                         {
                                             <span class="badge bg-secondary ms-1">Cliente Inativo</span>
                                         }
@@ -97,9 +97,9 @@
                                             <span class="badge bg-danger ms-1" title="Validade do orçamento: @os.ValidadeOrcamentoAte.ToBrasiliaTime().ToString("dd/MM/yyyy")"><i class="bi bi-exclamation-triangle-fill"></i> Vencido</span>
                                         }
                                     </td>
-                                    <td class="text-start">@(os.MecanicoResponsavel?.NomeCompleto ?? "—")</td>
+                                    <td class="text-start">@(os.MecanicoNome ?? "—")</td>
                                     <td class="text-center">
-                                        @if (os.Vistoria != null)
+                                        @if (os.PossuiVistoria)
                                         {
                                             <span class="badge bg-success" title="Realizada"><i class="bi bi-shield-check"></i> Feita</span>
                                         }
@@ -133,7 +133,7 @@
 </div>
 
 @code {
-    private List<OrdemServico>? ordensServico;
+    private List<OrdemServicoListaItemDto>? ordensServico;
     private string termoPesquisa = "";
     private int paginaAtual = 1;
     private int tamanhoPagina = 10;
@@ -147,7 +147,7 @@
         await CarregarOrdensServico();
     }
 
-    private static bool OrcamentoVencido(OrdemServico os) =>
+    private static bool OrcamentoVencido(OrdemServicoListaItemDto os) =>
         os.Status == OrdemServicoStatus.Orcamento &&
         os.ValidadeOrcamentoAte.ToBrasiliaTime().Date < DateTimeExtensions.TodayBrasilia();
 
@@ -188,7 +188,7 @@
 
     private async Task CarregarOrdensServico()
     {
-        var resultado = await OrdemServicoService.ListarPaginadoAsync(termoPesquisa, paginaAtual, tamanhoPagina, statusFiltro);
+        var resultado = await OrdemServicoService.ListarResumoPaginadoAsync(termoPesquisa, paginaAtual, tamanhoPagina, statusFiltro);
         ordensServico = resultado.Itens;
         totalRegistros = resultado.TotalCount;
     }

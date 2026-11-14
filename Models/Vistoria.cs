@@ -57,7 +57,7 @@ namespace mechsystem.Models
 
         // Mapeamento de Avarias via Visual (JSON data)
         // Guardará um array do tipo [{X:10, Y:20, Desc: "Risco na porta"}]
-        [Column(TypeName = "TEXT")] // Armazenado como TEXT no PostgreSQL
+        [Column(TypeName = "jsonb")]
         public string? AvariasJson { get; set; }
 
         [Display(Name = "Observações Adicionais")]

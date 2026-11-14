@@ -276,6 +276,9 @@ namespace mechsystem.Migrations
                     b.HasIndex("UsuarioId")
                         .HasDatabaseName("ix_movimentacoes_estoque_usuario_id");
 
+                    b.HasIndex("DataHora", "Tipo")
+                        .HasDatabaseName("ix_movimentacoes_estoque_data_hora_tipo");
+
                     b.ToTable("movimentacoes_estoque", (string)null);
                 });
 
@@ -301,7 +304,7 @@ namespace mechsystem.Migrations
                         .HasColumnName("cancelada_por_usuario_id");
 
                     b.Property<string>("ChecklistConclusaoJson")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("jsonb")
                         .HasColumnName("checklist_conclusao_json");
 
                     b.Property<DateTime?>("DataAutorizacao")
@@ -405,7 +408,21 @@ namespace mechsystem.Migrations
                     b.HasIndex("VeiculoId")
                         .HasDatabaseName("ix_ordens_servico_veiculo_id");
 
-                    b.ToTable("ordens_servico", (string)null);
+                    b.HasIndex("Status", "DataConclusao")
+                        .HasDatabaseName("ix_ordens_servico_status_data_conclusao");
+
+                    b.HasIndex("Status", "DataEmissao")
+                        .HasDatabaseName("ix_ordens_servico_status_data_emissao");
+
+                    b.HasIndex("Status", "MecanicoResponsavelId")
+                        .HasDatabaseName("ix_ordens_servico_status_mecanico_responsavel_id");
+
+                    b.ToTable("ordens_servico", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_ordens_servico_nivel_combustivel", "nivel_combustivel_entrada BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("ck_ordens_servico_valor_desconto", "valor_desconto >= 0");
+                        });
                 });
 
             modelBuilder.Entity("mechsystem.Models.OrdemServicoPeca", b =>
@@ -463,8 +480,9 @@ namespace mechsystem.Migrations
                     b.HasIndex("OrdemServicoId")
                         .HasDatabaseName("ix_ordem_servico_pecas_ordem_servico_id");
 
-                    b.HasIndex("PecaId")
-                        .HasDatabaseName("ix_ordem_servico_pecas_peca_id");
+                    b.HasIndex("PecaId", "OrdemServicoId")
+                        .HasDatabaseName("ix_ordem_servico_pecas_peca_id_ordem_servico_id")
+                        .HasFilter("origem = 0 AND status_item = 1 AND aplicada = false");
 
                     b.ToTable("ordem_servico_pecas", (string)null);
                 });
@@ -843,7 +861,7 @@ namespace mechsystem.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AvariasJson")
-                        .HasColumnType("TEXT")
+                        .HasColumnType("jsonb")
                         .HasColumnName("avarias_json");
 
                     b.Property<DateTime>("DataVistoria")

@@ -1,12 +1,11 @@
 @page "/agenda"
 @rendermode InteractiveServer
-@using Microsoft.EntityFrameworkCore
-@using mechsystem.Data
 @using mechsystem.Models
 @using mechsystem.Services
+@using mechsystem.Services.Queries
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@inject AppDbContext DbContext
+@inject OrdemServicoQueryService OrdemServicoQueryService
 @inject NavigationManager Nav
 
 <PageTitle>Agenda — Mechsystem</PageTitle>
@@ -150,16 +149,9 @@
         StateHasChanged();
 
         var inicio = new DateTime(anoSelecionado, mesSelecionado, 1, 0, 0, 0, DateTimeKind.Utc);
-        var fimExclusivo = inicio.AddMonths(1);
 
         // Buscar OS com previsão de entrega no mês
-        var lista = await DbContext.OrdensServico
-            .Include(o => o.Veiculo)
-                .ThenInclude(v => v!.Cliente)
-            .Include(o => o.MecanicoResponsavel)
-            .Where(o => o.DataPrevisaoEntrega >= inicio && o.DataPrevisaoEntrega < fimExclusivo)
-            .OrderBy(o => o.DataPrevisaoEntrega)
-            .ToListAsync();
+        var lista = await OrdemServicoQueryService.ListarAgendaMesAsync(anoSelecionado, mesSelecionado);
 
         osPorDia = lista
             .GroupBy(o => o.DataPrevisaoEntrega.Date)
