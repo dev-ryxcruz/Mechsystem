@@ -45,8 +45,10 @@ else
 
         <!-- Cabeçalho -->
         <div class="doc-header">
-            <div class="doc-oficina">
-                <div class="doc-oficina-nome">@(config?.NomeFantasia ?? "Oficina Mecânica")</div>
+            <div class="doc-oficina doc-oficina-brand">
+                <img src="/logo.png" alt="Logo da oficina" class="doc-logo" />
+                <div>
+                    <div class="doc-oficina-nome">@(config?.NomeFantasia ?? "Oficina Mecânica")</div>
                 @if (!string.IsNullOrEmpty(config?.Cnpj))
                 {
                     <div class="doc-oficina-info">CNPJ: @config.Cnpj</div>
@@ -61,6 +63,7 @@ else
                 {
                     <div class="doc-oficina-info">@config.EnderecoCompleto</div>
                 }
+                </div>
             </div>
             <div class="doc-os-info">
                 <div class="doc-os-titulo">

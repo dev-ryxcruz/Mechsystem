@@ -270,6 +270,19 @@
     text-align: center;
 }
 
+.doc-oficina-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.doc-logo {
+    max-height: 48px;
+    width: auto;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
 /* ─── IMPRESSÃO (@media print) ───────────────────────────────────────────── */
 @media print {
     @page {
@@ -285,11 +298,27 @@
 
     /* Esconder tudo exceto o documento */
     .sidebar,
+    .sidebar-backdrop,
     .top-row,
     .navbar,
     .print-toolbar,
+    #components-reconnect-modal,
+    .modal-backdrop,
     .d-print-none {
         display: none !important;
+    }
+
+    .doc-section,
+    .doc-assinatura-grid,
+    .doc-aprovado-box,
+    .doc-text-box,
+    tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    thead {
+        display: table-header-group;
     }
 
     main, article, .page, .content {

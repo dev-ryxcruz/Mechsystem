@@ -1054,8 +1054,11 @@ h1:focus {
 @media print {
     /* Esconde toda a estrutura do layout */
     .sidebar,
+    .sidebar-backdrop,
     .top-row,
     #blazor-error-ui,
+    #components-reconnect-modal,
+    .modal-backdrop,
     .print-toolbar,
     .d-print-none {
         display: none !important;
