@@ -147,28 +147,30 @@
                             <div class="info-icon @(isAtrasado ? "text-danger" : "text-primary")"><i class="bi bi-calendar-check"></i></div>
                             <div>
                                 <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Previsão de Entrega</small>
-                                <span class="fw-bold fs-6 @(isAtrasado ? "text-danger" : "")">
-                                    @os.DataPrevisaoEntrega.ToString("dd/MM/yyyy")
-                                </span>
-                                @if (!estaFinalizada)
-                                {
-                                    @if (isAtrasado)
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <span class="fw-bold fs-6 @(isAtrasado ? "text-danger" : "")">
+                                        @os.DataPrevisaoEntrega.ToString("dd/MM/yyyy")
+                                    </span>
+                                    @if (!estaFinalizada)
                                     {
-                                        <span class="badge bg-danger ms-2">Atrasado @diasAtraso dia(s)</span>
+                                        @if (isAtrasado)
+                                        {
+                                            <span class="badge bg-danger">Atrasado @diasAtraso dia(s)</span>
+                                        }
+                                        else if (diasRestantes == 0)
+                                        {
+                                            <span class="badge bg-warning text-dark">É Hoje!</span>
+                                        }
+                                        else if (diasRestantes == 1)
+                                        {
+                                            <span class="badge bg-info text-dark">Amanhã</span>
+                                        }
+                                        else if (diasRestantes > 1)
+                                        {
+                                            <span class="badge bg-secondary">em @diasRestantes dias</span>
+                                        }
                                     }
-                                    else if (diasRestantes == 0)
-                                    {
-                                        <span class="badge bg-warning text-dark ms-2">É Hoje!</span>
-                                    }
-                                    else if (diasRestantes == 1)
-                                    {
-                                        <span class="badge bg-info text-dark ms-2">Amanhã</span>
-                                    }
-                                    else if (diasRestantes > 1)
-                                    {
-                                        <span class="badge bg-secondary ms-2">em @diasRestantes dias</span>
-                                    }
-                                }
+                                </div>
                             </div>
                         </div>
                     </div>

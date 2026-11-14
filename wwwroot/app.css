@@ -938,6 +938,18 @@ h1:focus {
    RESPONSIVIDADE MOBILE GLOBAL
    ============================================== */
 
+/* ── Painel do Mecânico: alvos de toque >= 44px em tablet/celular ── */
+@media (max-width: 1199.98px) {
+    .painel-operacional .btn,
+    .painel-operacional .nav-link {
+        min-height: 44px;
+        min-width: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
 /* ── Breakpoint principal: telefones (≤ 768px) ── */
 @media (max-width: 768px) {
 

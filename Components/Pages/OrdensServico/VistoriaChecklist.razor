@@ -185,14 +185,15 @@ else
                             {
                                 var avaria = Avarias[i];
                                 var index = i;
-                                <div class="avaria-marker" 
+                                <div class="avaria-marker @(ActiveMarkerIndex == index ? "active" : "")" 
                                      style="left: @(avaria.X.ToString(System.Globalization.CultureInfo.InvariantCulture))%; top: @(avaria.Y.ToString(System.Globalization.CultureInfo.InvariantCulture))%;" 
                                      title="@avaria.Descricao"
+                                     @onclick="() => ToggleMarkerTooltip(index)"
                                      @onclick:stopPropagation="true">
                                     <div class="marker-dot pulse"></div>
                                     <div class="marker-tooltip">
                                         @avaria.Descricao
-                                        <button type="button" class="btn btn-sm btn-danger p-0 px-1 ms-2" @onclick:stopPropagation="true" @onclick="() => RemoverAvaria(index)">
+                                        <button type="button" class="btn btn-sm btn-danger p-0 px-2 ms-2" aria-label="Remover avaria" @onclick:stopPropagation="true" @onclick="() => RemoverAvaria(index)">
                                             <i class="bi bi-x"></i>
                                         </button>
                                     </div>
@@ -231,7 +232,7 @@ else
                                             var idx = i;
                                             <li class="list-group-item bg-transparent text-dark fw-bold border-secondary d-flex justify-content-between align-items-center px-0 py-1">
                                                 <span><i class="bi bi-exclamation-circle text-danger me-2"></i> @avaria.Descricao</span>
-                                                <button type="button" class="btn btn-link text-danger p-0" @onclick="() => RemoverAvaria(idx)"><i class="bi bi-trash"></i></button>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" aria-label="Remover avaria @avaria.Descricao" @onclick="() => RemoverAvaria(idx)"><i class="bi bi-trash"></i></button>
                                             </li>
                                         }
                                     </ul>
@@ -244,7 +245,7 @@ else
         </div>
 
         <div class="card mt-4 mb-5 border-primary shadow-lg">
-            <div class="card-body bg-dark text-end d-flex justify-content-between align-items-center">
+            <div class="card-body bg-dark text-end d-flex flex-wrap justify-content-between align-items-center gap-3">
                 <div class="text-start">
                     <h5 class="text-primary mb-0">Status da Vistoria</h5>
                     <p class="text-secondary small mb-0">
@@ -252,9 +253,9 @@ else
                         else { <span>Vistoria registrada em @Vistoria.DataVistoria.ToBrasiliaTime().ToString("dd/MM/yyyy HH:mm")</span> }
                     </p>
                 </div>
-                <div>
-                    <button type="button" class="btn btn-outline-secondary px-4 me-2" @onclick="@(() => NavigationManager.NavigateTo($"/ordens-servico/{OrdemServicoId}"))">Cancelar</button>
-                    <button type="submit" class="btn btn-primary px-5 fw-bold">
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-secondary px-4" @onclick="@(() => NavigationManager.NavigateTo($"/ordens-servico/{OrdemServicoId}"))">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold">
                         <i class="bi bi-save me-2"></i> Salvar Vistoria
                     </button>
                 </div>
@@ -295,6 +296,7 @@ else
     
     // Adding marker state
     private bool IsAddingMarker { get; set; } = false;
+    private int? ActiveMarkerIndex { get; set; }
     private double TempX { get; set; }
     private double TempY { get; set; }
     private string NewMarkerDescription { get; set; } = "";
@@ -427,11 +429,17 @@ else
         }
     }
 
+    private void ToggleMarkerTooltip(int index)
+    {
+        ActiveMarkerIndex = ActiveMarkerIndex == index ? null : index;
+    }
+
     private void RemoverAvaria(int index)
     {
         if (index >= 0 && index < Avarias.Count)
         {
             Avarias.RemoveAt(index);
+            if (ActiveMarkerIndex == index) ActiveMarkerIndex = null;
         }
     }
 

@@ -158,3 +158,30 @@
 ::deep body {
     background-color: var(--bg-body);
 }
+
+@media (max-width: 576px) {
+    .public-container {
+        padding: 1rem 0.5rem;
+    }
+    .tracking-header,
+    .tracking-body {
+        padding: 1.25rem 1rem;
+    }
+    .progress-step {
+        width: auto;
+        flex: 1 1 0;
+        min-width: 0;
+    }
+    .step-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+    }
+    .step-label {
+        font-size: 0.62rem;
+        letter-spacing: 0.2px;
+    }
+    .progress-line {
+        margin-bottom: 1.35rem;
+    }
+}

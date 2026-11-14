@@ -174,7 +174,8 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
 }
 
-.avaria-marker:hover .marker-tooltip {
+.avaria-marker:hover .marker-tooltip,
+.avaria-marker.active .marker-tooltip {
     opacity: 1;
     visibility: visible;
 }
